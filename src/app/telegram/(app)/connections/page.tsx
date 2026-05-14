@@ -1,19 +1,19 @@
 /** --- YAML
  * name: MiniAppContactsPage
- * description: Mini App "Контакты" — заменяет Fresha "Избранное". 3 таба: Мои мастера (client_master_links),
- *              Мои салоны (follows → salons.owner_id), Друзья (mutual follows других клиентов).
+ * description: Mini App "Мої майстри" — followed masters list. Matches mini-app masters.js prototype with master-card OD classes.
  * created: 2026-04-24
+ * updated: 2026-05-14
  * --- */
 
 'use client';
 
+import '@/styles/od-client-mini-app.css';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { User, Building2, Users, Star, MapPin, ChevronRight, Loader2, Search as SearchIcon, Clock, UserMinus, UserPlus, X } from 'lucide-react';
+import { Star, Loader2, Clock, X, UserPlus } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { MobilePage } from '@/components/miniapp/shells';
 
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
@@ -35,11 +35,6 @@ function authHeaders(): Record<string, string> {
   return initData ? { 'x-tg-init-data': initData } : {};
 }
 
-// Salons tab убран до момента когда подключим логику подписки на салоны —
-// сейчас бэкенд `/api/telegram/c/contacts` уже возвращает salons, но клиент
-// не подписывается на них нигде в UI, экран всегда был пустым.
-type Tab = 'masters' | 'friends';
-
 type Lang = 'uk' | 'ru' | 'en';
 
 function getContactsLocale(): Lang {
@@ -54,87 +49,42 @@ function getContactsLocale(): Lang {
 const STR = {
   uk: {
     title: 'Мої майстри',
-    subtitle: 'Підписки та найближчі вікна',
-    tabMasters: 'Майстри',
-    tabSalons: 'Салони',
-    tabFriends: 'Друзі',
-    emptyMastersTitle: 'Ви ще не підписаний на майстрів',
-    emptyMastersDesc: 'Знайди майстра і підпишись, щоб бачити їх оновлення та швидко записуватися.',
+    book: 'Записатись',
+    emptyTitle: 'Ви ще не підписані на майстрів',
+    emptyDesc: 'Знайди майстра і підпишись, щоб бачити їх оновлення та швидко записуватися.',
     findMaster: 'Знайти майстра',
-    emptySalonsTitle: 'Ви ще не підписаний на салони',
-    emptySalonsDesc: 'Стеж за оновленнями улюблених салонів — нові майстри, акції, вікна в розкладі.',
-    findSalon: 'Знайти салон',
-    emptyFriendsTitle: 'У вам поки немає друзів',
-    emptyFriendsDesc: 'Підпишись на інших клієнтів — і якщо вони підпишуться у відповідь, ви опинитесь у списку друзів.',
-    search: 'Пошук',
-    nearestSlots: 'Найближчі вікна',
     masterFallback: 'Майстер',
-    userFallback: 'Користувач',
-    removeFromContacts: 'Видалити з контактів',
-    unfollow: 'Відписатися',
-    confirmRemoveMaster: (name: string) => `Видалити ${name} з контактів?`,
-    confirmRemoveSalon: (name: string) => `Видалити салон "${name}" з контактів?`,
-    confirmUnfollow: (name: string) => `Відписатися від ${name}?`,
+    nearestSlots: 'Найближчі вікна',
     pendingTitle: 'Нові підписники',
     pendingDesc: 'Підписалися на вас',
     followBack: 'Підписатися у відповідь',
-    dismiss: 'Сховати',
+    confirmRemove: (name: string) => `Видалити ${name} з контактів?`,
   },
   ru: {
     title: 'Мои мастера',
-    subtitle: 'Подписки и ближайшие окна',
-    tabMasters: 'Мастера',
-    tabSalons: 'Салоны',
-    tabFriends: 'Друзья',
-    emptyMastersTitle: 'Вы пока не подписан на мастеров',
-    emptyMastersDesc: 'Найди мастера и подпишись, чтобы видеть их обновления и быстро записываться.',
+    book: 'Записаться',
+    emptyTitle: 'Вы пока не подписан на мастеров',
+    emptyDesc: 'Найди мастера и подпишись, чтобы видеть их обновления и быстро записываться.',
     findMaster: 'Найти мастера',
-    emptySalonsTitle: 'Вы пока не подписан на салоны',
-    emptySalonsDesc: 'Следи за обновлениями любимых салонов — новые мастера, акции, окна в расписании.',
-    findSalon: 'Найти салон',
-    emptyFriendsTitle: 'У вас пока нет друзей',
-    emptyFriendsDesc: 'Подпишись на других клиентов — и если они подпишутся в ответ, вы окажетесь в списке друзей.',
-    search: 'Поиск',
-    nearestSlots: 'Ближайшие окна',
     masterFallback: 'Мастер',
-    userFallback: 'Пользователь',
-    removeFromContacts: 'Удалить из контактов',
-    unfollow: 'Отписаться',
-    confirmRemoveMaster: (name: string) => `Удалить ${name} из контактов?`,
-    confirmRemoveSalon: (name: string) => `Удалить салон "${name}" из контактов?`,
-    confirmUnfollow: (name: string) => `Отписаться от ${name}?`,
+    nearestSlots: 'Ближайшие окна',
     pendingTitle: 'Новые подписчики',
     pendingDesc: 'Подписались на вас',
     followBack: 'Подписаться в ответ',
-    dismiss: 'Скрыть',
+    confirmRemove: (name: string) => `Удалить ${name} из контактов?`,
   },
   en: {
     title: 'My masters',
-    subtitle: 'Followed masters and nearest openings',
-    tabMasters: 'Masters',
-    tabSalons: 'Salons',
-    tabFriends: 'Friends',
-    emptyMastersTitle: 'You haven’t followed any masters yet',
-    emptyMastersDesc: 'Find a master and follow to see updates and book quickly.',
+    book: 'Book',
+    emptyTitle: "You haven't followed any masters yet",
+    emptyDesc: 'Find a master and follow to see updates and book quickly.',
     findMaster: 'Find a master',
-    emptySalonsTitle: 'You haven’t followed any salons yet',
-    emptySalonsDesc: 'Follow your favourite salons — new masters, promos, schedule openings.',
-    findSalon: 'Find a salon',
-    emptyFriendsTitle: 'No friends yet',
-    emptyFriendsDesc: 'Follow other clients — once they follow back, you’ll see them here.',
-    search: 'Search',
-    nearestSlots: 'Nearest openings',
     masterFallback: 'Master',
-    userFallback: 'User',
-    removeFromContacts: 'Remove from contacts',
-    unfollow: 'Unfollow',
-    confirmRemoveMaster: (name: string) => `Remove ${name} from contacts?`,
-    confirmRemoveSalon: (name: string) => `Remove salon "${name}" from contacts?`,
-    confirmUnfollow: (name: string) => `Unfollow ${name}?`,
+    nearestSlots: 'Nearest openings',
     pendingTitle: 'New subscribers',
     pendingDesc: 'Followed you',
     followBack: 'Follow back',
-    dismiss: 'Hide',
+    confirmRemove: (name: string) => `Remove ${name} from contacts?`,
   },
 } as const;
 
@@ -148,22 +98,6 @@ interface MasterItem {
   salonName: string | null;
 }
 
-interface SalonItem {
-  id: string;
-  name: string;
-  logo: string | null;
-  city: string | null;
-  rating: number | null;
-}
-
-interface FriendItem {
-  id: string;
-  name: string | null;
-  avatar: string | null;
-  publicId: string | null;
-  slug: string | null;
-}
-
 interface NextSlot {
   masterId: string;
   name: string | null;
@@ -173,17 +107,34 @@ interface NextSlot {
   iso: string;
 }
 
+function getInitials(name: string | null): string {
+  if (!name) return '?';
+  return name.split(' ').filter(Boolean).map((w) => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function formatSlotDate(dateStr: string, time: string): string {
+  const lang = getContactsLocale();
+  const TODAY: Record<string, string> = { uk: 'Сьогодні', ru: 'Сегодня', en: 'Today' };
+  const TOMORROW: Record<string, string> = { uk: 'Завтра', ru: 'Завтра', en: 'Tomorrow' };
+  const LOC: Record<string, string> = { uk: 'uk-UA', ru: 'ru-RU', en: 'en-US' };
+  const d = new Date(dateStr + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today.getTime() + 86400000);
+  if (d.getTime() === today.getTime()) return `${TODAY[lang]} ${time}`;
+  if (d.getTime() === tomorrow.getTime()) return `${TOMORROW[lang]} ${time}`;
+  return `${d.toLocaleDateString(LOC[lang], { day: 'numeric', month: 'short' })} ${time}`;
+}
+
 export default function MiniAppContactsPage() {
   const router = useRouter();
   const { haptic } = useTelegram();
   const { userId } = useAuthStore();
-  const [tab, setTab] = useState<Tab>('masters');
   const [loading, setLoading] = useState(true);
-  const t = STR[getContactsLocale()];
+  const lang = getContactsLocale();
+  const t = STR[lang];
 
   const [masters, setMasters] = useState<MasterItem[]>([]);
-  const [salons, setSalons] = useState<SalonItem[]>([]);
-  const [friends, setFriends] = useState<FriendItem[]>([]);
   const [pendingMasters, setPendingMasters] = useState<MasterItem[]>([]);
   const [busyPending, setBusyPending] = useState<string | null>(null);
   const [nextSlots, setNextSlots] = useState<NextSlot[]>([]);
@@ -202,7 +153,7 @@ export default function MiniAppContactsPage() {
 
   async function unfollowMaster(id: string, name: string | null) {
     if (removing) return;
-    const ok = await tgConfirm(t.confirmRemoveMaster(name ?? t.masterFallback.toLowerCase()));
+    const ok = await tgConfirm(t.confirmRemove(name ?? t.masterFallback.toLowerCase()));
     if (!ok) return;
     setRemoving(id);
     haptic('warning');
@@ -217,73 +168,6 @@ export default function MiniAppContactsPage() {
       setRemoving(null);
     }
   }
-
-  async function unfollowSalon(id: string, name: string) {
-    if (removing) return;
-    const ok = await tgConfirm(t.confirmRemoveSalon(name));
-    if (!ok) return;
-    setRemoving(id);
-    haptic('warning');
-    try {
-      const res = await fetch(`/api/salon/${id}/follow`, {
-        method: 'DELETE',
-        headers: authHeaders(),
-      });
-      if (res.ok) setSalons((prev) => prev.filter((s) => s.id !== id));
-    } finally {
-      setRemoving(null);
-    }
-  }
-
-  async function unfollowFriend(id: string, name: string | null) {
-    if (removing) return;
-    const ok = await tgConfirm(t.confirmUnfollow(name ?? t.userFallback.toLowerCase()));
-    if (!ok) return;
-    setRemoving(id);
-    haptic('warning');
-    try {
-      const res = await fetch('/api/follow', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ targetId: id }),
-      });
-      if (res.ok) {
-        const data = await res.json() as { following?: boolean };
-        if (data.following === false) setFriends((prev) => prev.filter((f) => f.id !== id));
-      }
-    } finally {
-      setRemoving(null);
-    }
-  }
-
-  useEffect(() => {
-    if (!userId) return;
-    (async () => {
-      setLoading(true);
-      try {
-        const [contactsRes, pendingRes] = await Promise.all([
-          fetch('/api/me/contacts', { headers: authHeaders() }),
-          fetch('/api/me/pending-masters', { headers: authHeaders() }),
-        ]);
-        if (contactsRes.ok) {
-          const data = await contactsRes.json() as {
-            masters: MasterItem[];
-            salons: SalonItem[];
-            friends: FriendItem[];
-          };
-          setMasters(data.masters ?? []);
-          setSalons(data.salons ?? []);
-          setFriends(data.friends ?? []);
-        }
-        if (pendingRes.ok) {
-          const data = await pendingRes.json() as { masters: MasterItem[] };
-          setPendingMasters(data.masters ?? []);
-        }
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [userId]);
 
   async function followBackMaster(masterId: string) {
     if (busyPending) return;
@@ -321,7 +205,29 @@ export default function MiniAppContactsPage() {
     }
   }
 
-  // Load nearest slots in parallel (independent of the three main lists)
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      setLoading(true);
+      try {
+        const [contactsRes, pendingRes] = await Promise.all([
+          fetch('/api/me/contacts', { headers: authHeaders() }),
+          fetch('/api/me/pending-masters', { headers: authHeaders() }),
+        ]);
+        if (contactsRes.ok) {
+          const data = await contactsRes.json() as { masters: MasterItem[] };
+          setMasters(data.masters ?? []);
+        }
+        if (pendingRes.ok) {
+          const data = await pendingRes.json() as { masters: MasterItem[] };
+          setPendingMasters(data.masters ?? []);
+        }
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [userId]);
+
   useEffect(() => {
     if (!userId) return;
     (async () => {
@@ -338,274 +244,145 @@ export default function MiniAppContactsPage() {
     })();
   }, [userId]);
 
-  const counts = {
-    masters: masters.length,
-    salons: salons.length,
-    friends: friends.length,
-  };
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="px-5 pt-6 pb-6"
-    >
-      <h1 className="text-[24px] font-bold leading-tight">{t.title}</h1>
-      <p className="mt-1 text-[13px] text-neutral-500">{t.subtitle}</p>
+    <MobilePage className="od-client-mini-app">
+      <div style={{ padding: '14px 16px 4px' }}>
+        <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--fg)' }}>{t.title}</div>
+      </div>
 
-      <div className="mt-4">
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="size-5 animate-spin text-neutral-400" />
-          </div>
-        ) : (
-          <>
-            {/* New subscribers (masters who followed you, you haven't followed back) */}
-            {pendingMasters.length > 0 && (
-              <div className="mb-5">
-                <div className="mb-2 flex items-baseline gap-2 px-1">
-                  <h2 className="text-[14px] font-bold">{t.pendingTitle}</h2>
-                  <span className="text-[11px] text-neutral-500">· {pendingMasters.length}</span>
-                </div>
-                <ul className="space-y-2">
-                  {pendingMasters.map((m) => {
-                    const busy = busyPending === m.id;
-                    return (
-                      <li key={m.id}>
-                        <div className="rounded-2xl border border-[var(--m-accent)]/30 bg-[var(--m-accent-soft)] px-3 py-3">
-                          <div className="flex items-center gap-3">
-                            <div
-                              role="button"
-                              tabIndex={0}
-                              onClick={() => { haptic('light'); router.push(`/telegram/search/${m.id}`); }}
-                              onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/telegram/search/${m.id}`); }}
-                              className="flex min-w-0 flex-1 items-center gap-3 cursor-pointer"
-                            >
-                              <Avatar src={m.avatar} name={m.name} />
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-[14px] font-semibold">{m.name ?? t.masterFallback}</p>
-                                <p className="text-[11px] text-neutral-600">{t.pendingDesc}</p>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => dismissPendingMaster(m.id)}
-                              disabled={busy}
-                              aria-label={t.dismiss}
-                              className="flex size-8 shrink-0 items-center justify-center rounded-full text-neutral-400 active:bg-neutral-200 disabled:opacity-50"
-                            >
-                              <X className="size-4" />
-                            </button>
-                          </div>
-                          <div className="mt-2.5 pl-14">
-                            <button
-                              type="button"
-                              onClick={() => followBackMaster(m.id)}
-                              disabled={busy}
-                              className="inline-flex items-center gap-1.5 rounded-full bg-[var(--m-accent)] px-4 py-1.5 text-[12px] font-bold text-white active:opacity-80 disabled:opacity-50"
-                            >
-                              {busy ? <Loader2 className="size-3 animate-spin" /> : <UserPlus className="size-3" />}
-                              {t.followBack}
-                            </button>
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
+          <Loader2 className="animate-spin" style={{ width: 24, height: 24, color: 'var(--fg-3)' }} />
+        </div>
+      ) : (
+        <>
+          {/* Pending masters */}
+          {pendingMasters.length > 0 && (
+            <div style={{ margin: '8px 16px', background: 'var(--accent-2)', borderRadius: 'var(--radius-lg)', border: '1.5px solid var(--accent)', overflow: 'hidden' }}>
+              <div style={{ padding: '10px 16px 4px', fontSize: 12, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.5px' }}>
+                {t.pendingTitle} · {pendingMasters.length}
               </div>
-            )}
-
-            {masters.length === 0 && pendingMasters.length === 0 ? (
-            <EmptyState
-              icon={User}
-              title={t.emptyMastersTitle}
-              desc={t.emptyMastersDesc}
-              ctaLabel={t.findMaster}
-              ctaHref="/telegram/search"
-            />
-          ) : masters.length === 0 ? null : (
-            <>
-              {/* Nearest free slots among followed masters */}
-              {!slotsLoading && nextSlots.length > 0 && (
-                <div className="mb-4 rounded-2xl border border-[var(--m-border-subtle)] bg-[var(--m-accent-soft)] p-3">
-                  <div className="mb-2 flex items-center gap-1.5 px-1">
-                    <Clock className="size-3.5 text-[var(--m-accent)]" />
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--m-accent)]">
-                      {t.nearestSlots}
-                    </p>
-                  </div>
-                  <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1" style={{ scrollbarWidth: 'none' }}>
-                    {nextSlots.map((s) => (
-                      <Link
-                        key={s.masterId + s.iso}
-                        href={`/telegram/book?master_id=${s.masterId}&date=${s.date}&time=${encodeURIComponent(s.time)}`}
-                        onClick={() => haptic('light')}
-                        className="flex min-w-[140px] snap-start flex-col items-start gap-1.5 rounded-xl border border-neutral-200 bg-white/[0.05] px-3 py-2.5 active:bg-neutral-100 transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Avatar src={s.avatar} name={s.name} />
-                          <p className="truncate text-[12px] font-semibold">{s.name ?? t.masterFallback}</p>
-                        </div>
-                        <div className="flex items-center gap-1 text-[11px] text-neutral-700">
-                          <Clock className="size-3" />
-                          {formatSlotDate(s.date, s.time)}
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <ul className="space-y-2">
-              {masters.map((m) => (
-                <li key={m.id}>
+              {pendingMasters.map((m) => {
+                const busy = busyPending === m.id;
+                return (
                   <div
-                    role="button"
-                    tabIndex={0}
+                    key={m.id}
+                    className="master-card"
+                    style={{ background: 'transparent' }}
                     onClick={() => { haptic('light'); router.push(`/telegram/search/${m.id}`); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/telegram/search/${m.id}`); }}
-                    className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-3 py-3 active:bg-neutral-50 transition-colors cursor-pointer"
                   >
-                    <Avatar src={m.avatar} name={m.name} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14px] font-semibold">{m.name ?? t.masterFallback}</p>
-                      <div className="mt-0.5 flex items-center gap-2 text-[11px] text-neutral-500">
-                        {m.specialization && <span className="truncate">{m.specialization}</span>}
-                        {m.salonName && (
-                          <span className="inline-flex items-center gap-0.5 truncate">
-                            <Building2 className="size-3" />
-                            {m.salonName}
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-1 flex items-center gap-2 text-[11px]">
-                        {m.rating != null && (
-                          <span className="inline-flex items-center gap-0.5">
-                            <Star className="size-3 fill-amber-400 stroke-amber-400" />
-                            <span className="text-neutral-700">{m.rating.toFixed(1)}</span>
-                          </span>
-                        )}
-                        {m.city && (
-                          <span className="inline-flex items-center gap-0.5 text-neutral-500">
-                            <MapPin className="size-3" />
-                            {m.city}
-                          </span>
-                        )}
-                      </div>
+                    <div className="avatar av-md" style={{ background: 'var(--accent-2)', color: 'var(--accent)', border: '1.5px solid var(--accent)' }}>
+                      {getInitials(m.name)}
                     </div>
+                    <div className="mc-info">
+                      <div className="mc-name">{m.name ?? t.masterFallback}</div>
+                      <div className="mc-meta">{t.pendingDesc}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                      <button
+                        className="btn btn-outline btn-sm"
+                        onClick={() => followBackMaster(m.id)}
+                        disabled={busy}
+                        style={{ fontSize: 11, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 3 }}
+                      >
+                        {busy
+                          ? <Loader2 size={12} className="animate-spin" />
+                          : <><UserPlus size={11} />{t.followBack}</>}
+                      </button>
+                      <button
+                        onClick={() => dismissPendingMaster(m.id)}
+                        disabled={busy}
+                        style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--fg-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Nearest free slots */}
+          {!slotsLoading && nextSlots.length > 0 && (
+            <div style={{ margin: '8px 16px', padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Clock size={12} /> {t.nearestSlots}
+              </div>
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none' }}>
+                {nextSlots.map((s) => (
+                  <div
+                    key={s.masterId + s.iso}
+                    onClick={() => { haptic('light'); router.push(`/telegram/book?master_id=${s.masterId}&date=${s.date}&time=${encodeURIComponent(s.time)}`); }}
+                    style={{ minWidth: 130, flexShrink: 0, background: 'var(--surface2)', borderRadius: 'var(--radius-md)', padding: '8px 12px', cursor: 'pointer' }}
+                  >
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg)' }}>{s.name ?? t.masterFallback}</div>
+                    <div style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <Clock size={10} /> {formatSlotDate(s.date, s.time)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Masters list */}
+          {masters.length === 0 && pendingMasters.length === 0 ? (
+            <div className="empty-state">
+              <div style={{ fontSize: 36, marginBottom: 8 }}>💙</div>
+              <p>{t.emptyTitle}</p>
+              <span>{t.emptyDesc}</span>
+              <div style={{ marginTop: 16 }}>
+                <button
+                  className="btn btn-primary"
+                  style={{ width: 'auto', padding: '0 24px' }}
+                  onClick={() => router.push('/telegram/search')}
+                >
+                  {t.findMaster}
+                </button>
+              </div>
+            </div>
+          ) : masters.length > 0 ? (
+            <div style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)', marginTop: 8 }}>
+              {masters.map((m) => (
+                <div
+                  key={m.id}
+                  className="master-card"
+                  onClick={() => { haptic('light'); router.push(`/telegram/search/${m.id}`); }}
+                >
+                  <div className="avatar av-md" style={{ background: 'var(--accent-2)', color: 'var(--accent)' }}>
+                    {getInitials(m.name)}
+                  </div>
+                  <div className="mc-info">
+                    <div className="mc-name">{m.name ?? t.masterFallback}</div>
+                    <div className="mc-meta">
+                      {m.rating != null && (
+                        <><Star size={10} style={{ fill: 'currentColor' }} />&nbsp;{m.rating.toFixed(1)}{(m.specialization || m.city) ? ' · ' : ''}</>
+                      )}
+                      {m.specialization ?? m.city ?? ''}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
                     <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); unfollowMaster(m.id, m.name); }}
-                      disabled={removing === m.id}
-                      className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 active:bg-red-100 disabled:opacity-50"
-                      aria-label={t.removeFromContacts}
+                      className="btn btn-outline btn-sm"
+                      onClick={() => { haptic('light'); router.push(`/telegram/book?master_id=${m.id}`); }}
                     >
-                      {removing === m.id ? <Loader2 className="size-4 animate-spin" /> : <UserMinus className="size-4" />}
+                      {t.book}
+                    </button>
+                    <button
+                      onClick={() => unfollowMaster(m.id, m.name)}
+                      disabled={removing === m.id}
+                      style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--fg-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      {removing === m.id ? <Loader2 size={12} className="animate-spin" /> : <X size={14} />}
                     </button>
                   </div>
-                </li>
+                </div>
               ))}
-              </ul>
-            </>
-          )}
-          </>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
-function TabBtn({
-  active,
-  onClick,
-  icon: Icon,
-  label,
-  count,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  count: number;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex flex-col items-center gap-0.5 rounded-xl py-2 text-[11px] font-semibold transition-colors ${
-        active ? 'bg-white/10 text-neutral-900' : 'text-neutral-500 active:bg-white border-neutral-200'
-      }`}
-    >
-      <Icon className="size-4" />
-      <span>{label}</span>
-      <span className={`text-[10px] ${active ? 'text-neutral-700' : 'text-neutral-400'}`}>{count}</span>
-    </button>
-  );
-}
-
-function getLocale(): 'uk' | 'ru' | 'en' {
-  if (typeof window === 'undefined') return 'uk';
-  try {
-    const stored = localStorage.getItem('cres:locale');
-    if (stored === 'ru' || stored === 'en' || stored === 'uk') return stored;
-  } catch {}
-  return 'uk';
-}
-
-function formatSlotDate(dateStr: string, time: string): string {
-  const lang = getLocale();
-  const TODAY: Record<string, string> = { uk: 'Сьогодні', ru: 'Сегодня', en: 'Today' };
-  const TOMORROW: Record<string, string> = { uk: 'Завтра', ru: 'Завтра', en: 'Tomorrow' };
-  const LOC: Record<string, string> = { uk: 'uk-UA', ru: 'ru-RU', en: 'en-US' };
-  const d = new Date(dateStr + 'T00:00:00');
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today.getTime() + 86400000);
-  if (d.getTime() === today.getTime()) return `${TODAY[lang]} ${time}`;
-  if (d.getTime() === tomorrow.getTime()) return `${TOMORROW[lang]} ${time}`;
-  return `${d.toLocaleDateString(LOC[lang], { day: 'numeric', month: 'short' })} ${time}`;
-}
-
-function Avatar({ src, name }: { src: string | null; name: string | null }) {
-  return (
-    <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-neutral-200 bg-neutral-50 text-sm font-bold text-neutral-900">
-      {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" className="size-full object-cover" />
-      ) : (
-        (name?.[0] ?? '?').toUpperCase()
+            </div>
+          ) : null}
+        </>
       )}
-    </div>
-  );
-}
-
-function EmptyState({
-  icon: Icon,
-  title,
-  desc,
-  ctaLabel,
-  ctaHref,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  desc: string;
-  ctaLabel: string;
-  ctaHref: string;
-}) {
-  return (
-    <div className="flex flex-col items-center rounded-2xl border border-neutral-200 bg-white px-6 py-10 text-center">
-      <div className="flex size-14 items-center justify-center rounded-full border border-neutral-200 bg-white">
-        <Icon className="size-6 text-neutral-600" />
-      </div>
-      <p className="mt-4 text-[15px] font-semibold">{title}</p>
-      <p className="mt-1.5 max-w-[280px] text-[12px] leading-relaxed text-neutral-500">{desc}</p>
-      <Link
-        href={ctaHref}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-white px-4 py-2 text-[12px] font-semibold text-black active:bg-white/80 transition-colors"
-      >
-        <SearchIcon className="size-3.5" />
-        {ctaLabel}
-      </Link>
-    </div>
+    </MobilePage>
   );
 }

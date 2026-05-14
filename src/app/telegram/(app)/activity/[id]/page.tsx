@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MiniAppAppointmentDetail
- * description: Mini App — full appointment detail with cancel / reschedule / repeat / rate master actions. Dark theme, Telegram haptics.
+ * description: Mini App — appointment detail. OD booking-detail visual: gradient banner, detail rows, 2×2 action grid. Cancel / reschedule / rate actions.
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-05-14
  * --- */
 
 'use client';
@@ -11,17 +11,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft,
+  Tag,
   CalendarDays,
-  Clock,
+  User,
   MapPin,
+  Banknote,
+  Phone,
+  MessageCircle,
   RefreshCw,
   Star,
-  XCircle,
-  CheckCircle2,
   AlertTriangle,
-  Phone,
-  CalendarClock,
   Loader2,
   X,
   Share2,
@@ -31,6 +30,8 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { formatMoney } from '@/lib/format/money';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import { MobilePage } from '@/components/miniapp/shells';
+import '@/styles/od-client-mini-app.css';
 
 interface DetailRow {
   id: string;
@@ -57,22 +58,13 @@ interface DetailRow {
   } | null;
 }
 
-const STATUS_COLOR: Record<string, string> = {
-  booked: 'bg-sky-500/15 text-sky-600 border-sky-500/30',
-  confirmed: 'bg-emerald-500/15 text-emerald-600 border-emerald-300',
-  in_progress: 'bg-[var(--m-accent-soft)] text-[var(--m-accent)] border-[var(--m-accent)]/30',
-  completed: 'bg-emerald-500/15 text-emerald-600 border-emerald-300',
-  cancelled: 'bg-rose-500/15 text-rose-600 border-rose-300',
-  cancelled_by_client: 'bg-rose-500/15 text-rose-600 border-rose-300',
-  no_show: 'bg-amber-500/15 text-amber-600 border-amber-300',
-};
-
 const I18N: Record<MiniAppLang, {
   back: string;
   notFound: string;
-  service: string; date: string; time: string; total: string; place: string; route: string; copyNumber: string;
+  service: string; date: string; total: string; place: string;
+  masterLabel: string;
   numberCopied: (n: string) => string;
-  noteLabel: string; beforeAfterLabel: string; before: string; after: string;
+  noteLabel: string;
   rateMaster: string; repeat: string; reschedule: string; cancelBtn: string;
   cancelTitle: string; cancelHint: string;
   feeFree: string; feePartial: (s: string) => string; feeFull: (s: string) => string;
@@ -86,47 +78,47 @@ const I18N: Record<MiniAppLang, {
 }> = {
   uk: {
     back: 'Назад', notFound: 'Запис не знайдено',
-    service: 'Послуга', date: 'Дата', time: 'Час', total: 'Разом', place: 'Місце', route: 'Маршрут', copyNumber: 'Скопіювати',
+    service: 'Послуга', date: 'Дата та час', total: 'Оплата', place: 'Місце', masterLabel: 'Майстер',
     numberCopied: (n) => `Номер скопійовано: ${n}`,
-    noteLabel: 'Нотатка', beforeAfterLabel: 'До / Після', before: 'До', after: 'Після',
-    rateMaster: 'Оцінити майстра', repeat: 'Повторити запис', reschedule: 'Перенести', cancelBtn: 'Скасувати запис',
+    noteLabel: 'Нотатка',
+    rateMaster: 'Оцінити майстра', repeat: 'Повторити запис', reschedule: 'Перенести', cancelBtn: 'Скасувати',
     cancelTitle: 'Скасувати запис?', cancelHint: 'Майстер отримає сповіщення про скасування',
     feeFree: 'Скасування безкоштовне', feePartial: (s) => `Часткова оплата: ${s}`, feeFull: (s) => `Повна вартість: ${s}`,
     cancelConfirmBack: 'Назад', cancelConfirm: 'Скасувати',
-    rateTitle: "Оцініть візит", ratePlaceholder: "Розкажіть про візит (необов’язково)", submitReview: "Відправити відгук",
-    share: "Поділитись", shareText: (s, m, d) => `Записався до ${m} на ${s} — ${d}`,
-    addToCalendar: "До календаря",
-    status: { booked: "Записано", confirmed: "Підтверджено", in_progress: "Йде", completed: "Завершено", cancelled: "Скасовано", cancelled_by_client: "Скасовано", no_show: "Не прийшов" },
+    rateTitle: 'Оцініть візит', ratePlaceholder: "Розкажіть про візит (необов'язково)", submitReview: 'Відправити відгук',
+    share: 'Поділитись', shareText: (s, m, d) => `Записався до ${m} на ${s} — ${d}`,
+    addToCalendar: 'До календаря',
+    status: { booked: 'Майбутній', confirmed: 'Підтверджено', in_progress: 'Йде', completed: 'Виконано', cancelled: 'Скасовано', cancelled_by_client: 'Скасовано', no_show: 'Не прийшов' },
     dateLocale: 'uk-UA',
   },
   ru: {
     back: 'Назад', notFound: 'Запись не найдена',
-    service: 'Услуга', date: 'Дата', time: 'Время', total: 'Итого', place: 'Место', route: 'Маршрут', copyNumber: 'Скопировать',
+    service: 'Услуга', date: 'Дата и время', total: 'Оплата', place: 'Место', masterLabel: 'Мастер',
     numberCopied: (n) => `Номер скопирован: ${n}`,
-    noteLabel: 'Заметка', beforeAfterLabel: 'До / После', before: 'До', after: 'После',
-    rateMaster: 'Оценить мастера', repeat: 'Повторить запись', reschedule: 'Перенести', cancelBtn: 'Отменить запись',
+    noteLabel: 'Заметка',
+    rateMaster: 'Оценить мастера', repeat: 'Повторить запись', reschedule: 'Перенести', cancelBtn: 'Отменить',
     cancelTitle: 'Отменить запись?', cancelHint: 'Мастер получит уведомление об отмене',
     feeFree: 'Отмена бесплатна', feePartial: (s) => `Частичная оплата: ${s}`, feeFull: (s) => `Полная стоимость: ${s}`,
     cancelConfirmBack: 'Назад', cancelConfirm: 'Отменить',
     rateTitle: 'Оцените визит', ratePlaceholder: 'Расскажите о визите (необязательно)', submitReview: 'Отправить отзыв',
     share: 'Поделиться', shareText: (s, m, d) => `Записался к ${m} на ${s} — ${d}`,
     addToCalendar: 'В календарь',
-    status: { booked: 'Записан', confirmed: 'Подтверждено', in_progress: 'Идёт', completed: 'Завершено', cancelled: 'Отменено', cancelled_by_client: 'Отменено', no_show: 'Не пришёл' },
+    status: { booked: 'Предстоит', confirmed: 'Подтверждено', in_progress: 'Идёт', completed: 'Завершено', cancelled: 'Отменено', cancelled_by_client: 'Отменено', no_show: 'Не пришёл' },
     dateLocale: 'ru-RU',
   },
   en: {
     back: 'Back', notFound: 'Booking not found',
-    service: 'Service', date: 'Date', time: 'Time', total: 'Total', place: 'Place', route: 'Directions', copyNumber: 'Copy',
+    service: 'Service', date: 'Date & time', total: 'Payment', place: 'Place', masterLabel: 'Master',
     numberCopied: (n) => `Number copied: ${n}`,
-    noteLabel: 'Note', beforeAfterLabel: 'Before / After', before: 'Before', after: 'After',
-    rateMaster: 'Rate the master', repeat: 'Book again', reschedule: 'Reschedule', cancelBtn: 'Cancel booking',
+    noteLabel: 'Note',
+    rateMaster: 'Rate the master', repeat: 'Book again', reschedule: 'Reschedule', cancelBtn: 'Cancel',
     cancelTitle: 'Cancel this booking?', cancelHint: 'Master will be notified about the cancellation',
     feeFree: 'Cancellation is free', feePartial: (s) => `Partial fee: ${s}`, feeFull: (s) => `Full price: ${s}`,
     cancelConfirmBack: 'Back', cancelConfirm: 'Cancel',
     rateTitle: 'Rate the visit', ratePlaceholder: 'Tell us about the visit (optional)', submitReview: 'Send review',
     share: 'Share', shareText: (s, m, d) => `Booked ${s} with ${m} — ${d}`,
     addToCalendar: 'Add to Calendar',
-    status: { booked: 'Booked', confirmed: 'Confirmed', in_progress: 'In progress', completed: 'Completed', cancelled: 'Cancelled', cancelled_by_client: 'Cancelled', no_show: 'No-show' },
+    status: { booked: 'Upcoming', confirmed: 'Confirmed', in_progress: 'In progress', completed: 'Completed', cancelled: 'Cancelled', cancelled_by_client: 'Cancelled', no_show: 'No-show' },
     dateLocale: 'en-GB',
   },
 };
@@ -241,7 +233,7 @@ export default function MiniAppAppointmentDetail() {
       return;
     }
     haptic('success');
-    toast('Запись отменена');
+    toast(lang === 'en' ? 'Booking cancelled' : lang === 'ru' ? 'Запись отменена' : 'Запис скасовано');
     setRow({ ...row, status: 'cancelled_by_client' });
     setCancelOpen(false);
     setBusy(false);
@@ -270,7 +262,7 @@ export default function MiniAppAppointmentDetail() {
       return;
     }
     haptic('success');
-    toast('Спасибо за отзыв!');
+    toast(lang === 'en' ? 'Thank you for the review!' : lang === 'ru' ? 'Спасибо за отзыв!' : 'Дякуємо за відгук!');
     setReviewExists(true);
     setRatingOpen(false);
   }
@@ -303,281 +295,221 @@ export default function MiniAppAppointmentDetail() {
 
   if (loading) {
     return (
-      <div className="space-y-4 px-5 pt-6">
-        <div className="h-8 w-32 animate-pulse rounded-full bg-white/5" />
-        <div className="h-56 w-full animate-pulse rounded-3xl bg-white/5" />
-        <div className="h-24 w-full animate-pulse rounded-2xl bg-white/5" />
-      </div>
+      <MobilePage className="od-client-mini-app">
+        <div style={{ padding: '60px 20px 52px', background: 'var(--accent-2)', margin: 0, height: 180 }} />
+        <div style={{ height: 2 }} />
+        <div style={{ padding: '4px 20px' }}>
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} style={{ height: 52, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 34, height: 34, borderRadius: 'var(--radius-md)', background: 'var(--surface2)' }} />
+              <div style={{ flex: 1, height: 20, background: 'var(--surface2)', borderRadius: 6 }} />
+            </div>
+          ))}
+        </div>
+      </MobilePage>
     );
   }
 
   if (notFound || !row) {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center px-8 text-center">
-        <AlertTriangle className="mb-4 size-12 text-neutral-400" />
-        <p className="text-base font-semibold">{t.notFound}</p>
-        <button
-          onClick={() => { haptic('selection'); router.push('/telegram/activity'); }}
-          className="mt-6 rounded-[var(--brand-radius-lg)] border border-neutral-200 px-4 py-2 text-sm"
-          style={{ minHeight: 44 }}
-        >
-          {t.back}
-        </button>
-      </div>
+      <MobilePage className="od-client-mini-app">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: '0 32px', textAlign: 'center' }}>
+          <AlertTriangle style={{ width: 48, height: 48, color: 'var(--fg-3)', marginBottom: 16 }} />
+          <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--fg)' }}>{t.notFound}</p>
+          <button
+            onClick={() => { haptic('selection'); router.push('/telegram/activity'); }}
+            style={{ marginTop: 24, padding: '10px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', fontSize: 14, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}
+          >
+            {t.back}
+          </button>
+        </div>
+      </MobilePage>
     );
   }
 
   const masterName = row.master?.display_name || row.master?.profile?.full_name || '—';
-  const masterAvatar = row.master?.avatar_url || row.master?.profile?.avatar_url || null;
+  const masterInitials = masterName.split(' ').map((w: string) => w[0]).join('').toUpperCase();
   const starts = new Date(row.starts_at);
   const ends = new Date(row.ends_at);
-  // Buttons stay visible for any non-terminal status. Past-time cancellation
-  // policy/fees are explained in the cancel sheet (`cancelCost`); we don't
-  // hide the controls just because the appointment is in the past — the user
-  // still needs a way to formally cancel a no-show.
+  const durationMins = Math.round((ends.getTime() - starts.getTime()) / 60000);
+  const dateStr = starts.toLocaleDateString(t.dateLocale, { day: 'numeric', month: 'short' });
+  const timeStr = starts.toLocaleTimeString(t.dateLocale, { hour: '2-digit', minute: '2-digit' });
+  const address = [row.master?.address, row.master?.city].filter(Boolean).join(', ') || '—';
+
   const canCancel =
     row.status !== 'cancelled' &&
     row.status !== 'cancelled_by_client' &&
     row.status !== 'completed' &&
     row.status !== 'no_show';
-  // Перенести показываем всегда вместе с «Отменить» — даже если запись в
-  // прошлом, клиент может перенести её на будущую дату (это и есть запасной
-  // вариант для no-show — не отмена с штрафом, а перенос).
   const canReschedule = canCancel;
   const isCompleted = row.status === 'completed';
   const statusLabel = t.status[row.status] ?? t.status.booked;
-  const statusColor = STATUS_COLOR[row.status] ?? STATUS_COLOR.booked;
+  const statusBg = canCancel
+    ? 'rgba(255,255,255,.22)'
+    : isCompleted
+      ? 'rgba(16,185,129,.3)'
+      : 'rgba(255,255,255,.15)';
+
+  function DetailRow({ icon, label, val }: { icon: React.ReactNode; label: string; val: string }) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ width: 34, height: 34, borderRadius: 'var(--radius-md)', background: 'var(--accent-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--accent)' }}>
+          {icon}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '.5px' }}>{label}</div>
+          <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--fg)', marginTop: 1 }}>{val}</div>
+        </div>
+      </div>
+    );
+  }
+
+  const iconSz = { width: 16, height: 16 } as const;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-4 px-5 pt-5 pb-6"
-    >
-      <button
-        onClick={() => {
-          haptic('selection');
-          router.back();
-        }}
-        className="inline-flex items-center gap-1.5 text-sm text-neutral-600 active:text-neutral-900"
-      >
-        <ArrowLeft className="size-4" /> {t.back}
-      </button>
-
-      {/* Hero card */}
-      <div className="relative overflow-hidden rounded-[28px] border border-neutral-200 bg-gradient-to-br from-white/10 to-white/5 p-5">
-        <div
-          className="absolute -right-20 -top-20 size-60 rounded-full opacity-30 blur-3xl"
-          style={{ background: row.service?.color ?? '#60a5fa' }}
-        />
-        <div className="relative space-y-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">{t.service}</p>
-              <h1 className="mt-1 text-xl font-bold">{row.service?.name ?? '—'}</h1>
-              {row.service?.description && (
-                <p className="mt-1 line-clamp-2 text-[12px] text-neutral-500">{row.service.description}</p>
-              )}
-            </div>
-            <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${statusColor}`}>
-              {isCompleted && <CheckCircle2 className="mr-1 inline size-2.5" />}
-              {statusLabel}
-            </span>
-          </div>
-
-          <button
-            onClick={() => { haptic('selection'); router.push(`/telegram/search/${row.master_id}`); }}
-            className="flex w-full items-center gap-3 rounded-2xl bg-white/5 p-3 text-left active:scale-[0.98] transition-transform"
-            style={{ minHeight: 56 }}
-          >
-            <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--m-accent)] text-[var(--m-accent-text)] text-sm font-bold">
-              {masterAvatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={masterAvatar} alt="" className="size-full object-cover" />
-              ) : (
-                masterName.charAt(0)
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">{masterName}</p>
-              {row.master?.specialization && (
-                <p className="truncate text-[11px] text-neutral-500">{row.master.specialization}</p>
-              )}
-            </div>
-          </button>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-2xl bg-white/5 p-3">
-              <p className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-neutral-400">
-                <CalendarDays className="size-3" /> Дата
-              </p>
-              <p className="mt-1 text-[13px] font-semibold">
-                {starts.toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </p>
-            </div>
-            <div className="rounded-2xl bg-white/5 p-3">
-              <p className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-neutral-400">
-                <Clock className="size-3" /> Время
-              </p>
-              <p className="mt-1 text-[13px] font-semibold">
-                {starts.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })} —{' '}
-                {ends.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-baseline justify-between border-t border-neutral-200 pt-3">
-            <span className="text-xs text-neutral-500">Итого</span>
-            <span className="text-2xl font-bold tabular-nums">
-              {formatMoney(row.price, row.currency)}
-            </span>
-          </div>
+    <MobilePage className="od-client-mini-app">
+      {/* Banner */}
+      <div style={{ background: 'linear-gradient(160deg,var(--accent) 0%,var(--a-600) 100%)', padding: '20px 20px 52px', position: 'relative', textAlign: 'center' }}>
+        <button
+          onClick={() => { haptic('selection'); router.back(); }}
+          style={{ position: 'absolute', top: 12, right: 12, width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,.2)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}
+        >
+          <X style={{ width: 14, height: 14 }} />
+        </button>
+        <div className="avatar av-lg" style={{ margin: '0 auto 12px', background: 'rgba(255,255,255,.2)', color: '#fff', fontSize: 20 }}>
+          {masterInitials}
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: '#fff' }}>{row.service?.name ?? '—'}</div>
+        <div style={{ marginTop: 8, display: 'inline-block', background: statusBg, border: '1px solid rgba(255,255,255,.25)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 14px', borderRadius: 20, backdropFilter: 'blur(4px)' }}>
+          {statusLabel}
         </div>
       </div>
 
-      {/* Address */}
-      {row.master?.address && (
-        <div className="rounded-2xl border border-neutral-200 bg-white/5 p-4">
-          <div className="flex items-start gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[var(--m-accent-soft)] text-[var(--m-accent)]">
-              <MapPin className="size-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] uppercase tracking-wider text-neutral-400">Место</p>
-              <p className="mt-0.5 text-sm font-semibold">{row.master.address}</p>
-              {row.master.city && <p className="text-[11px] text-neutral-500">{row.master.city}</p>}
-            </div>
-            {row.master.latitude && row.master.longitude && (
-              <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${row.master.latitude},${row.master.longitude}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 rounded-full border border-neutral-200 px-3 py-1.5 text-[11px] font-semibold"
-              >
-                Маршрут
-              </a>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Phone of the master — кнопка «Скопировать номер». tel:-навигация
-          в Telegram WebView ненадёжна (несколько раз пробовали разные подходы,
-          у юзера всё равно не открывался диалер), поэтому даём только копию
-          номера и сам номер крупно — клиент копирует и набирает в нативном
-          приложении телефона. */}
-      {row.master?.profile?.phone && (
-        <button
-          type="button"
-          onClick={async () => {
-            const phone = row.master?.profile?.phone;
-            if (!phone) return;
-            haptic('light');
-            try {
-              await navigator.clipboard.writeText(phone);
-              toast(`Номер скопирован: ${phone}`);
-            } catch {
-              toast(phone);
-            }
-          }}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 px-4 py-3 text-sm font-semibold active:scale-[0.98] transition-transform"
-          title="Скопировать номер"
-        >
-          <Phone className="size-4" /> {row.master.profile.phone} · Скопировать
-        </button>
-      )}
+      {/* Detail rows */}
+      <div style={{ padding: '4px 20px 0' }}>
+        <DetailRow icon={<Tag style={iconSz} />} label={t.service} val={`${row.service?.name ?? '—'} · ${durationMins} хв`} />
+        <DetailRow icon={<CalendarDays style={iconSz} />} label={t.date} val={`${dateStr} · ${timeStr}`} />
+        <DetailRow icon={<User style={iconSz} />} label={t.masterLabel} val={masterName} />
+        <DetailRow icon={<MapPin style={iconSz} />} label={t.place} val={address} />
+        <DetailRow icon={<Banknote style={iconSz} />} label={t.total} val={formatMoney(row.price, row.currency)} />
+      </div>
 
       {/* Notes */}
       {row.notes && (
-        <div className="rounded-2xl border border-neutral-200 bg-white/5 p-4">
-          <p className="text-[10px] uppercase tracking-wider text-neutral-400">Заметка</p>
-          <p className="mt-1 text-sm">{row.notes}</p>
+        <div style={{ margin: '0 20px', padding: '10px 14px', background: 'var(--surface2)', borderRadius: 'var(--radius-md)', marginTop: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 4 }}>{t.noteLabel}</div>
+          <div style={{ fontSize: 14, color: 'var(--fg-2)' }}>{row.notes}</div>
         </div>
       )}
 
       {/* Before/After photos */}
       {beforeAfterPhotos.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">До / После</p>
+        <div style={{ margin: '10px 20px 0' }}>
           {beforeAfterPhotos.map((photo) => (
-            <div key={photo.id} className="space-y-2">
-              <div className="grid grid-cols-2 gap-2 overflow-hidden rounded-2xl">
-                <div className="relative aspect-[3/4] overflow-hidden bg-white/5">
-                  <p className="absolute left-2 top-2 z-10 rounded-full bg-neutral-900/60 px-2 py-0.5 text-[9px] font-semibold">До</p>
+            <div key={photo.id} style={{ marginBottom: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+                <div style={{ position: 'relative', aspectRatio: '3/4', background: 'var(--surface2)', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', left: 8, top: 8, zIndex: 1, fontSize: 10, fontWeight: 700, background: 'rgba(0,0,0,.5)', color: '#fff', padding: '2px 8px', borderRadius: 20 }}>До</div>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo.before_url} alt="До" className="size-full object-cover" />
+                  <img src={photo.before_url} alt="До" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
-                <div className="relative aspect-[3/4] overflow-hidden bg-white/5">
-                  <p className="absolute left-2 top-2 z-10 rounded-full bg-neutral-900/60 px-2 py-0.5 text-[9px] font-semibold">После</p>
+                <div style={{ position: 'relative', aspectRatio: '3/4', background: 'var(--surface2)', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', left: 8, top: 8, zIndex: 1, fontSize: 10, fontWeight: 700, background: 'rgba(0,0,0,.5)', color: '#fff', padding: '2px 8px', borderRadius: 20 }}>Після</div>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo.after_url} alt="После" className="size-full object-cover" />
+                  <img src={photo.after_url} alt="Після" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
               </div>
-              {photo.caption && (
-                <p className="text-[12px] text-neutral-600">{photo.caption}</p>
-              )}
+              {photo.caption && <div style={{ fontSize: 12, color: 'var(--fg-3)', marginTop: 4 }}>{photo.caption}</div>}
             </div>
           ))}
         </div>
       )}
 
       {/* Actions */}
-      <div className="space-y-2 pt-2">
-        {isCompleted && !reviewExists && (
+      <div style={{ padding: '14px 20px 24px', borderTop: '1px solid var(--border)', marginTop: 12 }}>
+        {canCancel ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <button
+              onClick={() => {
+                haptic('light');
+                if (row.master?.profile?.phone) {
+                  navigator.clipboard.writeText(row.master.profile.phone)
+                    .then(() => toast(t.numberCopied(row.master!.profile!.phone!)))
+                    .catch(() => toast(row.master!.profile!.phone!));
+                }
+              }}
+              style={{ height: 58, borderRadius: 'var(--radius-lg)', background: 'var(--surface2)', border: 'none', fontSize: 12, fontWeight: 600, color: 'var(--fg)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, fontFamily: 'inherit' }}
+            >
+              <Phone style={{ width: 18, height: 18, color: 'var(--accent)' }} />
+              {lang === 'en' ? 'Call' : lang === 'ru' ? 'Позвонить' : 'Зателефонувати'}
+            </button>
+            <button
+              onClick={() => { haptic('light'); toast(lang === 'en' ? 'Opening chat...' : lang === 'ru' ? 'Открываем чат...' : 'Відкриваємо чат...'); }}
+              style={{ height: 58, borderRadius: 'var(--radius-lg)', background: 'var(--surface2)', border: 'none', fontSize: 12, fontWeight: 600, color: 'var(--fg)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, fontFamily: 'inherit' }}
+            >
+              <MessageCircle style={{ width: 18, height: 18, color: 'var(--accent)' }} />
+              {lang === 'en' ? 'Message' : lang === 'ru' ? 'Написать' : 'Написати'}
+            </button>
+            {canReschedule && (
+              <button
+                onClick={() => { haptic('light'); router.push(`/telegram/book?master_id=${row.master_id}&service_id=${row.service_id}&reschedule=${row.id}`); }}
+                style={{ height: 58, borderRadius: 'var(--radius-lg)', background: 'var(--surface2)', border: 'none', fontSize: 12, fontWeight: 600, color: 'var(--fg)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, fontFamily: 'inherit' }}
+              >
+                <RefreshCw style={{ width: 18, height: 18, color: 'var(--accent)' }} />
+                {t.reschedule}
+              </button>
+            )}
+            <button
+              onClick={() => { haptic('warning'); setCancelOpen(true); }}
+              style={{ height: 58, borderRadius: 'var(--radius-lg)', background: '#fee2e2', border: 'none', fontSize: 12, fontWeight: 600, color: '#ef4444', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, fontFamily: 'inherit' }}
+            >
+              <X style={{ width: 18, height: 18, color: '#ef4444' }} />
+              {t.cancelBtn}
+            </button>
+          </div>
+        ) : isCompleted ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {!reviewExists && (
+              <button
+                className="btn btn-primary"
+                onClick={() => { haptic('light'); setRatingOpen(true); }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              >
+                <Star style={{ width: 17, height: 17 }} /> {t.rateMaster}
+              </button>
+            )}
+            <button
+              className="btn btn-ghost"
+              onClick={() => { haptic('light'); router.push(`/telegram/book?master_id=${row.master_id}&service_id=${row.service_id}`); }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            >
+              <RefreshCw style={{ width: 17, height: 17 }} /> {t.repeat}
+            </button>
+          </div>
+        ) : (
           <button
-            onClick={() => {
-              haptic('light');
-              setRatingOpen(true);
-            }}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:scale-[0.98] transition-transform"
+            className="btn btn-ghost"
+            onClick={() => { haptic('selection'); router.back(); }}
           >
-            <Star className="size-5" /> Оценить мастера
+            {t.back}
           </button>
         )}
-        {isCompleted && (
+
+        {/* Secondary: share + calendar */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
           <button
-            onClick={() => { haptic('light'); router.push(`/telegram/book?master_id=${row.master_id}&service_id=${row.service_id}`); }}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 py-4 text-[15px] font-semibold active:scale-[0.98] transition-transform"
-            style={{ minHeight: 44 }}
+            onClick={shareBooking}
+            style={{ flex: 1, height: 40, border: '1px solid var(--border)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: 'var(--fg-2)', fontFamily: 'inherit' }}
           >
-            <RefreshCw className="size-5" /> Повторить запись
+            <Share2 style={{ width: 15, height: 15 }} /> {t.share}
           </button>
-        )}
-        {canReschedule && (
           <button
-            onClick={() => { haptic('light'); router.push(`/telegram/book?master_id=${row.master_id}&service_id=${row.service_id}&reschedule=${row.id}`); }}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 py-4 text-[15px] font-semibold active:scale-[0.98] transition-transform"
-            style={{ minHeight: 44 }}
+            onClick={addToCalendar}
+            style={{ flex: 1, height: 40, border: '1px solid var(--border)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: 'var(--fg-2)', fontFamily: 'inherit' }}
           >
-            <CalendarClock className="size-5" /> Перенести
+            <CalendarPlus style={{ width: 15, height: 15 }} /> {t.addToCalendar}
           </button>
-        )}
-        <button
-          onClick={shareBooking}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 py-4 text-[15px] font-semibold active:scale-[0.98] transition-transform"
-          style={{ minHeight: 44 }}
-        >
-          <Share2 className="size-5" /> {t.share}
-        </button>
-        <button
-          onClick={addToCalendar}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 py-4 text-[15px] font-semibold active:scale-[0.98] transition-transform"
-          style={{ minHeight: 44 }}
-        >
-          <CalendarPlus className="size-5" /> {t.addToCalendar}
-        </button>
-        {canCancel && (
-          <button
-            onClick={() => {
-              haptic('warning');
-              setCancelOpen(true);
-            }}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-300 bg-rose-50 py-4 text-[15px] font-semibold text-rose-600 active:scale-[0.98] transition-transform"
-          >
-            <XCircle className="size-5" /> Отменить запись
-          </button>
-        )}
+        </div>
       </div>
 
       {/* Cancel sheet */}
@@ -587,7 +519,7 @@ export default function MiniAppAppointmentDetail() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-end bg-neutral-900/70 backdrop-blur-sm"
+            style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'flex-end', background: 'rgba(0,0,0,.6)', backdropFilter: 'blur(4px)' }}
             onClick={() => !busy && setCancelOpen(false)}
           >
             <motion.div
@@ -595,58 +527,47 @@ export default function MiniAppAppointmentDetail() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 40, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full space-y-4 rounded-t-[32px] border-t border-neutral-200 bg-white p-6"
-              // Padding снизу клирит floating bottom-nav (12px bottom + 64px высота
-              // + safe-area). Иначе кнопки «Назад/Отменить» уезжают под nav.
-              style={{ paddingBottom: 'calc(96px + env(safe-area-inset-bottom))' }}
+              style={{ width: '100%', background: 'var(--surface)', borderRadius: '24px 24px 0 0', padding: 24, paddingBottom: 'calc(96px + env(safe-area-inset-bottom))' }}
             >
-              <div className="flex items-start justify-between">
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div>
-                  <h3 className="text-lg font-bold">Отменить запись?</h3>
-                  <p className="mt-1 text-xs text-neutral-500">
-                    Мастер получит уведомление об отмене
-                  </p>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--fg)' }}>{t.cancelTitle}</div>
+                  <div style={{ fontSize: 13, color: 'var(--fg-3)', marginTop: 4 }}>{t.cancelHint}</div>
                 </div>
-                <button
-                  onClick={() => setCancelOpen(false)}
-                  className="flex size-9 items-center justify-center rounded-full bg-white/5"
-                >
-                  <X className="size-4" />
+                <button onClick={() => setCancelOpen(false)} style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--surface2)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                  <X style={{ width: 14, height: 14, color: 'var(--fg-2)' }} />
                 </button>
               </div>
               {cancelCost && (
-                <div
-                  className={`rounded-2xl border p-4 text-sm ${
-                    cancelCost.kind === 'free'
-                      ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                      : cancelCost.kind === 'partial'
-                        ? 'border-amber-300 bg-amber-50 text-amber-700'
-                        : 'border-rose-300 bg-rose-50 text-rose-700'
-                  }`}
-                >
-                  {cancelCost.kind === 'free' && <p className="font-semibold">Отмена бесплатна</p>}
-                  {cancelCost.kind === 'partial' && (
-                    <p className="font-semibold">Частичная оплата: {formatMoney(cancelCost.amount, row.currency)}</p>
-                  )}
-                  {cancelCost.kind === 'full' && (
-                    <p className="font-semibold">Полная стоимость: {formatMoney(cancelCost.amount, row.currency)}</p>
-                  )}
+                <div style={{
+                  borderRadius: 'var(--radius-md)',
+                  border: `1px solid ${cancelCost.kind === 'free' ? 'var(--success-soft,#d1fae5)' : cancelCost.kind === 'partial' ? '#fde68a' : '#fecaca'}`,
+                  background: cancelCost.kind === 'free' ? 'var(--success-soft,#ecfdf5)' : cancelCost.kind === 'partial' ? '#fffbeb' : '#fef2f2',
+                  padding: '12px 16px',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: cancelCost.kind === 'free' ? 'var(--success,#10b981)' : cancelCost.kind === 'partial' ? '#d97706' : '#ef4444',
+                  marginBottom: 16,
+                }}>
+                  {cancelCost.kind === 'free' && t.feeFree}
+                  {cancelCost.kind === 'partial' && t.feePartial(formatMoney(cancelCost.amount, row.currency))}
+                  {cancelCost.kind === 'full' && t.feeFull(formatMoney(cancelCost.amount, row.currency))}
                 </div>
               )}
-              <div className="flex gap-2">
+              <div style={{ display: 'flex', gap: 10 }}>
                 <button
                   onClick={() => setCancelOpen(false)}
                   disabled={busy}
-                  className="flex-1 rounded-2xl border border-neutral-200 py-3 text-sm font-semibold disabled:opacity-60"
+                  style={{ flex: 1, padding: '14px 0', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: busy ? 0.6 : 1 }}
                 >
-                  Назад
+                  {t.cancelConfirmBack}
                 </button>
                 <button
                   onClick={doCancel}
                   disabled={busy}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-rose-500 py-3 text-sm font-semibold text-neutral-900 disabled:opacity-60"
+                  style={{ flex: 1, padding: '14px 0', borderRadius: 'var(--radius-md)', border: 'none', background: '#ef4444', color: '#fff', fontSize: 14, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: busy ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                 >
-                  {busy ? <Loader2 className="size-4 animate-spin" /> : 'Отменить'}
+                  {busy ? <Loader2 style={{ width: 16, height: 16, animation: 'spin 1s linear infinite' }} /> : t.cancelConfirm}
                 </button>
               </div>
             </motion.div>
@@ -661,7 +582,7 @@ export default function MiniAppAppointmentDetail() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-end bg-neutral-900/70 backdrop-blur-sm"
+            style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'flex-end', background: 'rgba(0,0,0,.6)', backdropFilter: 'blur(4px)' }}
             onClick={() => !busy && setRatingOpen(false)}
           >
             <motion.div
@@ -669,40 +590,27 @@ export default function MiniAppAppointmentDetail() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 40, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full space-y-4 rounded-t-[32px] border-t border-neutral-200 bg-white p-6"
-              style={{ paddingBottom: 'calc(96px + env(safe-area-inset-bottom))' }}
+              style={{ width: '100%', background: 'var(--surface)', borderRadius: '24px 24px 0 0', padding: 24, paddingBottom: 'calc(96px + env(safe-area-inset-bottom))' }}
             >
-              <div className="flex items-start justify-between">
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div>
-                  <h3 className="text-lg font-bold">Оцените визит</h3>
-                  <p className="mt-1 text-xs text-neutral-500">
-                    {row.service?.name} · {masterName}
-                  </p>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--fg)' }}>{t.rateTitle}</div>
+                  <div style={{ fontSize: 13, color: 'var(--fg-3)', marginTop: 4 }}>{row.service?.name} · {masterName}</div>
                 </div>
-                <button
-                  onClick={() => setRatingOpen(false)}
-                  className="flex size-9 items-center justify-center rounded-full bg-white/5"
-                >
-                  <X className="size-4" />
+                <button onClick={() => setRatingOpen(false)} style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--surface2)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                  <X style={{ width: 14, height: 14, color: 'var(--fg-2)' }} />
                 </button>
               </div>
-              <div className="flex justify-center gap-1 py-2">
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '8px 0 16px' }}>
                 {Array.from({ length: 5 }).map((_, i) => {
                   const v = i + 1;
                   return (
                     <button
                       key={v}
-                      onClick={() => {
-                        setRatingScore(v);
-                        haptic('selection');
-                      }}
-                      className="p-1"
+                      onClick={() => { setRatingScore(v); haptic('selection'); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
                     >
-                      <Star
-                        className={`size-9 transition-colors ${
-                          v <= ratingScore ? 'fill-amber-400 stroke-amber-400' : 'stroke-white/30'
-                        }`}
-                      />
+                      <Star style={{ width: 36, height: 36, fill: v <= ratingScore ? '#f59e0b' : 'none', stroke: v <= ratingScore ? '#f59e0b' : 'var(--border)', transition: 'fill .15s' }} />
                     </button>
                   );
                 })}
@@ -710,16 +618,17 @@ export default function MiniAppAppointmentDetail() {
               <textarea
                 value={ratingComment}
                 onChange={(e) => setRatingComment(e.target.value)}
-                placeholder="Расскажите о визите (необязательно)"
+                placeholder={t.ratePlaceholder}
                 rows={3}
-                className="w-full resize-none rounded-2xl border border-neutral-200 bg-white/5 px-4 py-3 text-sm outline-none placeholder:text-neutral-400 focus:border-neutral-300"
+                style={{ width: '100%', resize: 'none', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface2)', padding: '12px 14px', fontSize: 14, color: 'var(--fg)', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }}
               />
               <button
                 onClick={submitRating}
                 disabled={busy}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-3 text-sm font-semibold text-black disabled:opacity-60"
+                className="btn btn-primary"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
               >
-                {busy ? <Loader2 className="size-4 animate-spin" /> : 'Отправить отзыв'}
+                {busy ? <Loader2 style={{ width: 16, height: 16, animation: 'spin 1s linear infinite' }} /> : t.submitReview}
               </button>
             </motion.div>
           </motion.div>
@@ -733,12 +642,12 @@ export default function MiniAppAppointmentDetail() {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 20, opacity: 0 }}
-            className="fixed bottom-24 left-1/2 z-[60] -translate-x-1/2 rounded-[var(--brand-radius-lg)] border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold shadow-2xl"
+            style={{ position: 'fixed', bottom: 96, left: '50%', transform: 'translateX(-50%)', zIndex: 60, background: 'var(--surface)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: 'var(--radius-full)', fontSize: 13, fontWeight: 600, color: 'var(--fg)', whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,.12)' }}
           >
             {toastMsg}
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </MobilePage>
   );
 }

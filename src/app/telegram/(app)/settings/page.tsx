@@ -33,7 +33,7 @@ import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { showConfirm } from '@/lib/telegram/webapp';
 import { mapError } from '@/lib/errors';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE, SPRING } from '@/components/miniapp/design';
-import '@/styles/od-client-settings.css';
+import '@/styles/od-client-mini-app.css';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 import { useHapticPrefs } from '@/components/miniapp/haptic-provider';
 
@@ -323,28 +323,11 @@ export default function MiniAppSettingsPage() {
   const fullName = [tgUser?.first_name, tgUser?.last_name].filter(Boolean).join(' ') || (lang === 'en' ? 'Guest' : 'Гість');
   const initials = ((tgUser?.first_name?.[0] ?? '') + (tgUser?.last_name?.[0] ?? '')).toUpperCase() || '?';
 
-  // Card style — grouped rows
-  const cardStyle: React.CSSProperties = {
-    margin: '0',
-    borderRadius: 14,
-    overflow: 'hidden',
-    border: `1px solid ${T.border}`,
-    background: T.surface,
-  };
-
-  const sectionLabelStyle: React.CSSProperties = {
-    ...TYPE.micro,
-    fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
-    color: T.textTertiary,
-    margin: '14px 4px 6px',
-  };
 
   return (
     <>
       <motion.div
-        className="od-client-settings"
+        className="od-client-mini-app"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28 }}
@@ -438,57 +421,41 @@ export default function MiniAppSettingsPage() {
         </motion.div>
 
         {/* SECTION: Сповіщення */}
-        <p style={sectionLabelStyle}>{t.sectionNotif}</p>
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.07, duration: 0.32 }}
-          style={cardStyle}
-        >
+        <div className="section-label">{t.sectionNotif}</div>
+        <div className="card-block">
           <Row
-            icon={<Bell size={16} color={T.text} />}
+            icon={<Bell size={16} color="var(--fg-2)" />}
             label={t.reminders}
             sub={t.reminderDesc}
             onClick={() => { haptic('light'); router.push('/telegram/settings/notifications'); }}
-            trail={<ChevronRight size={16} color={T.textTertiary} />}
+            trail={<div className="setting-arrow"><ChevronRight size={16} /></div>}
           />
-        </motion.div>
+        </div>
 
         {/* SECTION: Зовнішній вигляд */}
-        <p style={sectionLabelStyle}>{t.sectionAppearance}</p>
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.10, duration: 0.32 }}
-          style={cardStyle}
-        >
+        <div className="section-label">{t.sectionAppearance}</div>
+        <div className="card-block">
           <Row
-            icon={<Globe size={16} color={T.text} />}
+            icon={<Globe size={16} color="var(--fg-2)" />}
             label={t.language}
             onClick={() => { haptic('light'); router.push('/telegram/settings/language'); }}
             trail={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ ...TYPE.caption, color: T.textTertiary }}>{LANG_LABEL[lang]}</span>
-                <ChevronRight size={16} color={T.textTertiary} />
-              </div>
+              <>
+                <span className="setting-value">{LANG_LABEL[lang]}</span>
+                <div className="setting-arrow"><ChevronRight size={16} /></div>
+              </>
             }
           />
-          <Divider />
-          {/* Тема — disabled per CLAUDE.md rule 10 (Mini App тема строго из Telegram) */}
+          {/* Тема — disabled per CLAUDE.md rule 10 */}
           <Row
-            icon={<Globe size={16} color={T.textDisabled} />}
+            icon={<Globe size={16} color="var(--fg-3)" />}
             label={t.darkTheme}
             sub={lang === 'en' ? 'Determined by Telegram app' : 'Визначається додатком Telegram'}
             disabled
-            trail={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ ...TYPE.caption, color: T.textTertiary }}>{t.darkAuto}</span>
-              </div>
-            }
+            trail={<span className="setting-value">{t.darkAuto}</span>}
           />
-          <Divider />
           <Row
-            icon={<Vibrate size={16} color={T.text} />}
+            icon={<Vibrate size={16} color="var(--fg-2)" />}
             label={t.haptic}
             sub={t.hapticHint}
             onClick={() => {
@@ -500,43 +467,32 @@ export default function MiniAppSettingsPage() {
             disabled={!hapticLoaded}
             trail={<Switch on={hapticEnabled} />}
           />
-        </motion.div>
+        </div>
 
         {/* SECTION: Безпека */}
-        <p style={sectionLabelStyle}>{t.sectionSecurity}</p>
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.13, duration: 0.32 }}
-          style={cardStyle}
-        >
+        <div className="section-label">{t.sectionSecurity}</div>
+        <div className="card-block">
           <Row
-            icon={<KeyRound size={16} color={T.text} />}
+            icon={<KeyRound size={16} color="var(--fg-2)" />}
             label={t.changePassword}
             onClick={() => {
               setPwNew(''); setPwConfirm(''); setPwError(null); setPwSuccess(false);
               setPwOpen(true); haptic('light');
             }}
-            trail={<ChevronRight size={16} color={T.textTertiary} />}
+            trail={<div className="setting-arrow"><ChevronRight size={16} /></div>}
           />
-          <Divider />
           <Row
-            icon={<Shield size={16} color={T.text} />}
+            icon={<Shield size={16} color="var(--fg-2)" />}
             label={t.privacy}
             sub={t.privacyDesc}
             onClick={() => { haptic('light'); router.push('/telegram/settings/privacy'); }}
-            trail={<ChevronRight size={16} color={T.textTertiary} />}
+            trail={<div className="setting-arrow"><ChevronRight size={16} /></div>}
           />
-        </motion.div>
+        </div>
 
         {/* SECTION: Підтримка */}
-        <p style={sectionLabelStyle}>{t.sectionSupport}</p>
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.16, duration: 0.32 }}
-          style={cardStyle}
-        >
+        <div className="section-label">{t.sectionSupport}</div>
+        <div className="card-block">
           <Link
             href={SUPPORT_BOT_URL}
             target="_blank"
@@ -544,33 +500,22 @@ export default function MiniAppSettingsPage() {
             onClick={() => haptic('light')}
             style={{ display: 'block', textDecoration: 'none' }}
           >
-            <RowInner
-              icon={
-                <div style={{ width: 32, height: 32, borderRadius: 10, background: T.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Send size={16} color={T.accent} strokeWidth={2} />
-                </div>
-              }
-              label={t.writeSupport}
-              trail={<ChevronRight size={16} color={T.textTertiary} />}
-              noIconBox
-            />
+            <div className="setting-row">
+              <div style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--accent-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Send size={16} color="var(--accent)" strokeWidth={2} />
+              </div>
+              <span className="setting-label">{t.writeSupport}</span>
+              <div className="setting-arrow"><ChevronRight size={16} /></div>
+            </div>
           </Link>
-          <Divider />
-          <RowInner
-            icon={
-              <div style={{ width: 32, height: 32, borderRadius: 10, background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Info size={16} color={T.textSecondary} strokeWidth={2} />
-              </div>
-            }
-            label={t.about}
-            trail={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ ...TYPE.caption, color: T.textTertiary }}>{t.version}</span>
-              </div>
-            }
-            noIconBox
-          />
-        </motion.div>
+          <div className="setting-row" style={{ cursor: 'default' }}>
+            <div style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Info size={16} color="var(--fg-3)" strokeWidth={2} />
+            </div>
+            <span className="setting-label">{t.about}</span>
+            <span className="setting-value">{t.version}</span>
+          </div>
+        </div>
 
         {/* Logout */}
         <motion.button
@@ -801,85 +746,23 @@ function Row({
   return (
     <button
       type="button"
+      className="setting-row"
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: '13px 16px',
-        background: 'transparent',
-        border: 'none',
-        width: '100%',
-        textAlign: 'left',
-        cursor: disabled ? 'default' : 'pointer',
-        fontFamily: 'inherit',
-        color: T.text,
-        opacity: disabled ? 0.6 : 1,
-      }}
+      style={{ opacity: disabled ? 0.6 : 1, cursor: disabled ? 'default' : 'pointer' }}
     >
-      <div
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: 10,
-          background: T.bg,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-        }}
-      >
+      <div style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         {icon}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 500, color: T.text }}>{label}</div>
-        {sub && <div style={{ fontSize: 11, color: T.textTertiary, marginTop: 2 }}>{sub}</div>}
+        <span className="setting-label">{label}</span>
+        {sub && <div style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 2 }}>{sub}</div>}
       </div>
       {trail}
     </button>
   );
 }
 
-function RowInner({
-  icon,
-  label,
-  trail,
-  noIconBox,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  trail?: React.ReactNode;
-  noIconBox?: boolean;
-}) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: '13px 16px',
-        color: T.text,
-      }}
-    >
-      {noIconBox ? (
-        icon
-      ) : (
-        <div style={{ width: 32, height: 32, borderRadius: 10, background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          {icon}
-        </div>
-      )}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 500, color: T.text }}>{label}</div>
-      </div>
-      {trail}
-    </div>
-  );
-}
-
-function Divider() {
-  return <div style={{ height: 1, background: T.border, margin: '0 16px' }} />;
-}
 
 function Switch({ on }: { on: boolean }) {
   return (
