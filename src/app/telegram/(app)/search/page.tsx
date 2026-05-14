@@ -37,6 +37,7 @@ import {
   type SalonRef,
 } from '@/lib/client/display-mode';
 import { Bot, ArrowDown } from 'lucide-react';
+import '@/styles/od-client-mini-app.css';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE } from '@/components/miniapp/design';
 import { AvatarCircle } from '@/components/miniapp/shells';
 import { AIChatSheet } from '@/components/miniapp/ai-chat-sheet';
@@ -537,6 +538,7 @@ export default function MiniAppSearchPage() {
 
   return (
     <div
+      className="od-client-mini-app"
       style={{
         ...FONT_BASE,
         display: 'flex',
