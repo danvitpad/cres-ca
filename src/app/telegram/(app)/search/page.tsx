@@ -24,6 +24,14 @@ import {
   SlidersHorizontal,
   Building2,
   User as UserIcon,
+  Scissors,
+  Home as HomeIcon,
+  Car,
+  Dumbbell,
+  PawPrint,
+  Activity as ActivityIcon,
+  LayoutGrid,
+  MoreHorizontal,
 } from 'lucide-react';
 import { getLocation } from '@/lib/telegram/geolocation';
 import { composeAddress } from '@/lib/format/address';
@@ -91,6 +99,33 @@ const VIEW_LABELS: Record<Lang, { list: string; map: string; route: string }> = 
   ru: { list: 'Список', map: 'Карта', route: '🗺 Маршрут к мастеру' },
   en: { list: 'List', map: 'Map', route: '🗺 Route to master' },
 };
+
+// Заголовки страницы и блока «Майстри поруч» — текст из прототипа.
+const PAGE_LABELS: Record<Lang, { title: string; nearby: string }> = {
+  uk: { title: 'Знайти', nearby: 'Майстри поруч' },
+  ru: { title: 'Найти', nearby: 'Мастера рядом' },
+  en: { title: 'Search', nearby: 'Masters nearby' },
+};
+
+// Быстрые чипы поверх результатов — тап подставляет в строку поиска.
+// Первый «Усі» сбрасывает запрос и категорию.
+const QUICK_CHIPS: Record<Lang, readonly string[]> = {
+  uk: ['Усі', 'Стрижка', 'Манікюр', 'Косметолог', 'Масаж', 'Брови'],
+  ru: ['Все', 'Стрижка', 'Маникюр', 'Косметолог', 'Массаж', 'Брови'],
+  en: ['All', 'Haircut', 'Manicure', 'Skincare', 'Massage', 'Brows'],
+};
+
+// Большая cat-grid 4×2 — иконки + подписи. Последний пункт «Інше» открывает фильтры.
+const CAT_TILES: ReadonlyArray<{ key: CategoryKey | 'more'; icon: typeof LayoutGrid }> = [
+  { key: 'all', icon: LayoutGrid },
+  { key: 'beauty', icon: Scissors },
+  { key: 'health', icon: ActivityIcon },
+  { key: 'home', icon: HomeIcon },
+  { key: 'auto', icon: Car },
+  { key: 'fitness', icon: Dumbbell },
+  { key: 'petCare', icon: PawPrint },
+  { key: 'more', icon: MoreHorizontal },
+];
 
 const CARD_LABELS: Record<Lang, { add: string; added: string }> = {
   uk: { add: '+ У контакти', added: '✓ У контактах' },
@@ -558,189 +593,157 @@ export default function MiniAppSearchPage() {
         color: T.text,
       }}
     >
-      {/* Top controls — Fresha pill + AI prompts row */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: `20px ${PAGE_PADDING_X}px 8px` }}>
-        {/* Search pill — premium Fresha-style */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div
+      {/* Top controls — структура из прототипа: title + search-bar + chips + cat-grid + nearby header */}
+      {/* Page title «Знайти» */}
+      <div className="page-title">{PAGE_LABELS[lang].title}</div>
+
+      {/* Search bar — литеральный .search-bar класс прототипа.
+          Иконка слева, инпут, AI-кнопка (или крестик когда есть текст), фильтр-иконка. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 16px' }}>
+        <div className="search-bar" style={{ flex: 1, margin: 0 }}>
+          <Search />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={tFilter.placeholder}
             style={{
               flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              padding: '14px 16px',
-              background: T.surface,
-              borderRadius: R.pill,
-              boxShadow: SHADOW.pill,
-              border: `1px solid ${T.borderSubtle}`,
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              fontSize: 15,
+              color: T.text,
+              fontFamily: 'inherit',
+              minWidth: 0,
             }}
-          >
-            <Search size={20} color={T.textSecondary} strokeWidth={2.2} />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={tFilter.placeholder}
-              style={{
-                flex: 1,
-                background: 'transparent',
-                border: 'none',
-                outline: 'none',
-                ...TYPE.body,
-                color: T.text,
-                fontFamily: 'inherit',
-                minWidth: 0,
-              }}
-            />
-            {query ? (
-              <button
-                type="button"
-                onClick={() => setQuery('')}
-                style={{ background: 'transparent', border: 'none', color: T.textTertiary, cursor: 'pointer', padding: 0 }}
-              >
-                <X size={18} />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  haptic('light');
-                  setAiPrompt(null);
-                  setAiOpen(true);
-                }}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: '50%',
-                  border: 'none',
-                  background: T.accentSoft,
-                  color: T.accent,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                }}
-                aria-label="AI-консьерж"
-              >
-                <Bot size={16} strokeWidth={2.4} />
-              </button>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              haptic('light');
-              setFiltersOpen(true);
-            }}
-            style={{
-              position: 'relative',
-              width: 48,
-              height: 48,
-              borderRadius: '50%',
-              border: `1px solid ${T.border}`,
-              background: T.surface,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
-            aria-label={tFilter.filtersAria}
-          >
-            <SlidersHorizontal size={20} color={T.text} strokeWidth={2} />
-            {activeFilters > 0 && (
-              <span
-                style={{
-                  position: 'absolute',
-                  top: -2,
-                  right: -2,
-                  width: 18,
-                  height: 18,
-                  borderRadius: '50%',
-                  background: T.accent,
-                  color: '#fff',
-                  fontSize: 10,
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {activeFilters}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* AI prompt chips удалены по запросу Данила (2026-05-06).
-            Клиент сам пишет что хочет — иконка бота слева в поле поиска
-            открывает AI-консьерж с пустым окном ввода. */}
-
-        {/* List/Map switcher — текстовый pill */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              padding: 3,
-              borderRadius: R.pill,
-              background: T.bgSubtle,
-              border: `1px solid ${T.borderSubtle}`,
-            }}
-          >
-            {(['list', 'map'] as const).map((mode) => {
-              const Icon = mode === 'list' ? List : MapIcon;
-              const active = view === mode;
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => {
-                    haptic('selection');
-                    setView(mode);
-                  }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '6px 14px',
-                    borderRadius: R.pill,
-                    border: 'none',
-                    background: active ? T.text : 'transparent',
-                    color: active ? T.bg : T.textSecondary,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                  }}
-                >
-                  <Icon size={13} />
-                  {mode === 'list' ? tView.list : tView.map}
-                </button>
-              );
-            })}
-          </div>
-          {!loading && (
-            <span style={{ ...TYPE.caption, fontVariantNumeric: 'tabular-nums' }}>{total}</span>
+          />
+          {query ? (
+            <button
+              type="button"
+              onClick={() => { haptic('light'); setQuery(''); }}
+              aria-label="clear"
+              style={{ background: 'transparent', border: 'none', color: T.textTertiary, cursor: 'pointer', padding: 0, display: 'flex' }}
+            >
+              <X size={18} />
+            </button>
+          ) : (
+            <div
+              role="button"
+              tabIndex={0}
+              className="search-ai"
+              onClick={(e) => { e.stopPropagation(); haptic('light'); setAiPrompt(null); setAiOpen(true); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setAiPrompt(null); setAiOpen(true); } }}
+              aria-label="AI-консьерж"
+            >
+              <Bot />
+            </div>
           )}
-          <div style={{ flex: 1 }} />
+        </div>
+        <button
+          type="button"
+          onClick={() => { haptic('light'); setFiltersOpen(true); }}
+          className="btn-icon"
+          style={{ position: 'relative', width: 48, height: 48, background: T.surface, border: `1px solid ${T.border}` }}
+          aria-label={tFilter.filtersAria}
+        >
+          <SlidersHorizontal size={20} color={T.text} strokeWidth={2} />
+          {activeFilters > 0 && (
+            <span
+              style={{
+                position: 'absolute', top: -2, right: -2,
+                width: 18, height: 18, borderRadius: '50%',
+                background: T.accent, color: '#fff',
+                fontSize: 10, fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              {activeFilters}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Quick chips — тап на «Усі» сбрасывает запрос, остальные подставляют в строку поиска */}
+      <div className="chips-row">
+        {QUICK_CHIPS[lang].map((label, idx) => {
+          const isAllChip = idx === 0;
+          const active = isAllChip ? query.trim() === '' : query.trim() === label;
+          return (
+            <button
+              key={label}
+              type="button"
+              className={`chip${active ? ' active' : ''}`}
+              onClick={() => { haptic('selection'); setQuery(isAllChip ? '' : label); }}
+            >
+              {isAllChip && <LayoutGrid />}
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Category grid — 4×2 иконок. Тап на «Інше» (more) открывает фильтры. */}
+      <div className="cat-grid">
+        {CAT_TILES.map(({ key, icon: Icon }) => {
+          const isMore = key === 'more';
+          const active = !isMore && category === key;
+          const label = isMore
+            ? (lang === 'uk' ? 'Інше' : lang === 'en' ? 'More' : 'Другое')
+            : catLabels[key];
+          return (
+            <button
+              key={key}
+              type="button"
+              className={`cat-item${active ? ' active' : ''}`}
+              onClick={() => {
+                haptic('selection');
+                if (isMore) { setFiltersOpen(true); return; }
+                setCategory(key);
+              }}
+            >
+              <span className="cat-icon"><Icon /></span>
+              <span className="cat-label">{label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Section header «Майстри поруч» + list/map .btn-icon toggle + geolocate btn */}
+      <div className="flex items-center justify-between" style={{ padding: '4px 16px 10px' }}>
+        <div style={{ fontSize: 17, fontWeight: 700, color: T.text, letterSpacing: '-0.01em' }}>
+          {PAGE_LABELS[lang].nearby}
+          {!loading && (
+            <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 500, color: T.textTertiary, fontVariantNumeric: 'tabular-nums' }}>
+              {total}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {(['list', 'map'] as const).map((mode) => {
+            const Icon = mode === 'list' ? List : MapIcon;
+            const active = view === mode;
+            return (
+              <button
+                key={mode}
+                type="button"
+                className="btn-icon"
+                onClick={() => { haptic('selection'); setView(mode); }}
+                style={active ? { background: T.accentSoft, color: T.accent } : undefined}
+                aria-label={mode === 'list' ? tView.list : tView.map}
+              >
+                <Icon />
+              </button>
+            );
+          })}
           <button
             type="button"
             onClick={() => locate(true)}
             disabled={geoBusy}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: '50%',
-              border: `1px solid ${T.border}`,
-              background: T.surface,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: geoBusy ? 'wait' : 'pointer',
-              opacity: geoBusy ? 0.6 : 1,
-            }}
+            className="btn-icon"
+            style={{ cursor: geoBusy ? 'wait' : 'pointer', opacity: geoBusy ? 0.6 : 1 }}
             aria-label="Моя геолокация"
           >
-            {geoBusy ? <Loader2 size={16} className="animate-spin" /> : <Navigation size={16} color={T.text} />}
+            {geoBusy ? <Loader2 className="animate-spin" /> : <Navigation />}
           </button>
         </div>
 
@@ -766,12 +769,21 @@ export default function MiniAppSearchPage() {
               <p style={{ ...TYPE.caption, marginTop: 4 }}>Попробуйте изменить запрос или фильтры</p>
             </div>
           ) : total === 0 ? (
-            // Landing state — пусто на старте, показываем категории + AI prompt
-            <SearchLanding
-              lang={lang}
-              onCategory={(label) => { setQuery(label); haptic('selection'); }}
-              onAi={() => { setAiOpen(true); haptic('light'); }}
-            />
+            // Пусто на старте — категории и быстрые чипы уже над списком,
+            // здесь только короткая подсказка (cat-grid сам играет роль landing).
+            <div className="empty-state">
+              <Search />
+              <p>
+                {lang === 'uk' ? 'Оберіть категорію' : lang === 'en' ? 'Pick a category' : 'Выберите категорию'}
+              </p>
+              <span>
+                {lang === 'uk'
+                  ? 'Або введіть назву послуги чи майстра'
+                  : lang === 'en'
+                    ? 'Or type a service or master name'
+                    : 'Или введите услугу/имя мастера'}
+              </span>
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <AnimatePresence mode="popLayout">
