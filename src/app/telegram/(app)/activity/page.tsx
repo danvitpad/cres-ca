@@ -20,6 +20,7 @@ import {
   CalendarDays,
   List,
   ChevronLeft,
+  Check,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import '@/styles/od-client-mini-app.css';
@@ -47,7 +48,7 @@ const I18N: Record<Lang, {
   monthsLong: string[];
 }> = {
   uk: {
-    title: 'Мої записи',
+    title: 'Записи',
     viewList: 'Список', viewCalendar: 'Календар',
     filterUpcoming: 'Майбутні', filterPast: 'Минулі',
     noActivity: 'Немає записів',
@@ -64,7 +65,7 @@ const I18N: Record<Lang, {
                  'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'],
   },
   ru: {
-    title: 'Мои записи',
+    title: 'Записи',
     viewList: 'Список', viewCalendar: 'Календарь',
     filterUpcoming: 'Будущие', filterPast: 'Прошедшие',
     noActivity: 'Нет записей',
@@ -81,7 +82,7 @@ const I18N: Record<Lang, {
                  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
   },
   en: {
-    title: 'My bookings',
+    title: 'Bookings',
     viewList: 'List', viewCalendar: 'Calendar',
     filterUpcoming: 'Upcoming', filterPast: 'Past',
     noActivity: 'No appointments',
@@ -124,6 +125,7 @@ interface AppointmentRow {
   master_specialization: string | null;
   master_salon_id: string | null;
   salon: SalonRef | null;
+  has_review: boolean;
 }
 
 type View = 'list' | 'calendar';
@@ -225,6 +227,7 @@ export default function MiniAppActivityPage() {
               }
             | null;
           service: { name: string | null; color: string | null } | { name: string | null; color: string | null }[] | null;
+          reviewExists?: boolean;
         };
         const master = Array.isArray(a.master) ? a.master[0] ?? null : a.master;
         const masterProfile =
@@ -250,6 +253,7 @@ export default function MiniAppActivityPage() {
           master_specialization: master?.specialization ?? null,
           master_salon_id: master?.salon_id ?? null,
           salon: unwrapSalon(salonRaw as SalonEmbed | SalonEmbed[] | null),
+          has_review: a.reviewExists ?? false,
         };
       });
       setAppointments(rows);
@@ -673,7 +677,9 @@ function AppointmentCard({ appt: a, index: i, t, lang, cardLabels, haptic }: Car
             ) : (
               <>
                 <button className="bk-act-btn" onClick={() => { haptic('light'); router.push(a.master_id ? `/telegram/book?master_id=${a.master_id}` : '/telegram/search'); }}>Повторити</button>
-                <button className="bk-act-btn primary" onClick={() => { haptic('light'); router.push(`/telegram/activity/${a.id}`); }}>Відгук</button>
+                {a.has_review
+                  ? <span style={{ fontSize: 12, color: 'var(--fg-3)', padding: '0 4px', display: 'flex', alignItems: 'center', gap: 4 }}><Check size={12} /> Відгук залишено</span>
+                  : <button className="bk-act-btn primary" onClick={() => { haptic('light'); router.push(`/telegram/activity/${a.id}`); }}>Відгук</button>}
               </>
             )}
           </div>
