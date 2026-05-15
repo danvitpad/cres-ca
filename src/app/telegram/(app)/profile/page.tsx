@@ -561,60 +561,25 @@ export default function MiniAppProfilePage() {
                 maxWidth: 460,
                 background: T.surface,
                 borderRadius: `${R.lg}px ${R.lg}px 0 0`,
-                padding: `20px ${PAGE_PADDING_X}px`,
-                paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
                 boxShadow: SHADOW.elevated,
-                // dvh = dynamic viewport height: автоматически ужимается когда
-                // клавиатура открыта (в отличие от vh, который остаётся
-                // фиксированным). Это значит когда юзер начинает печатать,
-                // sheet физически меньше → кнопка «Сохранить» внизу
-                // остаётся в видимой части, и юзер просто скроллит к ней.
                 maxHeight: '90dvh',
-                overflowY: 'auto',
-                overscrollBehavior: 'contain',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
               }}
             >
-              {/* Sticky header — drag handle + title + close button always visible */}
-              <div
-                style={{
-                  position: 'sticky',
-                  top: 0,
-                  background: T.surface,
-                  zIndex: 1,
-                  paddingBottom: 12,
-                  marginBottom: 8,
-                }}
-              >
-                <div
-                  style={{
-                    margin: '0 auto 14px',
-                    width: 40,
-                    height: 4,
-                    borderRadius: 999,
-                    background: T.border,
-                  }}
-                />
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
-                >
+              {/* Шапка — ВИЩЕ СКРОЛУ, завжди видима */}
+              <div style={{ flexShrink: 0, padding: `20px ${PAGE_PADDING_X}px 0` }}>
+                <div style={{ margin: '0 auto 14px', width: 40, height: 4, borderRadius: 999, background: T.border }} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 14 }}>
                   <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{t.editTitle}</h3>
                   <button
                     type="button"
                     onClick={() => setEditOpen(false)}
                     style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: '50%',
-                      background: T.bgSubtle,
-                      border: 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
+                      width: 36, height: 36, borderRadius: '50%',
+                      background: T.bgSubtle, border: 'none',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                     }}
                     aria-label={t.close}
                   >
@@ -623,126 +588,106 @@ export default function MiniAppProfilePage() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {/* ── Личные данные ── */}
-                <SectionGroup label={t.sectionPersonal}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    <FieldBox label={t.fieldFirstName}>
-                      <input
-                        value={editFirstName}
-                        onChange={(e) => setEditFirstName(e.target.value.slice(0, 60))}
-                        placeholder={t.fieldFirstName}
-                        autoComplete="given-name"
-                        style={inputStyle}
-                      />
-                    </FieldBox>
-                    <FieldBox label={t.fieldLastName}>
-                      <input
-                        value={editLastName}
-                        onChange={(e) => setEditLastName(e.target.value.slice(0, 60))}
-                        placeholder={t.fieldLastName}
-                        autoComplete="family-name"
-                        style={inputStyle}
-                      />
-                    </FieldBox>
-                  </div>
-                  <FieldBox label={t.fieldDob}>
-                    <input
-                      type="date"
-                      value={editDob}
-                      onChange={(e) => setEditDob(e.target.value)}
-                      style={inputStyle}
-                    />
-                  </FieldBox>
-                  <FieldBox label={t.fieldPhone}>
-                    <input
-                      type="tel"
-                      value={editPhone}
-                      onChange={(e) => setEditPhone(e.target.value.slice(0, 20))}
-                      placeholder="+380..."
-                      autoComplete="tel"
-                      style={inputStyle}
-                    />
-                  </FieldBox>
-                </SectionGroup>
-
-                {/* ── Публичная страница ── */}
-                <SectionGroup label={t.sectionPublic}>
-                  <FieldBox label={t.fieldSlug}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ color: T.textTertiary }}>@</span>
-                      <input
-                        value={editSlug}
-                        onChange={(e) =>
-                          setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 32))
-                        }
-                        placeholder="username"
-                        style={inputStyle}
-                      />
+              {/* Прокручуваний вміст */}
+              <div
+                style={{
+                  flex: 1,
+                  overflowY: 'auto',
+                  overscrollBehavior: 'contain',
+                  padding: `0 ${PAGE_PADDING_X}px`,
+                  paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))',
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingTop: 4, paddingBottom: 16 }}>
+                  <SectionGroup label={t.sectionPersonal}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      <FieldBox label={t.fieldFirstName}>
+                        <input
+                          value={editFirstName}
+                          onChange={(e) => setEditFirstName(e.target.value.slice(0, 60))}
+                          placeholder={t.fieldFirstName}
+                          autoComplete="given-name"
+                          style={inputStyle}
+                        />
+                      </FieldBox>
+                      <FieldBox label={t.fieldLastName}>
+                        <input
+                          value={editLastName}
+                          onChange={(e) => setEditLastName(e.target.value.slice(0, 60))}
+                          placeholder={t.fieldLastName}
+                          autoComplete="family-name"
+                          style={inputStyle}
+                        />
+                      </FieldBox>
                     </div>
-                    <p style={{ ...TYPE.micro, marginTop: 6 }}>
-                      {t.slugHint}
-                    </p>
-                  </FieldBox>
+                    <FieldBox label={t.fieldDob}>
+                      <input
+                        type="date"
+                        value={editDob}
+                        onChange={(e) => setEditDob(e.target.value)}
+                        style={inputStyle}
+                      />
+                    </FieldBox>
+                    <FieldBox label={t.fieldPhone}>
+                      <input
+                        type="tel"
+                        value={editPhone}
+                        onChange={(e) => setEditPhone(e.target.value.slice(0, 20))}
+                        placeholder="+380..."
+                        autoComplete="tel"
+                        style={inputStyle}
+                      />
+                    </FieldBox>
+                  </SectionGroup>
 
-                  <FieldBox label={t.fieldBio}>
-                    <textarea
-                      value={editBio}
-                      onChange={(e) => setEditBio(e.target.value.slice(0, 280))}
-                      placeholder={t.fieldBio}
-                      rows={3}
-                      style={{ ...inputStyle, resize: 'none' as const }}
-                    />
-                    <p style={{ ...TYPE.micro, marginTop: 6, textAlign: 'right' }}>
-                      {editBio.length}{t.bioCount}
-                    </p>
-                  </FieldBox>
-                </SectionGroup>
+                  <SectionGroup label={t.sectionPublic}>
+                    <FieldBox label={t.fieldSlug}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ color: T.textTertiary }}>@</span>
+                        <input
+                          value={editSlug}
+                          onChange={(e) =>
+                            setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 32))
+                          }
+                          placeholder="username"
+                          style={inputStyle}
+                        />
+                      </div>
+                      <p style={{ ...TYPE.micro, marginTop: 6 }}>{t.slugHint}</p>
+                    </FieldBox>
+                    <FieldBox label={t.fieldBio}>
+                      <textarea
+                        value={editBio}
+                        onChange={(e) => setEditBio(e.target.value.slice(0, 280))}
+                        placeholder={t.fieldBio}
+                        rows={3}
+                        style={{ ...inputStyle, resize: 'none' as const }}
+                      />
+                      <p style={{ ...TYPE.micro, marginTop: 6, textAlign: 'right' }}>{editBio.length}{t.bioCount}</p>
+                    </FieldBox>
+                  </SectionGroup>
 
-                {editError && (
-                  <div
+                  {editError && (
+                    <div style={{ padding: '12px 14px', borderRadius: R.md, background: T.dangerSoft, color: T.danger, fontSize: 13 }}>
+                      {editError}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={saveEdit}
+                    disabled={editBusy}
                     style={{
-                      padding: '12px 14px',
-                      borderRadius: R.md,
-                      background: T.dangerSoft,
-                      color: T.danger,
-                      fontSize: 13,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      width: '100%', padding: '16px 24px', borderRadius: R.pill, border: 'none',
+                      background: T.accent, color: '#fff', fontSize: 16, fontWeight: 600,
+                      cursor: 'pointer', fontFamily: 'inherit', opacity: editBusy ? 0.6 : 1,
                     }}
                   >
-                    {editError}
-                  </div>
-                )}
-
-                {/* Кнопка «Сохранить» — всегда внизу sheet body, под полями
-                    ввода. Sheet сам сжимается через 90dvh когда клавиатура
-                    открыта; пользователь скроллит вниз пальцем, видит
-                    кнопку, нажимает. Не плавающая, не fixed — обычный
-                    inline-элемент в конце прокручиваемого контента. */}
-                <button
-                  type="button"
-                  onClick={saveEdit}
-                  disabled={editBusy}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    width: '100%',
-                    padding: '16px 24px',
-                    borderRadius: R.pill,
-                    border: 'none',
-                    background: T.accent,
-                    color: '#fff',
-                    fontSize: 16,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    opacity: editBusy ? 0.6 : 1,
-                  }}
-                >
-                  {editBusy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                  {t.save}
-                </button>
+                    {editBusy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                    {t.save}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
