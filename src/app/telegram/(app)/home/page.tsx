@@ -1,11 +1,11 @@
 /** --- YAML
  * name: MiniAppHomePage
- * description: «Для вас» — Open Design alignment. Header с user-аватаром справа,
- *              hero ближайшей записи с master-блоком + pills + Подробнее CTA,
- *              regular masters carousel + free slots list с явной кнопкой
- *              «Записаться →». Категории/AI-консьерж — на Tab «Найти».
+ * description: «Головна» — соответствие прототипу mini-app/. Приветствие + аватар,
+ *              hero ближайшей записи ИЛИ зелёный fallback «+ Новий запис»,
+ *              feed «Вільні слоти сьогодні» (2 карточки), h-scroll «Рекомендовані»
+ *              из /api/marketplace/featured. Категории/AI — в Tab «Найти».
  * created: 2026-04-13
- * updated: 2026-05-11
+ * updated: 2026-05-15
  * --- */
 
 'use client';
@@ -14,14 +14,13 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, ChevronRight, Plus, User } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import '@/styles/od-client-mini-app.css';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { formatMoney } from '@/lib/format/money';
 import { MobilePage } from '@/components/miniapp/shells';
 import { getCached, setCached } from '@/lib/miniapp/cache';
-import { HomeScreenBanner } from '@/components/miniapp/home-screen-banner';
 
 interface SalonRef {
   id: string;
@@ -55,68 +54,59 @@ const I18N: Record<Lang, {
   title: string;
   morningHi: string; dayHi: string; eveningHi: string; nightHi: string;
   upcoming: string; details: string;
-  regulars: string; atMaster: string;
-  freeSlots: string; allContacts: string;
-  recommended: string; viewAll: string; from: string;
-  explore: string; topCats: string;
-  cat: { beauty: string; health: string; pets: string; fitness: string; auto: string; home: string };
-  topcat: { hair: string; massage: string; trainer: string; grooming: string; repair: string };
+  atMaster: string;
+  freeSlots: string;
+  recommended: string; from: string;
   today: string; tomorrow: string;
-  aiConcierge: string; minSuffix: string; masterFallback: string;
+  minSuffix: string; masterFallback: string; reviewsSuffix: string;
   bookCta: string;
-  // Empty state — когда у клиента нет ни записей, ни постоянных, ни слотов.
-  emptyTitle: string; emptyText: string; emptyCta: string;
+  // Fallback hero когда нет ближайшей записи (по прототипу — зелёный CTA).
+  emptyLabel: string; emptyTitle: string; emptySub: string; emptyCta: string;
 }> = {
   uk: {
     title: 'Привіт',
     morningHi: 'Доброго ранку', dayHi: 'Доброго дня', eveningHi: 'Доброго вечора', nightHi: 'Доброї ночі',
-    upcoming: 'Найближчий запис', details: 'Детальніше',
-    regulars: 'Ваші постійні', atMaster: 'у',
-    freeSlots: 'Вільні слоти ваших майстрів', allContacts: 'Мої майстри',
-    recommended: 'Рекомендуємо', viewAll: 'Дивитися всі', from: 'від',
-    explore: 'Категорії', topCats: 'Популярне',
-    cat: { beauty: 'Краса', health: "Здоров'я", pets: 'Тварини', fitness: 'Фітнес', auto: 'Авто', home: 'Дім' },
-    topcat: { hair: 'Стрижка та укладка', massage: 'Масаж', trainer: 'Тренер', grooming: 'Грумінг', repair: 'Ремонт' },
+    upcoming: 'Наступний запис', details: 'Деталі запису',
+    atMaster: 'з',
+    freeSlots: 'Вільні слоти сьогодні',
+    recommended: 'Рекомендовані', from: 'від',
     today: 'Сьогодні', tomorrow: 'Завтра',
-    aiConcierge: 'AI-консьєрж', minSuffix: 'хв', masterFallback: 'Майстер',
+    minSuffix: 'хв', masterFallback: 'Майстер', reviewsSuffix: 'відгуків',
     bookCta: 'Записатися',
-    emptyTitle: 'Поки що порожньо',
-    emptyText: 'У вам ще немає записів. Знайди майстра — і запишись прямо звідси.',
-    emptyCta: 'Знайти майстра',
+    emptyLabel: 'Почни день',
+    emptyTitle: 'Запишись до майстра',
+    emptySub: 'Більше 500 майстрів у твоєму місті',
+    emptyCta: 'Новий запис',
   },
   ru: {
     title: 'Привет',
     morningHi: 'Доброе утро', dayHi: 'Добрый день', eveningHi: 'Добрый вечер', nightHi: 'Доброй ночи',
-    upcoming: 'Ближайшая запись', details: 'Подробнее',
-    regulars: 'Ваши постоянные', atMaster: 'у',
-    freeSlots: 'Свободные слоты ваших мастеров', allContacts: 'Мои мастера',
-    recommended: 'Рекомендуем', viewAll: 'Посмотреть все', from: 'от',
-    explore: 'Категории', topCats: 'Популярное',
-    cat: { beauty: 'Красота', health: 'Здоровье', pets: 'Питомцы', fitness: 'Фитнес', auto: 'Авто', home: 'Дом' },
-    topcat: { hair: 'Стрижка и укладка', massage: 'Массаж', trainer: 'Тренер', grooming: 'Груминг', repair: 'Ремонт' },
+    upcoming: 'Ближайшая запись', details: 'Детали записи',
+    atMaster: 'у',
+    freeSlots: 'Свободные слоты сегодня',
+    recommended: 'Рекомендуем', from: 'от',
     today: 'Сегодня', tomorrow: 'Завтра',
-    aiConcierge: 'AI-консьерж', minSuffix: 'мин', masterFallback: 'Мастер',
+    minSuffix: 'мин', masterFallback: 'Мастер', reviewsSuffix: 'отзывов',
     bookCta: 'Записаться',
-    emptyTitle: 'Здесь пока пусто',
-    emptyText: 'У вас ещё нет записей. Найди мастера — и запишись прямо отсюда.',
-    emptyCta: 'Найти мастера',
+    emptyLabel: 'Начни день',
+    emptyTitle: 'Запишись к мастеру',
+    emptySub: 'Больше 500 мастеров в твоём городе',
+    emptyCta: 'Новая запись',
   },
   en: {
     title: 'Hi',
     morningHi: 'Good morning', dayHi: 'Good afternoon', eveningHi: 'Good evening', nightHi: 'Good night',
     upcoming: 'Next appointment', details: 'View details',
-    regulars: 'Your regulars', atMaster: 'at',
-    freeSlots: 'Open slots from your masters', allContacts: 'My masters',
-    recommended: 'Recommended', viewAll: 'See all', from: 'from',
-    explore: 'Categories', topCats: 'Popular',
-    cat: { beauty: 'Beauty', health: 'Health', pets: 'Pets', fitness: 'Fitness', auto: 'Auto', home: 'Home' },
-    topcat: { hair: 'Hair & styling', massage: 'Massage', trainer: 'Trainer', grooming: 'Grooming', repair: 'Repair' },
+    atMaster: 'with',
+    freeSlots: 'Open slots today',
+    recommended: 'Recommended', from: 'from',
     today: 'Today', tomorrow: 'Tomorrow',
-    aiConcierge: 'AI concierge', minSuffix: 'min', masterFallback: 'Master',
+    minSuffix: 'min', masterFallback: 'Master', reviewsSuffix: 'reviews',
     bookCta: 'Book',
-    emptyTitle: 'Nothing here yet',
-    emptyText: 'You don’t have any appointments yet. Find a master — and book right from here.',
-    emptyCta: 'Find a master',
+    emptyLabel: 'Start your day',
+    emptyTitle: 'Book a master',
+    emptySub: 'Over 500 masters in your city',
+    emptyCta: 'New booking',
   },
 };
 
@@ -129,20 +119,23 @@ export default function MiniAppHomePage() {
   // Если профиль ещё не подгрузился — приветствие останется без имени.
   const firstName = fullName?.trim().split(/\s+/)[0] ?? '';
   // Кэш на 60с — вернулся на главную → данные мгновенно из памяти.
-  type Regular = {
-    master_id: string; master_name: string; master_avatar: string | null; master_slug: string;
-    service_id: string; service_name: string; service_duration: number | null;
-    service_price: number | null; service_currency: string | null; visit_count: number;
+  type FeaturedMaster = {
+    id: string;
+    slug: string;
+    name: string;
+    specialization: string | null;
+    avatar_url: string | null;
+    rating: number | null;
+    reviews_count: number;
+    price_from: number | null;
+    currency: string | null;
   };
-  type CachedHome = { next: NextAppointment | null; slots: SlotItem[]; regulars: Regular[] };
-  const cacheKey = userId ? `c-home:${userId}` : null;
+  type CachedHome = { next: NextAppointment | null; slots: SlotItem[]; featured: FeaturedMaster[] };
+  const cacheKey = userId ? `c-home-v2:${userId}` : null;
   const initial = cacheKey ? getCached<CachedHome>(cacheKey) : undefined;
   const [next, setNext] = useState<NextAppointment | null>(initial?.next ?? null);
   const [slots, setSlots] = useState<SlotItem[]>(initial?.slots ?? []);
-  const [regulars, setRegulars] = useState<Regular[]>(initial?.regulars ?? []);
-  // Флаг «все три fetch'а отработали». При наличии кэша — сразу true чтобы
-  // empty-state не мигал между монтированием и приходом фоновых данных.
-  const [loaded, setLoaded] = useState(!!initial);
+  const [featured, setFeatured] = useState<FeaturedMaster[]>(initial?.featured ?? []);
   const [lang, setLang] = useState<Lang>('uk');
 
   useEffect(() => {
@@ -187,12 +180,12 @@ export default function MiniAppHomePage() {
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null);
 
-      const regularsFetch = fetch('/api/me/regular-services')
+      const featuredFetch = fetch('/api/marketplace/featured?limit=12')
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null);
 
-      const [naJson, slotsJson, regularsJson] = await Promise.all([
-        naFetch, slotsFetch, regularsFetch,
+      const [naJson, slotsJson, featuredJson] = await Promise.all([
+        naFetch, slotsFetch, featuredFetch,
       ]);
 
       // Next appointment — нормализация embedded relations
@@ -233,21 +226,45 @@ export default function MiniAppHomePage() {
       }
 
       const slotsSnapshot = (slotsJson?.items ?? []) as SlotItem[];
-      const regularsSnapshot = Array.isArray(regularsJson?.items)
-        ? (regularsJson!.items as Regular[])
+      type FeaturedRaw = {
+        id: string;
+        slug: string | null;
+        fullName: string;
+        avatarUrl: string | null;
+        specialization: string | null;
+        rating: number | null;
+        reviewsCount: number;
+        topServices: Array<{ name: string; price: number; currency: string }>;
+      };
+      const featuredSnapshot: FeaturedMaster[] = Array.isArray(featuredJson?.items)
+        ? (featuredJson!.items as FeaturedRaw[])
+            .filter((m) => !!m.slug)
+            .map((m) => {
+              const first = m.topServices?.[0];
+              return {
+                id: m.id,
+                slug: m.slug!,
+                name: m.fullName,
+                specialization: m.specialization,
+                avatar_url: m.avatarUrl,
+                rating: m.rating,
+                reviews_count: m.reviewsCount,
+                price_from: first?.price ?? null,
+                currency: first?.currency ?? 'UAH',
+              };
+            })
         : [];
 
       setNext(nextSnapshot);
       setSlots(slotsSnapshot);
-      setRegulars(regularsSnapshot);
+      setFeatured(featuredSnapshot);
       if (cacheKey) {
         setCached<CachedHome>(cacheKey, {
           next: nextSnapshot,
           slots: slotsSnapshot,
-          regulars: regularsSnapshot,
+          featured: featuredSnapshot,
         });
       }
-      setLoaded(true);
     })();
   }, [userId, cacheKey]);
 
@@ -276,11 +293,7 @@ export default function MiniAppHomePage() {
           <div className="avatar av-md">{userInitials || '👤'}</div>
         </div>
 
-        <div style={{ padding: '4px 16px 0' }}>
-          <HomeScreenBanner />
-        </div>
-
-        {/* Hero «Найближчий запис» — gradient cobalt + бейдж + время + услуга + кнопка */}
+        {/* Hero — ближайший запис ИЛИ зелёный fallback «+ Новий запис» (по прототипу) */}
         {next ? (
           <Link
             href={`/telegram/activity/${next.id}`}
@@ -301,59 +314,32 @@ export default function MiniAppHomePage() {
               {t.details}
             </span>
           </Link>
-        ) : null}
-
-        {/* Постоянные мастер+услуга — карусель карточек как .h-card */}
-        {regulars.length > 0 && (
-          <div style={{ marginTop: 16 }}>
-            <div className="feed-section" style={{ paddingBottom: 0 }}>
-              <div className="feed-title">{t.regulars}</div>
-            </div>
-            <div className="h-scroll">
-              {regulars.map((r) => (
-                <button
-                  key={`${r.master_id}-${r.service_id}`}
-                  type="button"
-                  onClick={() => {
-                    haptic('light');
-                    router.push(`/telegram/book?master=${r.master_id}&service=${r.service_id}`);
-                  }}
-                  className="h-card"
-                  style={{ border: 'none', textAlign: 'left', fontFamily: 'inherit', padding: 0 }}
-                >
-                  <div className="h-card-img">
-                    {r.master_avatar
-                      ? <img src={r.master_avatar} alt="" />
-                      : <Calendar size={32} strokeWidth={1.5} />}
-                  </div>
-                  <div className="h-card-body">
-                    <div className="h-card-name">{r.service_name}</div>
-                    <div className="h-card-sub">{t.atMaster} {r.master_name}</div>
-                    <div className="h-card-price">
-                      {formatMoney(r.service_price, 'UAH')}
-                      {r.service_duration ? ` · ${r.service_duration} ${t.minSuffix}` : ''}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
+        ) : (
+          <Link
+            href="/telegram/search"
+            onClick={() => haptic('light')}
+            className="hero-scenario"
+            style={{
+              textDecoration: 'none',
+              display: 'block',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            }}
+          >
+            <div className="hero-label">{t.emptyLabel}</div>
+            <div className="hero-title">{t.emptyTitle}</div>
+            <div className="hero-sub">{t.emptySub}</div>
+            <span className="hero-action">
+              <Plus size={15} strokeWidth={2.25} />
+              {t.emptyCta}
+            </span>
+          </Link>
         )}
 
-        {/* Свободные слоты — feed-card list */}
+        {/* Вільні слоти сьогодні — 2 feed-card (по прототипу) */}
         {slots.length > 0 && (
           <div className="feed-section">
-            <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
-              <div className="feed-title" style={{ margin: 0 }}>{t.freeSlots}</div>
-              <Link
-                href="/telegram/connections"
-                onClick={() => haptic('light')}
-                style={{ fontSize: 13, color: 'var(--m-accent, #2563eb)', textDecoration: 'none', fontWeight: 500 }}
-              >
-                {t.allContacts}
-              </Link>
-            </div>
-            {slots.slice(0, 4).map((s) => (
+            <div className="feed-title">{t.freeSlots}</div>
+            {slots.slice(0, 2).map((s) => (
               <Link
                 key={s.masterId + s.iso}
                 href={`/telegram/book?master_id=${s.masterId}&date=${s.date}&time=${encodeURIComponent(s.time)}`}
@@ -377,21 +363,44 @@ export default function MiniAppHomePage() {
           </div>
         )}
 
-        {/* Empty state — hero-scenario без бейджа */}
-        {loaded && !next && regulars.length === 0 && slots.length === 0 && (
-          <Link
-            href="/telegram/search"
-            onClick={() => haptic('light')}
-            className="hero-scenario"
-            style={{ textDecoration: 'none', display: 'block', marginTop: 12 }}
-          >
-            <div className="hero-title">{t.emptyTitle}</div>
-            <div className="hero-sub" style={{ marginTop: 6 }}>{t.emptyText}</div>
-            <span className="hero-action">
-              {t.emptyCta}
-              <ChevronRight size={15} strokeWidth={2.25} />
-            </span>
-          </Link>
+        {/* Рекомендовані — h-scroll featured masters (по прототипу) */}
+        {featured.length > 0 && (
+          <>
+            <div className="feed-section" style={{ paddingBottom: 0 }}>
+              <div className="feed-title">{t.recommended}</div>
+            </div>
+            <div className="h-scroll" style={{ marginTop: 8, paddingBottom: 4 }}>
+              {featured.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => {
+                    haptic('light');
+                    router.push(`/telegram/book?master_id=${m.id}`);
+                  }}
+                  className="h-card"
+                  style={{ border: 'none', textAlign: 'left', fontFamily: 'inherit', padding: 0 }}
+                >
+                  <div className="h-card-img">
+                    {m.avatar_url
+                      ? <img src={m.avatar_url} alt="" />
+                      : <User size={32} strokeWidth={1.5} />}
+                  </div>
+                  <div className="h-card-body">
+                    <div className="h-card-name">{m.name}</div>
+                    <div className="h-card-sub">
+                      ⭐ {m.rating?.toFixed(1) ?? '—'} · {m.reviews_count} {t.reviewsSuffix}
+                    </div>
+                    {m.price_from != null && (
+                      <div className="h-card-price">
+                        {t.from} {formatMoney(m.price_from, m.currency)}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
         )}
 
         <div style={{ height: 12 }} />
