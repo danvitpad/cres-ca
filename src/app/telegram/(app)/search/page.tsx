@@ -803,6 +803,7 @@ export default function MiniAppSearchPage() {
                       addBusy={followBusy.has(m.id)}
                       onAdd={() => toggleFollowMaster(m.id)}
                       labels={CARD_LABELS[lang]}
+                      priceFrom={m.priceFrom}
                     />
                   </motion.div>
                 ))}
@@ -1352,9 +1353,10 @@ interface MiniResultCardProps {
   addBusy?: boolean;
   onAdd?: () => void;
   labels: { add: string; added: string };
+  priceFrom?: number | null;
 }
 
-function MiniResultCard({ master, salon, onClick, isAdded, addBusy, onAdd, labels }: MiniResultCardProps) {
+function MiniResultCard({ master, salon, onClick, isAdded, addBusy, onAdd, labels, priceFrom }: MiniResultCardProps) {
   const d = resolveCardDisplay(master, salon, MINIAPP_CARD_LABELS);
   const initials = (d.avatarName || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   return (
@@ -1382,6 +1384,11 @@ function MiniResultCard({ master, salon, onClick, isAdded, addBusy, onAdd, label
             {d.secondary && (
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {d.rating != null ? ` · ${d.secondary}` : d.secondary}
+              </span>
+            )}
+            {priceFrom != null && priceFrom > 0 && (
+              <span className="mc-price" style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                від ₴{priceFrom}
               </span>
             )}
           </div>
