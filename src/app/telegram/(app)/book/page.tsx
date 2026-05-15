@@ -1179,7 +1179,7 @@ export default function MiniAppBookPage() {
                 animate="center"
                 exit="exit"
                 transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="px-4 pt-4 pb-32"
+                className="px-4 pt-4 pb-48"
               >
                 {/* Category pills */}
                 {categories.length > 0 && (

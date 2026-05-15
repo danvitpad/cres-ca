@@ -21,8 +21,7 @@ import {
   LogOut,
   Users,
   MessageCircle,
-  QrCode,
-  Gift,
+  Pencil,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -46,7 +45,7 @@ const I18N: Record<Lang, {
   logout: string; loggingOut: string; logoutConfirm: string;
   editTitle: string; save: string;
   fieldFirstName: string; fieldLastName: string; fieldEmail: string; fieldPhone: string;
-  fieldSlug: string; fieldBio: string;
+  fieldDob: string; fieldSlug: string; fieldBio: string;
   slugHint: string; bioCount: string;
   emailReadonlyHint: string;
   sectionPersonal: string; sectionContact: string; sectionPublic: string;
@@ -62,7 +61,7 @@ const I18N: Record<Lang, {
     editTitle: 'Редагувати профіль', save: 'Зберегти',
     fieldFirstName: 'Ім\'я', fieldLastName: 'Прізвище',
     fieldEmail: 'Email', fieldPhone: 'Телефон',
-    fieldSlug: 'Ім\'я посилання (slug)', fieldBio: 'Про себе',
+    fieldDob: 'Дата народження', fieldSlug: 'Ім\'я посилання (slug)', fieldBio: 'Про себе',
     slugHint: '3–32 символи: латиниця, цифри, крапка, дефіс, підкреслення',
     emailReadonlyHint: 'Email прив\'язаний через Telegram — змінити можна тільки у веб-кабінеті',
     sectionPersonal: 'Особисті дані',
@@ -81,7 +80,7 @@ const I18N: Record<Lang, {
     editTitle: 'Редактировать профиль', save: 'Сохранить',
     fieldFirstName: 'Имя', fieldLastName: 'Фамилия',
     fieldEmail: 'Email', fieldPhone: 'Телефон',
-    fieldSlug: 'Имя ссылки (slug)', fieldBio: 'О себе',
+    fieldDob: 'Дата рождения', fieldSlug: 'Имя ссылки (slug)', fieldBio: 'О себе',
     slugHint: '3–32 символа: латиница, цифры, точка, дефис, подчёркивание',
     emailReadonlyHint: 'Email привязан через Telegram — поменять можно только в веб-кабинете',
     sectionPersonal: 'Личные данные',
@@ -100,7 +99,7 @@ const I18N: Record<Lang, {
     editTitle: 'Edit profile', save: 'Save',
     fieldFirstName: 'First name', fieldLastName: 'Last name',
     fieldEmail: 'Email', fieldPhone: 'Phone',
-    fieldSlug: 'Link name (slug)', fieldBio: 'About',
+    fieldDob: 'Date of birth', fieldSlug: 'Link name (slug)', fieldBio: 'About',
     slugHint: '3–32 chars: latin letters, numbers, dot, dash, underscore',
     emailReadonlyHint: 'Email is linked via Telegram — change it from the web app',
     sectionPersonal: 'Personal',
@@ -155,6 +154,7 @@ export default function MiniAppProfilePage() {
   // (например `tg-12345@cres-ca.com`), такие маркируем readonly.
   const [email, setEmail] = useState<string | null>(null);
   const [phone, setPhone] = useState<string | null>(null);
+  const [dob, setDob] = useState<string | null>(null);
 
   // Edit profile modal state — first/last разделены, чтобы клиент мог
   // править имя и фамилию по отдельности (потом склеиваем в full_name).
@@ -165,6 +165,7 @@ export default function MiniAppProfilePage() {
   const [editPhone, setEditPhone] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editSlug, setEditSlug] = useState('');
+  const [editDob, setEditDob] = useState('');
   const [editBusy, setEditBusy] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -190,6 +191,7 @@ export default function MiniAppProfilePage() {
           setAvatarUrl(data.avatar_url ?? null);
           setEmail(data.email ?? null);
           setPhone(data.phone ?? null);
+          setDob(data.date_of_birth ?? null);
           setFollowingCount(Number(data.following_count ?? 0));
         }
       }
@@ -209,6 +211,7 @@ export default function MiniAppProfilePage() {
     setEditLastName(last);
     setEditEmail(email ?? '');
     setEditPhone(phone ?? '');
+    setEditDob(dob ?? '');
     setEditBio(bio ?? '');
     setEditSlug(slug ?? '');
     setEditError(null);
@@ -238,8 +241,7 @@ export default function MiniAppProfilePage() {
           bio: editBio.trim() || null,
           slug: editSlug.trim() || null,
           phone: phoneClean,
-          // email отправляем только если поменялся И не выглядит как
-          // TG auto-generated адрес — менять auto-email не даём (см. UI).
+          dob: editDob.trim() || null,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -252,6 +254,7 @@ export default function MiniAppProfilePage() {
       setBio(editBio.trim() || null);
       setSlug(editSlug.trim() || null);
       setPhone(phoneClean);
+      setDob(editDob.trim() || null);
       haptic('success');
       setEditOpen(false);
     } catch (e) {
@@ -373,10 +376,10 @@ export default function MiniAppProfilePage() {
             <button
               type="button"
               className="btn-icon"
-              onClick={() => haptic('selection')}
-              aria-label="QR"
+              onClick={openEdit}
+              aria-label="Edit"
             >
-              <QrCode size={16} />
+              <Pencil size={14} />
             </button>
           </div>
           <button
@@ -469,42 +472,6 @@ export default function MiniAppProfilePage() {
           onCropped={onAvatarCropped}
         />
 
-        {/* Личные данные — карточка с тремя rows как .setting-row */}
-        <div className="card-block" style={{ marginTop: 14 }}>
-          <button type="button" className="setting-row" onClick={openEdit}>
-            <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-              <div style={{ fontSize: 11, color: 'var(--fg-3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                {t.labelName}
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {displayName || t.notSet}
-              </div>
-            </div>
-            <ChevronRight size={14} className="setting-arrow" color="var(--fg-3)" />
-          </button>
-          <button type="button" className="setting-row" onClick={openEdit}>
-            <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-              <div style={{ fontSize: 11, color: 'var(--fg-3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                {t.labelPhone}
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {phone || t.notSet}
-              </div>
-            </div>
-            <ChevronRight size={14} color="var(--fg-3)" />
-          </button>
-          <button type="button" className="setting-row" onClick={openEdit}>
-            <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-              <div style={{ fontSize: 11, color: 'var(--fg-3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                {t.labelEmail}
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {email || t.notSet}
-              </div>
-            </div>
-            <ChevronRight size={14} color="var(--fg-3)" />
-          </button>
-        </div>
 
         {/* Меню — pmenu-item стиль эталона: иконка квадратная цветная + label + arrow */}
         <div className="card-block">
@@ -529,7 +496,7 @@ export default function MiniAppProfilePage() {
             className="pmenu-item"
             onClick={() => { haptic('selection'); router.push('/telegram/settings'); }}
           >
-            <div className="pmenu-icon" style={{ background: 'var(--surface2)', color: 'var(--m-text-secondary, #475569)' }}>
+            <div className="pmenu-icon" style={{ background: 'var(--accent-2)', color: 'var(--accent)' }}>
               <Settings size={20} strokeWidth={1.8} />
             </div>
             <span className="pmenu-label">{t.menuSettings}</span>
@@ -540,7 +507,7 @@ export default function MiniAppProfilePage() {
             className="pmenu-item"
             onClick={() => { haptic('selection'); window.open('https://t.me/crescacom_bot?start=support', '_blank'); }}
           >
-            <div className="pmenu-icon" style={{ background: 'rgba(16,185,129,0.10)', color: '#10b981' }}>
+            <div className="pmenu-icon" style={{ background: 'var(--accent-2)', color: 'var(--accent)' }}>
               <MessageCircle size={20} strokeWidth={1.8} />
             </div>
             <span className="pmenu-label">{t.menuSupport}</span>
@@ -561,28 +528,6 @@ export default function MiniAppProfilePage() {
           </button>
         </div>
 
-        {/* Loyalty card */}
-        <div style={{ margin: '12px 16px 0', background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', padding: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#f59e0b,#f97316)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Gift size={18} color="#fff" />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg)' }}>
-                {lang === 'en' ? 'Loyalty program' : lang === 'uk' ? 'Програма лояльності' : 'Программа лояльности'}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--fg-2)' }}>
-                {lang === 'en' ? 'Your bonus points' : lang === 'uk' ? 'Бонусна програма' : 'Бонусная программа'}
-              </div>
-            </div>
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={() => { haptic('selection'); router.push('/telegram/bonuses'); }}
-            >
-              {lang === 'en' ? 'Details' : lang === 'uk' ? 'Деталі' : 'Детали'}
-            </button>
-          </div>
-        </div>
 
         <div style={{ height: 12 }} />
       </motion.div>
@@ -690,10 +635,25 @@ export default function MiniAppProfilePage() {
                       />
                     </FieldBox>
                   </div>
+                  <FieldBox label={t.fieldDob}>
+                    <input
+                      type="date"
+                      value={editDob}
+                      onChange={(e) => setEditDob(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </FieldBox>
+                  <FieldBox label={t.fieldPhone}>
+                    <input
+                      type="tel"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value.slice(0, 20))}
+                      placeholder="+380..."
+                      autoComplete="tel"
+                      style={inputStyle}
+                    />
+                  </FieldBox>
                 </SectionGroup>
-
-                {/* Email + Телефон редактируются в Налаштування (Контактные
-                    данные). В Профілі оставлены только публичные поля. */}
 
                 {/* ── Публичная страница ── */}
                 <SectionGroup label={t.sectionPublic}>

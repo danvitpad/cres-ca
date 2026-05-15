@@ -276,7 +276,6 @@ export default function MiniAppHomePage() {
     return t.eveningHi;
   }, [t]);
 
-  const userInitials = (firstName || fullName || '').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   return (
     <MobilePage className="od-client-mini-app">
       <motion.div
@@ -284,13 +283,12 @@ export default function MiniAppHomePage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        {/* Hello row — «Привіт, Имя» + аватар справа */}
+        {/* Hello row — «Привіт, Имя» без аватара */}
         <div className="page-hello">
           <div>
             <div className="page-hello-greet">{firstName ? `${t.title},` : greeting}</div>
             <div className="page-hello-name">{firstName ? `${firstName} 👋` : t.title}</div>
           </div>
-          <div className="avatar av-md">{userInitials || '👤'}</div>
         </div>
 
         {/* Hero — ближайший запис ИЛИ зелёный fallback «+ Новий запис» (по прототипу) */}
@@ -322,7 +320,7 @@ export default function MiniAppHomePage() {
             style={{
               textDecoration: 'none',
               display: 'block',
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
             }}
           >
             <div className="hero-label">{t.emptyLabel}</div>

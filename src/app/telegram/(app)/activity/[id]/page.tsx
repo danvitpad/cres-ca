@@ -270,11 +270,17 @@ export default function MiniAppAppointmentDetail() {
   function addToCalendar() {
     if (!row) return;
     haptic('light');
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.cres-ca.com';
-    const icsUrl = `${appUrl}/api/appointments/${row.id}/ics`;
+    const fmtGcal = (d: Date) =>
+      d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+    const starts = new Date(row.starts_at);
+    const ends = new Date(row.ends_at);
+    const masterName = row.master?.display_name ?? row.master?.profile?.full_name ?? '';
+    const title = encodeURIComponent(`${row.service?.name ?? ''} (${masterName})`);
+    const loc = encodeURIComponent([row.master?.address, row.master?.city].filter(Boolean).join(', '));
+    const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${fmtGcal(starts)}/${fmtGcal(ends)}&location=${loc}`;
     try {
       (window as { Telegram?: { WebApp?: { openLink?: (url: string) => void } } })
-        .Telegram?.WebApp?.openLink?.(icsUrl);
+        .Telegram?.WebApp?.openLink?.(gcalUrl);
     } catch {}
   }
 

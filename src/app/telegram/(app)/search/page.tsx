@@ -527,9 +527,11 @@ export default function MiniAppSearchPage() {
           ? Math.hypot(b.lat - ulat, b.lng - ulng) : Infinity;
         return da - db;
       });
+    } else if (category !== 'all') {
+      result = [...result].sort((a, b) => b.rating - a.rating);
     }
     return result;
-  }, [masters, minRating, maxPrice, sortBy, userLocation]);
+  }, [masters, minRating, maxPrice, sortBy, userLocation, category]);
 
   const filteredSalons = useMemo(() => {
     return salons.filter((s) => {
@@ -699,6 +701,8 @@ export default function MiniAppSearchPage() {
                 haptic('selection');
                 if (isMore) { setFiltersOpen(true); return; }
                 setCategory(key);
+                const vertKey = key === 'all' ? null : (CATEGORY_TO_VERTICAL[key as keyof typeof CATEGORY_TO_VERTICAL] ?? null);
+                fetchData(undefined, centerRef.current[0], centerRef.current[1], vertKey as string | null);
               }}
             >
               <span className="cat-icon"><Icon /></span>

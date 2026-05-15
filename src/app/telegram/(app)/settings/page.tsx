@@ -10,7 +10,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronRight,
@@ -22,10 +21,9 @@ import {
   KeyRound,
   X,
   Check,
-  Pencil,
   Send,
   Info,
-  Vibrate,
+  Moon,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -35,7 +33,7 @@ import { mapError } from '@/lib/errors';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE, SPRING } from '@/components/miniapp/design';
 import '@/styles/od-client-mini-app.css';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
-import { useHapticPrefs } from '@/components/miniapp/haptic-provider';
+import { useMiniAppTheme } from '@/components/miniapp/theme';
 
 type Lang = 'uk' | 'ru' | 'en';
 
@@ -164,9 +162,9 @@ const SUPPORT_BOT_URL = 'https://t.me/cres_ca_bot?start=support';
 
 export default function MiniAppSettingsPage() {
   const router = useRouter();
-  const { haptic, user: tgUser } = useTelegram();
+  const { haptic } = useTelegram();
   const { userId } = useAuthStore();
-  const { enabled: hapticEnabled, loaded: hapticLoaded, setEnabled: setHapticEnabled } = useHapticPrefs();
+  const { theme: resolvedTheme, override: themeOverride, setOverride } = useMiniAppTheme();
   const lang = useMiniAppLocale();
   const t = I18N[lang];
   const [signingOut, setSigningOut] = useState(false);
@@ -320,10 +318,6 @@ export default function MiniAppSettingsPage() {
     window.location.replace('/telegram');
   }
 
-  const fullName = [tgUser?.first_name, tgUser?.last_name].filter(Boolean).join(' ') || (lang === 'en' ? 'Guest' : 'Гість');
-  const initials = ((tgUser?.first_name?.[0] ?? '') + (tgUser?.last_name?.[0] ?? '')).toUpperCase() || '?';
-
-
   return (
     <>
       <motion.div
@@ -341,84 +335,6 @@ export default function MiniAppSettingsPage() {
         {/* Header — title only (back handled by TG/layout) */}
         <h1 style={{ ...TYPE.h2, color: T.text, margin: '8px 4px 16px' }}>{t.title}</h1>
 
-        {/* Hero card: avatar XL + name + Edit profile pill */}
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.04, duration: 0.32 }}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            padding: '20px 20px 18px',
-            background: T.surface,
-            borderRadius: 18,
-            border: `1px solid ${T.border}`,
-          }}
-        >
-          {tgUser?.photo_url ? (
-            <Image
-              src={tgUser.photo_url}
-              alt={fullName}
-              width={72}
-              height={72}
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: '50%',
-                border: `2px solid ${T.surface}`,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                objectFit: 'cover',
-              }}
-              unoptimized
-            />
-          ) : (
-            <div
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: '50%',
-                background: T.accentSoft,
-                color: T.accent,
-                fontSize: 22,
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: `2px solid ${T.surface}`,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-              }}
-            >
-              {initials}
-            </div>
-          )}
-          <div style={{ ...TYPE.h3, color: T.text, marginTop: 12 }}>{fullName}</div>
-          {email && (
-            <div style={{ ...TYPE.caption, color: T.textTertiary, marginTop: 2 }}>{email}</div>
-          )}
-          <button
-            type="button"
-            onClick={openContactEdit}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              padding: '7px 14px',
-              borderRadius: 9999,
-              border: `1.5px solid ${T.accent}`,
-              background: T.accentSoft,
-              color: T.accent,
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              marginTop: 12,
-              fontFamily: 'inherit',
-            }}
-          >
-            <Pencil size={13} strokeWidth={2.2} />
-            {t.editProfile}
-          </button>
-        </motion.div>
 
         {/* SECTION: Сповіщення */}
         <div className="section-label">{t.sectionNotif}</div>
@@ -446,26 +362,20 @@ export default function MiniAppSettingsPage() {
               </>
             }
           />
-          {/* Тема — disabled per CLAUDE.md rule 10 */}
           <Row
-            icon={<Globe size={16} color="var(--fg-3)" />}
+            icon={<Moon size={16} color="var(--fg-2)" />}
             label={t.darkTheme}
-            sub={lang === 'en' ? 'Determined by Telegram app' : 'Визначається додатком Telegram'}
-            disabled
-            trail={<span className="setting-value">{t.darkAuto}</span>}
-          />
-          <Row
-            icon={<Vibrate size={16} color="var(--fg-2)" />}
-            label={t.haptic}
-            sub={t.hapticHint}
+            sub={themeOverride === null
+              ? t.darkAuto
+              : resolvedTheme === 'dark'
+                ? (lang === 'uk' ? 'Темна' : lang === 'en' ? 'Dark' : 'Тёмная')
+                : (lang === 'uk' ? 'Світла' : lang === 'en' ? 'Light' : 'Светлая')}
             onClick={() => {
-              if (!hapticLoaded) return;
-              const next = !hapticEnabled;
-              setHapticEnabled(next);
-              if (next) haptic('light');
+              const next = resolvedTheme === 'dark' ? 'light' : 'dark';
+              setOverride(next);
+              haptic('selection');
             }}
-            disabled={!hapticLoaded}
-            trail={<Switch on={hapticEnabled} />}
+            trail={<Switch on={resolvedTheme === 'dark'} />}
           />
         </div>
 
