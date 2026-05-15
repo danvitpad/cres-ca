@@ -50,6 +50,16 @@ export async function GET(req: Request) {
   let notified = 0;
 
   for (const draft of drafts) {
+    // Skip if this profile is also a master — they shouldn't get client reminders
+    const { count: masterCount } = await adm
+      .from('masters')
+      .select('id', { count: 'exact', head: true })
+      .eq('profile_id', draft.profile_id);
+    if (masterCount && masterCount > 0) {
+      await adm.from('booking_drafts').update({ notified_at: new Date().toISOString() }).eq('id', draft.id).then(() => null, () => null);
+      continue;
+    }
+
     // Get client's telegram_id
     const { data: profile } = await adm
       .from('profiles')
