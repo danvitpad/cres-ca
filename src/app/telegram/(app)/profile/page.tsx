@@ -574,42 +574,53 @@ export default function MiniAppProfilePage() {
                 overscrollBehavior: 'contain',
               }}
             >
+              {/* Sticky header — drag handle + title + close button always visible */}
               <div
                 style={{
-                  margin: '0 auto 16px',
-                  width: 40,
-                  height: 4,
-                  borderRadius: 999,
-                  background: T.border,
-                }}
-              />
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 16,
+                  position: 'sticky',
+                  top: 0,
+                  background: T.surface,
+                  zIndex: 1,
+                  paddingBottom: 12,
+                  marginBottom: 8,
                 }}
               >
-                <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{t.editTitle}</h3>
-                <button
-                  type="button"
-                  onClick={() => setEditOpen(false)}
+                <div
                   style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '50%',
-                    background: T.bgSubtle,
-                    border: 'none',
+                    margin: '0 auto 14px',
+                    width: 40,
+                    height: 4,
+                    borderRadius: 999,
+                    background: T.border,
+                  }}
+                />
+                <div
+                  style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
+                    justifyContent: 'space-between',
                   }}
-                  aria-label={t.close}
                 >
-                  <X size={18} color={T.textSecondary} />
-                </button>
+                  <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{t.editTitle}</h3>
+                  <button
+                    type="button"
+                    onClick={() => setEditOpen(false)}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      background: T.bgSubtle,
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                    }}
+                    aria-label={t.close}
+                  >
+                    <X size={18} color={T.textSecondary} />
+                  </button>
+                </div>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -720,8 +731,8 @@ export default function MiniAppProfilePage() {
                     padding: '16px 24px',
                     borderRadius: R.pill,
                     border: 'none',
-                    background: T.text,
-                    color: T.bg,
+                    background: T.accent,
+                    color: '#fff',
                     fontSize: 16,
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -849,17 +860,15 @@ function FieldBox({ label, children }: { label: string; children: React.ReactNod
         background: T.surfaceElevated,
         border: `1px solid ${T.borderSubtle}`,
         borderRadius: R.md,
-        padding: 14,
+        padding: '10px 14px 12px',
       }}
     >
       <div
         style={{
-          fontSize: 11,
-          fontWeight: 600,
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
+          fontSize: 12,
+          fontWeight: 500,
           color: T.textTertiary,
-          marginBottom: 6,
+          marginBottom: 4,
         }}
       >
         {label}
@@ -869,18 +878,15 @@ function FieldBox({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
-/** Группа полей с заголовком сверху — визуально разделяет редактор на
- *  «Личное / Контакты / Публичка». */
+/** Группа полей с заголовком сверху — визуально разделяет редактор. */
 function SectionGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div
         style={{
-          ...TYPE.micro,
-          color: T.textTertiary,
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
+          fontSize: 13,
+          fontWeight: 600,
+          color: T.textSecondary,
           paddingLeft: 4,
         }}
       >
@@ -897,7 +903,8 @@ const inputStyle: React.CSSProperties = {
   background: 'transparent',
   border: 'none',
   outline: 'none',
-  ...TYPE.body,
+  fontSize: 15,
+  lineHeight: '1.4',
   color: T.text,
   padding: 0,
   fontFamily: 'inherit',
