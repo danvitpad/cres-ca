@@ -9,6 +9,9 @@
  * --- */
 
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+const NO_STORE = { headers: { 'Cache-Control': 'no-store' } } as const;
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import type { VerticalKey } from '@/lib/search/category-vertical';
 
@@ -59,7 +62,7 @@ export async function POST(request: Request) {
   const subKey = typeof subcategoryKey === 'string' && subcategoryKey.length > 0 ? subcategoryKey : null;
 
   if (!hasCoords && !hasQuery && !catKey && !subKey) {
-    return NextResponse.json({ error: 'invalid_params' }, { status: 400 });
+    return NextResponse.json({ error: 'invalid_params' }, { status: 400, ...NO_STORE });
   }
 
   const admin = createAdminClient(
@@ -109,7 +112,7 @@ export async function POST(request: Request) {
     }
     // Пусто → нечего показывать
     if (allowedMasterIds && allowedMasterIds.length === 0) {
-      return NextResponse.json({ masters: [], salons: [] });
+      return NextResponse.json({ masters: [], salons: [] }, NO_STORE);
     }
   }
 
@@ -185,7 +188,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ masters, salons: salonsRes.data ?? [] });
+    return NextResponse.json({ masters, salons: salonsRes.data ?? [] }, NO_STORE);
   }
 
   // Geo-based search — nearby masters & salons
@@ -233,5 +236,5 @@ export async function POST(request: Request) {
     masters = fallback.data ?? [];
   }
 
-  return NextResponse.json({ masters, salons });
+  return NextResponse.json({ masters, salons }, NO_STORE);
 }

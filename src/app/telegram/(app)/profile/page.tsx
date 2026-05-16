@@ -562,7 +562,7 @@ export default function MiniAppProfilePage() {
                 background: T.surface,
                 borderRadius: `${R.lg}px ${R.lg}px 0 0`,
                 boxShadow: SHADOW.elevated,
-                maxHeight: '90dvh',
+                maxHeight: 'calc(100dvh - max(var(--tg-content-top, 0px), 12px))',
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden',

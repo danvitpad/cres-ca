@@ -90,7 +90,10 @@ export function BottomSheet({
           className,
         )}
         style={{
-          height: `${heightPercent * 100}vh`,
+          // dvh + tg-content-top (выставляется telegram-provider) — иначе на
+          // iOS Telegram верх шторки залезал за Telegram UI и обрезался.
+          height: `${heightPercent * 100}dvh`,
+          maxHeight: 'calc(100dvh - max(var(--tg-content-top, 0px), 12px))',
           transition: dragRef.current.dragging ? 'none' : undefined,
           ...sheetStyle,
         }}

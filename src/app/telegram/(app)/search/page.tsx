@@ -32,6 +32,8 @@ import {
   Activity as ActivityIcon,
   LayoutGrid,
   MoreHorizontal,
+  UserPlus,
+  Check,
 } from 'lucide-react';
 import { getLocation } from '@/lib/telegram/geolocation';
 import { composeAddress } from '@/lib/format/address';
@@ -1384,18 +1386,21 @@ function MiniResultCard({ master, salon, onClick, isAdded, addBusy, onAdd, label
         <div className="avatar av-md" style={{ flexShrink: 0 }}>
           {d.avatarSrc ? <img src={d.avatarSrc} alt="" /> : initials}
         </div>
-        <div className="mc-info">
+        <div className="mc-info" style={{ minWidth: 0 }}>
           <div className="mc-name">{d.primary}</div>
-          <div className="mc-meta">
-            {d.rating != null && (
+          <div className="mc-meta" style={{ flexWrap: 'wrap', gap: 4 }}>
+            {/* Рейтинг показываем только если есть отзывы (rating > 0).
+                Иначе "0.0" сжимало место под специализацию до "П...". */}
+            {d.rating != null && d.rating > 0 && (
               <>
                 <Star size={12} fill="#f59e0b" color="#f59e0b" />
                 <span>{d.rating.toFixed(1)}</span>
+                {d.secondary && <span>·</span>}
               </>
             )}
             {d.secondary && (
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {d.rating != null ? ` · ${d.secondary}` : d.secondary}
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+                {d.secondary}
               </span>
             )}
             {priceFrom != null && priceFrom > 0 && (
@@ -1410,19 +1415,25 @@ function MiniResultCard({ master, salon, onClick, isAdded, addBusy, onAdd, label
             type="button"
             onClick={(e) => { e.stopPropagation(); if (!isAdded && !addBusy) onAdd(); }}
             disabled={isAdded || addBusy}
-            className="btn btn-sm"
+            aria-label={isAdded ? labels.added : labels.add}
             style={{
               flexShrink: 0,
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              border: 'none',
               background: isAdded ? 'var(--m-bg-subtle, #f2f4f7)' : 'var(--m-accent, #2563eb)',
               color: isAdded ? 'var(--m-text-tertiary, #94a3b8)' : '#fff',
               cursor: isAdded ? 'default' : 'pointer',
               opacity: addBusy ? 0.6 : 1,
-              minHeight: 32,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            {addBusy ? <Loader2 size={12} className="animate-spin" />
-              : isAdded ? labels.added
-              : labels.add}
+            {addBusy ? <Loader2 size={14} className="animate-spin" />
+              : isAdded ? <Check size={16} strokeWidth={2.4} />
+              : <UserPlus size={16} strokeWidth={2.2} />}
           </button>
         ) : (
           <ChevronRight size={18} color="var(--m-text-tertiary, #94a3b8)" />
