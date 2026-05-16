@@ -18,12 +18,8 @@ interface ServiceInput {
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as {
     userId?: string;
-    fullName?: string;
-    phone?: string;
-    city?: string;
     vertical?: string;
     specialization?: string;
-    specializations?: string[];
     workMode?: 'cabinet' | 'mobile' | 'both';
     address?: string;
     latitude?: number;
@@ -47,21 +43,15 @@ export async function POST(req: Request) {
 
   const userId = user.id;
 
-  // Update profiles (vertical + optional name/phone)
-  const profileUpdate: Record<string, unknown> = {};
-  if (body.vertical) profileUpdate.vertical = body.vertical;
-  if (body.fullName) profileUpdate.full_name = body.fullName.trim();
-  if (body.phone) profileUpdate.phone = body.phone.trim();
-  if (Object.keys(profileUpdate).length > 0) {
-    await admin.from('profiles').update(profileUpdate).eq('id', userId);
+  // Update profiles.vertical so web guard get_next_onboarding_step() stays satisfied
+  if (body.vertical) {
+    await admin.from('profiles').update({ vertical: body.vertical }).eq('id', userId);
   }
 
   // Update masters row
   const masterUpdate: Record<string, unknown> = {};
   if (body.vertical) masterUpdate.vertical = body.vertical;
-  if (body.city) masterUpdate.city = body.city.trim();
   if (body.specialization) masterUpdate.specialization = body.specialization;
-  if (body.specializations && body.specializations.length > 0) masterUpdate.specializations = body.specializations;
   if (body.workMode && ['cabinet', 'mobile', 'both'].includes(body.workMode)) {
     masterUpdate.work_mode = body.workMode;
   }

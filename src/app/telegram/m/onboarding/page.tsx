@@ -1,287 +1,209 @@
 /** --- YAML
  * name: MasterMiniAppOnboarding
- * description: 4-step onboarding for masters in Mini App — Профіль → Спеціальність → Послуги → Готово.
- *   Matches master-onboarding mock design. Saves via /api/telegram/master-setup.
+ * description: Post-registration onboarding for masters inside Mini App.
+ *   Master flow (4 steps):
+ *     1 — vertical (industry selection, lucide icons, auto-advance)
+ *     2 — specialization (filtered list, single-select)
+ *     3 — workplace (cabinet / mobile / both)
+ *     4 — first services (pre-suggested, toggle + price edit)
+ *   Salon-admin flow (1 step):
+ *     1 — vertical → /telegram/m/salon/{id}/dashboard
+ *   Saves via /api/telegram/master-setup. Reads cres:locale.
  *   Fullscreen — bottom nav hidden via /telegram/m/layout.tsx isFullscreen.
  * created: 2026-04-29
- * updated: 2026-05-16
+ * updated: 2026-04-29
  * --- */
 
 'use client';
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
+
+const AddressMap = dynamic(() => import('./map'), { ssr: false });
+import '@/styles/od-master-onboarding.css';
 import {
-  ArrowRight, Check, Loader2,
-  User, Scissors, ListChecks,
-  Dumbbell, Stethoscope, BookOpen, PawPrint, Wrench, Plus,
-  Star, Pen, LayoutDashboard,
+  ArrowLeft, Check, ChevronRight, Loader2, Search, X as XIcon,
+  // Vertical icons
+  Scissors, Stethoscope, Dumbbell, Palette, PawPrint,
+  Car, PartyPopper, GraduationCap, Hammer, MoreHorizontal,
+  // Workplace icons
+  Home, MapPin, Globe,
 } from 'lucide-react';
-import { T as THEME, R, FONT_BASE, SPRING } from '@/components/miniapp/design';
+import { T as THEME, R, FONT_BASE, SHADOW, SPRING } from '@/components/miniapp/design';
 import { getDefaultServices, type DefaultService } from '@/lib/verticals/default-services';
+import { getSpecializations } from '@/lib/verticals/specializations';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 // ─── i18n ────────────────────────────────────────────────────────────────────
 type Lang = 'uk' | 'ru' | 'en';
+type WorkMode = 'cabinet' | 'mobile' | 'online';
 
-const TX = {
+const T = {
   uk: {
-    step1Title: 'Розкажи про себе',
-    step1Sub: 'Це допоможе налаштувати кабінет під тебе',
-    step2Title: 'Яка твоя спеціальність?',
-    step2Sub: 'Оберіть — CRES налаштує шаблони',
-    step3Title: 'Оберіть послуги',
-    step3Sub: 'Можна додати або змінити пізніше',
-    step4Title: 'Все готово!',
-    step4Sub: 'Твій кабінет налаштовано. Перший клієнт може записатись вже сьогодні.',
-    labelName: "Твоє ім'я",
-    labelCity: 'Місто',
-    labelPhone: 'Телефон',
-    labelSummary: 'Ваш кабінет',
-    labelServices: 'послуги додано',
+    step1Title: 'Чим ви займаєтесь?',
+    step1Sub: 'Оберіть свою нішу — ми підготуємо послуги',
+    step2Title: 'Ваша спеціалізація',
+    step2Sub: 'Допомагає клієнтам зрозуміти, з ким вони працюють',
+    step3Title: 'Де ви працюєте?',
+    step3Sub: 'Клієнти приходять до вас чи ви виїжджаєте?',
+    step3Cabinet: 'У своєму кабінеті', step3CabinetSub: 'Клієнти приходять за моєю адресою',
+    step3Mobile:  'На виїзді', step3MobileSub:  'Я їжджу до клієнтів',
+    step3Online:  'Онлайн', step3OnlineSub:  'Працюю дистанційно / онлайн',
+    addressTitle: 'Де знаходиться ваш кабінет?',
+    addressPlaceholder: 'Введіть адресу…',
+    addressHint: 'Перетягніть маркер, щоб уточнити',
+    addressSkip: 'Пропустити — вкажу пізніше',
+    step4Title: 'Перші послуги',
+    step4Sub: 'Відредагуйте ціни або приберіть зайве',
     next: 'Далі',
-    back: 'Назад',
-    open: 'Відкрити кабінет',
+    skip: 'Пропустити',
+    start: 'Почати роботу',
+    skipServices: 'Пропустити — додам пізніше',
     saving: 'Зберігаємо…',
-    niches: {
-      hairdresser: 'Перукар', beauty: 'Краса', fitness: 'Фітнес',
-      health: 'Лікар', education: 'Репетитор', pets: 'Ветеринар',
-      craft: 'Ремонт', tattoo: 'Татуювання', other: 'Інше',
-    },
+    done: 'Ласкаво просимо!',
+    minLabel: 'хв',
+    priceLabel: '₴',
   },
   ru: {
-    step1Title: 'Расскажи о себе',
-    step1Sub: 'Это поможет настроить кабинет под тебя',
-    step2Title: 'Какая твоя специальность?',
-    step2Sub: 'Выберите — CRES настроит шаблоны',
-    step3Title: 'Выберите услуги',
-    step3Sub: 'Можно добавить или изменить позже',
-    step4Title: 'Всё готово!',
-    step4Sub: 'Твой кабинет настроен. Первый клиент может записаться уже сегодня.',
-    labelName: 'Твоё имя',
-    labelCity: 'Город',
-    labelPhone: 'Телефон',
-    labelSummary: 'Ваш кабинет',
-    labelServices: 'услуги добавлены',
+    step1Title: 'Чем вы занимаетесь?',
+    step1Sub: 'Выберите свою нишу — мы подготовим услуги',
+    step2Title: 'Ваша специализация',
+    step2Sub: 'Помогает клиентам понять, с кем они работают',
+    step3Title: 'Где вы работаете?',
+    step3Sub: 'Клиенты приходят к вам или вы выезжаете?',
+    step3Cabinet: 'В своём кабинете', step3CabinetSub: 'Клиенты приходят по моему адресу',
+    step3Mobile:  'На выезде', step3MobileSub:  'Я езжу к клиентам',
+    step3Online:  'Онлайн', step3OnlineSub:  'Работаю дистанционно / онлайн',
+    addressTitle: 'Где находится ваш кабинет?',
+    addressPlaceholder: 'Введите адрес…',
+    addressHint: 'Перетащите маркер, чтобы уточнить',
+    addressSkip: 'Пропустить — укажу позже',
+    step4Title: 'Первые услуги',
+    step4Sub: 'Отредактируйте цены или уберите лишнее',
     next: 'Далее',
-    back: 'Назад',
-    open: 'Открыть кабинет',
+    skip: 'Пропустить',
+    start: 'Начать работу',
+    skipServices: 'Пропустить — добавлю позже',
     saving: 'Сохраняем…',
-    niches: {
-      hairdresser: 'Парикмахер', beauty: 'Красота', fitness: 'Фитнес',
-      health: 'Врач', education: 'Репетитор', pets: 'Ветеринар',
-      craft: 'Ремонт', tattoo: 'Татуировки', other: 'Другое',
-    },
+    done: 'Добро пожаловать!',
+    minLabel: 'мин',
+    priceLabel: '₴',
   },
   en: {
-    step1Title: 'Tell us about you',
-    step1Sub: 'This helps us set up your cabinet',
-    step2Title: "What's your specialty?",
-    step2Sub: 'Choose — CRES will set up templates',
-    step3Title: 'Choose services',
-    step3Sub: 'You can add or edit them later',
-    step4Title: "All set!",
-    step4Sub: 'Your cabinet is ready. Your first client can book today.',
-    labelName: 'Your name',
-    labelCity: 'City',
-    labelPhone: 'Phone',
-    labelSummary: 'Your cabinet',
-    labelServices: 'services added',
+    step1Title: 'What do you do?',
+    step1Sub: "Choose your niche — we'll prepare services",
+    step2Title: 'Your specialization',
+    step2Sub: "Helps clients understand who they're working with",
+    step3Title: 'Where do you work?',
+    step3Sub: 'Do clients come to you or do you travel?',
+    step3Cabinet: 'At my place', step3CabinetSub: 'Clients come to my address',
+    step3Mobile:  'On the go', step3MobileSub:  'I travel to clients',
+    step3Online:  'Online', step3OnlineSub:  'I work remotely / online',
+    addressTitle: 'Where is your studio?',
+    addressPlaceholder: 'Search address…',
+    addressHint: 'Drag the pin to fine-tune the location',
+    addressSkip: "Skip — I'll add later",
+    step4Title: 'First services',
+    step4Sub: "Edit prices or remove what you don't need",
     next: 'Next',
-    back: 'Back',
-    open: 'Open cabinet',
+    skip: 'Skip',
+    start: 'Start working',
+    skipServices: "Skip — I'll add later",
     saving: 'Saving…',
-    niches: {
-      hairdresser: 'Hairdresser', beauty: 'Beauty', fitness: 'Fitness',
-      health: 'Doctor', education: 'Tutor', pets: 'Veterinarian',
-      craft: 'Repair', tattoo: 'Tattoo', other: 'Other',
-    },
+    done: 'Welcome!',
+    minLabel: 'min',
+    priceLabel: '₴',
   },
 } as const;
 
-// ─── Niche grid (matches mock: 3 columns, 9 buttons) ─────────────────────────
-type NicheKey = keyof typeof TX.uk.niches;
+// ─── Vertical definitions (lucide icons in CRES-CA accent style) ─────────────
 type IconCmp = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 
-const NICHES: Array<{ key: NicheKey; vertical: string; Icon: IconCmp }> = [
-  { key: 'hairdresser', vertical: 'beauty',    Icon: Scissors },
-  { key: 'beauty',      vertical: 'beauty',    Icon: Star },
-  { key: 'fitness',     vertical: 'fitness',   Icon: Dumbbell },
-  { key: 'health',      vertical: 'health',    Icon: Stethoscope },
-  { key: 'education',   vertical: 'education', Icon: BookOpen },
-  { key: 'pets',        vertical: 'pets',      Icon: PawPrint },
-  { key: 'craft',       vertical: 'craft',     Icon: Wrench },
-  { key: 'tattoo',      vertical: 'tattoo',    Icon: Pen },
-  { key: 'other',       vertical: 'other',     Icon: Plus },
+const VERTICALS: Array<{
+  key: string;
+  Icon: IconCmp;
+  label: { ru: string; uk: string; en: string };
+  desc:  { ru: string; uk: string; en: string };
+}> = [
+  { key: 'beauty',    Icon: Scissors,        label: { ru: 'Красота',     uk: 'Краса',       en: 'Beauty' },     desc: { ru: 'Стрижки, маникюр, макияж',   uk: 'Стрижки, манікюр, макіяж',  en: 'Hair, nails, make-up' } },
+  { key: 'health',    Icon: Stethoscope,     label: { ru: 'Здоровье',    uk: "Здоров'я",    en: 'Health' },     desc: { ru: 'Медицина, массаж',           uk: 'Медицина, масаж',           en: 'Medical, massage' } },
+  { key: 'fitness',   Icon: Dumbbell,        label: { ru: 'Фитнес',      uk: 'Фітнес',      en: 'Fitness' },    desc: { ru: 'Тренер, йога, пилатес',      uk: 'Тренер, йога, пілатес',     en: 'Trainer, yoga, pilates' } },
+  { key: 'tattoo',    Icon: Palette,         label: { ru: 'Тату',        uk: 'Тату',        en: 'Tattoo' },     desc: { ru: 'Тату, пирсинг, перманент',   uk: 'Тату, пірсинг, перманент',  en: 'Tattoo, piercing, PMU' } },
+  { key: 'pets',      Icon: PawPrint,        label: { ru: 'Животные',    uk: 'Тварини',     en: 'Pets' },       desc: { ru: 'Груминг, ветеринар',         uk: 'Грумінг, ветеринар',        en: 'Grooming, vet' } },
+  { key: 'auto',      Icon: Car,             label: { ru: 'Авто',        uk: 'Авто',        en: 'Auto' },       desc: { ru: 'Мойка, детейлинг, ремонт',   uk: 'Мийка, детейлінг, ремонт',  en: 'Wash, detailing' } },
+  { key: 'events',    Icon: PartyPopper,     label: { ru: 'Мероприятия', uk: 'Заходи',      en: 'Events' },     desc: { ru: 'Фото, ведущий, диджей',      uk: 'Фото, ведучий, діджей',     en: 'Photo, MC, DJ' } },
+  { key: 'education', Icon: GraduationCap,   label: { ru: 'Обучение',    uk: 'Навчання',    en: 'Education' },  desc: { ru: 'Репетитор, коуч, ментор',    uk: 'Репетитор, коуч, ментор',   en: 'Tutor, coach, mentor' } },
+  { key: 'craft',     Icon: Hammer,          label: { ru: 'Ремесло',     uk: 'Ремесло',     en: 'Craft' },      desc: { ru: 'Портной, сапожник, столяр',  uk: 'Кравець, шевець, тесля',    en: 'Tailor, cobbler, joiner' } },
+  { key: 'other',     Icon: MoreHorizontal,  label: { ru: 'Другое',      uk: 'Інше',        en: 'Other' },      desc: { ru: 'Своя ниша',                  uk: 'Своя ніша',                 en: 'Custom niche' } },
 ];
 
-// ─── Service item ─────────────────────────────────────────────────────────────
-interface ServiceItem extends DefaultService { enabled: boolean }
+// ─── Workplace options ───────────────────────────────────────────────────────
+const WORKPLACES: Array<{ key: WorkMode; Icon: IconCmp }> = [
+  { key: 'cabinet', Icon: Home },
+  { key: 'mobile',  Icon: MapPin },
+  { key: 'online',  Icon: Globe },
+];
 
-// ─── Progress dots (matching mock: thin segments) ─────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function ProgressBar({ step, total }: { step: number; total: number }) {
-  const successColor = '#22c55e';
+// ─── Service item with local state ───────────────────────────────────────────
+interface ServiceItem extends DefaultService {
+  id: number;
+  enabled: boolean;
+}
+
+// ─── Step indicator ──────────────────────────────────────────────────────────
+function StepDots({ current, total }: { current: number; total: number }) {
+  const steps = Array.from({ length: total }, (_, i) => i + 1);
   return (
-    <div style={{ padding: '16px 20px 8px', flexShrink: 0 }}>
-      <div style={{ display: 'flex', gap: 6 }}>
-        {Array.from({ length: total }, (_, i) => {
-          const n = i + 1;
-          const bg = n < step ? successColor : n === step ? THEME.accent : '#e5e7eb';
-          return (
-            <motion.div
-              key={n}
-              animate={{ backgroundColor: bg }}
-              transition={{ duration: 0.3 }}
-              style={{ flex: 1, height: 4, borderRadius: 99 }}
-            />
-          );
-        })}
-      </div>
-      <div style={{ fontSize: 11, color: THEME.textTertiary, marginTop: 6, fontWeight: 500 }}>
-        Крок {step} з {total}
-      </div>
+    <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'center' }}>
+      {steps.map((n) => (
+        <motion.div
+          key={n}
+          animate={{ width: n === current ? 24 : 8, opacity: n === current ? 1 : 0.3 }}
+          transition={{ duration: 0.25 }}
+          style={{ height: 6, borderRadius: 3, background: THEME.accent }}
+        />
+      ))}
     </div>
   );
 }
 
-// ─── Step icon wrap ───────────────────────────────────────────────────────────
-function StepIcon({ Icon, bg, color }: { Icon: IconCmp; bg: string; color: string }) {
-  return (
-    <div style={{
-      width: 56, height: 56, borderRadius: R.xl,
-      background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexShrink: 0,
-    }}>
-      <Icon size={24} color={color} strokeWidth={2} />
-    </div>
-  );
-}
-
-// ─── Form input ───────────────────────────────────────────────────────────────
-function FormInput({
-  label, value, onChange, placeholder, type = 'text',
-}: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
-  const [focused, setFocused] = useState(false);
-  const filled = value.length > 0;
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <span style={{ fontSize: 12, fontWeight: 600, color: THEME.textSecondary }}>{label}</span>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        style={{
-          padding: '12px 14px',
-          borderRadius: R.md,
-          border: `1.5px solid ${focused ? THEME.accent : filled ? THEME.accentHover ?? '#93c5fd' : THEME.border}`,
-          background: THEME.surface,
-          color: THEME.text,
-          fontSize: 14,
-          fontFamily: 'inherit',
-          outline: 'none',
-          transition: 'border-color 0.15s',
-        }}
-      />
-    </div>
-  );
-}
-
-// ─── Bottom CTA ───────────────────────────────────────────────────────────────
-function BottomCta({
-  onNext, onBack, nextLabel, disabled, loading,
-}: { onNext: () => void; onBack?: () => void; nextLabel: string; disabled?: boolean; loading?: boolean }) {
-  return (
-    <div style={{
-      padding: '12px 20px',
-      paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))',
-      borderTop: `1px solid ${THEME.borderSubtle}`,
-      background: THEME.bg,
-      flexShrink: 0,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 8,
-    }}>
-      <button
-        type="button"
-        onClick={onNext}
-        disabled={disabled || loading}
-        style={{
-          width: '100%', padding: '15px 0',
-          borderRadius: R.xl,
-          background: THEME.accent,
-          color: '#fff', fontSize: 15, fontWeight: 700,
-          border: 'none', cursor: disabled || loading ? 'not-allowed' : 'pointer',
-          opacity: disabled || loading ? 0.5 : 1,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          fontFamily: 'inherit',
-        }}
-      >
-        {loading ? <Loader2 size={18} className="animate-spin" /> : (
-          <>
-            {nextLabel}
-            <ArrowRight size={16} strokeWidth={2.5} />
-          </>
-        )}
-      </button>
-      {onBack && (
-        <button
-          type="button"
-          onClick={onBack}
-          style={{
-            width: '100%', padding: '8px 0',
-            background: 'transparent', border: 'none',
-            color: THEME.textTertiary, fontSize: 13,
-            cursor: 'pointer', fontFamily: 'inherit',
-          }}
-        >
-          Назад
-        </button>
-      )}
-    </div>
-  );
-}
+// Hide native number-input arrows (Chromium + Firefox + Safari)
+const HIDE_SPIN_CSS = `
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+`;
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 type Step = 1 | 2 | 3 | 4;
-const TOTAL = 4;
 
 export default function MasterOnboardingPage() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
   const role   = useAuthStore((s) => s.role);
-  const { haptic } = useTelegram();
 
   const [lang, setLang] = useState<Lang>('uk');
   const [step, setStep] = useState<Step>(1);
-  const [dir, setDir] = useState(1);
+  const [direction, setDirection] = useState(1);
 
-  // Step 1: profile
-  const [name, setName]   = useState('');
-  const [city, setCity]   = useState('');
-  const [phone, setPhone] = useState('');
-
-  // Step 2: niche
-  const [nicheKey, setNicheKey]     = useState<NicheKey | null>(null);
-  const [vertical, setVertical]     = useState<string | null>(null);
-  const [nicheLabel, setNicheLabel] = useState('');
-
-  // Step 3: services
+  const [vertical, setVertical] = useState<string | null>(null);
+  const [specializations, setSpecializations] = useState<string[]>([]);
+  const [workMode, setWorkMode] = useState<WorkMode | null>(null);
+  const [address, setAddress] = useState('');
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [services, setServices] = useState<ServiceItem[]>([]);
 
-  // Step 4 / saving
   const [saving, setSaving] = useState(false);
-  const [slug, setSlug]     = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const [pendingSalonRoute, setPendingSalonRoute] = useState<string | null>(null);
+  const { haptic } = useTelegram();
 
-  const t = TX[lang];
+  const totalSteps = role === 'salon_admin' ? 1 : 4;
 
-  // Load language + existing profile data
+  // Load saved language
   useEffect(() => {
     try {
       const stored = localStorage.getItem('cres:locale') as Lang | null;
@@ -289,75 +211,118 @@ export default function MasterOnboardingPage() {
     } catch {}
   }, []);
 
+  // After done=true → navigate. salon_admin uses pendingSalonRoute; master → home.
   useEffect(() => {
-    if (!userId) return;
-    // Load profile (name, phone) and master (city, slug) for pre-fill
-    const admin = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { persistSession: false } },
-    );
-    Promise.all([
-      admin.from('profiles').select('full_name, phone, slug').eq('id', userId).maybeSingle(),
-      admin.from('masters').select('city, slug').eq('profile_id', userId).maybeSingle(),
-    ]).then(([profileRes, masterRes]) => {
-      const p = profileRes.data;
-      const m = masterRes.data;
-      if (p?.full_name) setName(p.full_name);
-      if (p?.phone) setPhone(p.phone.replace(/^\+?380/, ''));
-      if (m?.city) setCity(m.city);
-      const s = m?.slug ?? p?.slug;
-      if (s) setSlug(s);
-    }).catch(() => {});
-  }, [userId]);
+    if (!done) return;
+    const target = pendingSalonRoute ?? '/telegram/m/home';
+    const id = setTimeout(() => router.replace(target), 500);
+    return () => clearTimeout(id);
+  }, [done, pendingSalonRoute, router]);
 
-  // salon_admin → skip to save immediately after niche
-  const isSalonAdmin = role === 'salon_admin';
+  const t = T[lang];
 
-  const goNext = useCallback(() => { haptic('light'); setDir(1); setStep((s) => Math.min(TOTAL, s + 1) as Step); }, [haptic]);
-  const goBack = useCallback(() => { haptic('light'); setDir(-1); setStep((s) => Math.max(1, s - 1) as Step); }, [haptic]);
+  // ── salon_admin: vertical tap → save → salon dashboard ────────────────────
+  const finishSalonAdmin = useCallback(
+    async (selectedVertical: string) => {
+      if (!userId) return;
+      setSaving(true);
+      try {
+        const res = await fetch('/api/telegram/master-setup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, vertical: selectedVertical }),
+        });
+        const data = (await res.json().catch(() => ({}))) as { salonId?: string };
+        const target = data.salonId
+          ? `/telegram/m/salon/${data.salonId}/dashboard`
+          : '/telegram/m/home';
+        setPendingSalonRoute(target);
+      } catch {
+        setPendingSalonRoute('/telegram/m/home');
+      }
+      setDone(true);
+    },
+    [userId],
+  );
 
-  // Niche selection → auto-advance
-  const selectNiche = useCallback((niche: (typeof NICHES)[0]) => {
-    haptic('selection');
-    setNicheKey(niche.key);
-    setVertical(niche.vertical);
-    setNicheLabel(t.niches[niche.key]);
-    const defaults = getDefaultServices(niche.vertical);
-    setServices(defaults.map((s) => ({ ...s, enabled: true })));
-    setTimeout(() => { setDir(1); setStep(3); }, 250);
-  }, [haptic, t.niches]);
+  // ── Step 1: vertical select ───────────────────────────────────────────────
+  const handleVerticalSelect = useCallback(
+    (key: string) => {
+      haptic('selection');
+      if (role === 'salon_admin') {
+        setVertical(key);
+        finishSalonAdmin(key);
+        return;
+      }
+      setVertical(key);
+      const defaults = getDefaultServices(key);
+      setServices(defaults.map((s, i) => ({ ...s, id: i, enabled: true })));
+      setSpecializations([]);
+      setDirection(1);
+      setStep(2);
+    },
+    [role, finishSalonAdmin],
+  );
 
-  // Save everything and show step 4
-  const handleFinish = useCallback(async () => {
+  // ── Forward / back nav ────────────────────────────────────────────────────
+  const goNext = useCallback(() => {
+    haptic('light');
+    setDirection(1);
+    setStep((s) => (s < 4 ? ((s + 1) as Step) : s));
+  }, [haptic]);
+
+  const goBack = useCallback(() => {
+    haptic('light');
+    setDirection(-1);
+    setStep((s) => (s > 1 ? ((s - 1) as Step) : s));
+  }, [haptic]);
+
+  // ── Final save (master) ───────────────────────────────────────────────────
+  async function finish(skipServices = false) {
     if (!userId) return;
     haptic('success');
     setSaving(true);
+    const isOnlineEducation = vertical === 'education' && workMode === 'online';
+    const selected = skipServices
+      ? []
+      : services
+          .filter((s) => s.enabled)
+          .filter((s) => !(isOnlineEducation && s.name === 'Онлайн-урок'))
+          .map((s) => ({
+            name: s.name,
+            duration_minutes: s.duration_minutes,
+            price: s.price,
+          }));
+
     try {
+      // specialization (single) для совместимости — берём первую выбранную;
+      // полный список идёт в specializations[].
+      const primarySpec = specializations[0] ?? undefined;
       await fetch('/api/telegram/master-setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
-          fullName: name.trim() || undefined,
-          phone: phone.trim() ? `+380${phone.replace(/\D/g, '')}` : undefined,
-          city: city.trim() || undefined,
           vertical: vertical ?? undefined,
-          services: services
-            .filter((s) => s.enabled)
-            .map((s) => ({ name: s.name, duration_minutes: s.duration_minutes, price: s.price })),
+          specialization: primarySpec,
+          specializations: specializations.length > 0 ? specializations : undefined,
+          workMode: workMode ?? undefined,
+          address: address.trim() || undefined,
+          latitude: coords?.lat ?? undefined,
+          longitude: coords?.lng ?? undefined,
+          services: selected,
         }),
       });
     } catch { /* non-blocking */ }
-    setSaving(false);
-    setDir(1);
-    setStep(4);
-  }, [userId, haptic, name, phone, city, vertical, services]);
 
+    setDone(true);
+  }
+
+  // ── Animation ─────────────────────────────────────────────────────────────
   const variants = {
-    enter: (d: number) => ({ x: d * 60, opacity: 0 }),
+    enter: (d: number) => ({ x: d * 64, opacity: 0 }),
     center: { x: 0, opacity: 1 },
-    exit:  (d: number) => ({ x: d * -60, opacity: 0 }),
+    exit: (d: number) => ({ x: d * -64, opacity: 0 }),
   };
 
   const pageStyle: React.CSSProperties = {
@@ -370,264 +335,161 @@ export default function MasterOnboardingPage() {
     overflow: 'hidden',
   };
 
-  // ── Step 4: Success ───────────────────────────────────────────────────────
-  if (step === 4) {
-    const count = services.filter((s) => s.enabled).length;
-    const publicUrl = slug ? `cres-ca.app/${slug}` : null;
-    const successGreen = '#22c55e';
-    const successDim   = 'rgba(34,197,94,0.1)';
+  // ── Done / saving overlay ─────────────────────────────────────────────────
+  if (done || saving) {
     return (
-      <div style={pageStyle}>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-          {/* Success icon */}
-          <div style={{
-            flex: 1, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            padding: '32px 20px', gap: 16, textAlign: 'center',
-          }}>
+      <div style={{ ...pageStyle, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+        <style>{HIDE_SPIN_CSS}</style>
+        {done ? (
+          <>
             <motion.div
-              initial={{ scale: 0, opacity: 0 }}
+              initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={SPRING.snappy}
               style={{
-                width: 80, height: 80, borderRadius: 40,
-                background: successDim,
+                width: 64, height: 64, borderRadius: 32,
+                background: THEME.accentSoft,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
-              <Check size={36} color={successGreen} strokeWidth={2.5} />
+              <Check size={28} color={THEME.accent} strokeWidth={2.5} />
             </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, ...SPRING.soft }}
-              style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
-            >
-              <div style={{ fontSize: 24, fontWeight: 700 }}>{t.step4Title}</div>
-              <div style={{ fontSize: 14, color: THEME.textSecondary, lineHeight: 1.6 }}>{t.step4Sub}</div>
-            </motion.div>
-
-            {/* Summary card */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35, ...SPRING.soft }}
-              style={{
-                width: '100%', maxWidth: 340,
-                background: THEME.surface,
-                borderRadius: R.xl,
-                padding: 16,
-                border: `1px solid ${THEME.border}`,
-                textAlign: 'left',
-              }}
-            >
-              <div style={{ fontSize: 12, fontWeight: 700, color: THEME.textTertiary, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
-                {t.labelSummary}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {name && (
-                  <SummaryRow Icon={User} text={name} color={THEME.accent} />
-                )}
-                {nicheLabel && (
-                  <SummaryRow Icon={Scissors} text={`${nicheLabel}${city ? ` · ${city}` : ''}`} color={THEME.accent} />
-                )}
-                {count > 0 && (
-                  <SummaryRow Icon={ListChecks} text={`${count} ${t.labelServices}`} color={THEME.accent} />
-                )}
-                {publicUrl && (
-                  <SummaryRow Icon={Check} text={publicUrl} color={successGreen} textColor={successGreen} />
-                )}
-              </div>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* Open cabinet button */}
-        <div style={{
-          padding: '12px 20px',
-          paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))',
-          borderTop: `1px solid ${THEME.borderSubtle}`,
-          background: THEME.bg,
-          flexShrink: 0,
-        }}>
-          <button
-            type="button"
-            onClick={() => router.replace('/telegram/m/home')}
-            style={{
-              width: '100%', padding: '15px 0',
-              borderRadius: R.xl,
-              background: THEME.accent,
-              color: '#fff', fontSize: 15, fontWeight: 700,
-              border: 'none', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              fontFamily: 'inherit',
-            }}
-          >
-            <LayoutDashboard size={18} strokeWidth={2} />
-            {t.open}
-          </button>
-        </div>
+            <p style={{ fontSize: 18, fontWeight: 700, color: THEME.text }}>{t.done}</p>
+          </>
+        ) : (
+          <>
+            <Loader2 size={28} color={THEME.accent} className="animate-spin" />
+            <p style={{ fontSize: 15, color: THEME.textSecondary }}>{t.saving}</p>
+          </>
+        )}
       </div>
     );
   }
 
   return (
-    <div style={pageStyle}>
-      {/* Progress bar (shown on steps 1–3) */}
-      <ProgressBar step={step} total={TOTAL} />
+    <div className="od-master-onboarding" style={pageStyle}>
+      <style>{HIDE_SPIN_CSS}</style>
+
+      {/* Top bar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 20px',
+          paddingTop: 'max(12px, env(safe-area-inset-top))',
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ width: 36 }}>
+          {step > 1 && (
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              type="button"
+              onClick={goBack}
+              style={{
+                width: 36, height: 36, borderRadius: 18,
+                border: `1px solid ${THEME.border}`,
+                background: THEME.surface,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', color: THEME.text,
+              }}
+            >
+              <ArrowLeft size={16} />
+            </motion.button>
+          )}
+        </div>
+
+        <StepDots current={step} total={totalSteps} />
+
+        <div style={{ width: 36, textAlign: 'right' }}>
+          <span style={{ fontSize: 12, color: THEME.textTertiary, fontWeight: 500 }}>
+            {step}/{totalSteps}
+          </span>
+        </div>
+      </div>
 
       {/* Animated step content */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <AnimatePresence mode="wait" custom={dir}>
-          {/* ── Step 1: Profile ───────────────────────────────────────── */}
+        <AnimatePresence mode="wait" custom={direction}>
           {step === 1 && (
             <motion.div
-              key="s1"
-              custom={dir}
+              key="step1"
+              custom={direction}
               variants={variants}
               initial="enter" animate="center" exit="exit"
               transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
               style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
             >
-              <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 8px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <StepIcon Icon={User} bg={THEME.accentSoft} color={THEME.accent} />
-                <div>
-                  <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.2 }}>{t.step1Title}</div>
-                  <div style={{ fontSize: 13, color: THEME.textSecondary, marginTop: 4, lineHeight: 1.6 }}>{t.step1Sub}</div>
-                </div>
-                <FormInput label={t.labelName} value={name} onChange={setName} />
-                <FormInput label={t.labelCity} value={city} onChange={setCity} />
-                <FormInput label={t.labelPhone} value={phone} onChange={setPhone} type="tel" placeholder="+38 (067) 000-00-00" />
-              </div>
-              <BottomCta
-                onNext={goNext}
-                nextLabel={t.next}
-                disabled={!name.trim()}
-              />
+              <Step1Vertical lang={lang} t={t} onSelect={handleVerticalSelect} />
             </motion.div>
           )}
 
-          {/* ── Step 2: Niche ─────────────────────────────────────────── */}
           {step === 2 && (
             <motion.div
-              key="s2"
-              custom={dir}
+              key="step2"
+              custom={direction}
               variants={variants}
               initial="enter" animate="center" exit="exit"
               transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
               style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
             >
-              <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 8px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <StepIcon Icon={Scissors} bg="rgba(245,158,11,0.1)" color="#f59e0b" />
-                <div>
-                  <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.2 }}>{t.step2Title}</div>
-                  <div style={{ fontSize: 13, color: THEME.textSecondary, marginTop: 4, lineHeight: 1.6 }}>{t.step2Sub}</div>
-                </div>
-                {/* 3-column niche grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                  {NICHES.map(({ key, Icon }) => {
-                    const sel = nicheKey === key;
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => selectNiche({ key, vertical: NICHES.find(n => n.key === key)!.vertical, Icon })}
-                        style={{
-                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                          padding: '12px 8px', borderRadius: R.lg,
-                          border: `1.5px solid ${sel ? THEME.accent : THEME.border}`,
-                          background: sel ? THEME.accentSoft : THEME.surface,
-                          cursor: 'pointer', fontSize: 11, fontWeight: 500,
-                          color: sel ? THEME.accent : THEME.textSecondary,
-                          fontFamily: 'inherit', textAlign: 'center',
-                          transition: 'all 0.15s',
-                          WebkitTapHighlightColor: 'transparent',
-                        }}
-                      >
-                        <Icon size={20} color={sel ? THEME.accent : THEME.textSecondary} strokeWidth={2} />
-                        {t.niches[key]}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <BottomCta
+              <Step2Spec
+                t={t}
+                vertical={vertical}
+                selected={specializations}
+                onToggle={(s) => {
+                  haptic('selection');
+                  setSpecializations((prev) =>
+                    prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s],
+                  );
+                }}
                 onNext={goNext}
-                onBack={goBack}
-                nextLabel={t.next}
-                disabled={!nicheKey}
               />
             </motion.div>
           )}
 
-          {/* ── Step 3: Services ──────────────────────────────────────── */}
           {step === 3 && (
             <motion.div
-              key="s3"
-              custom={dir}
+              key="step3"
+              custom={direction}
               variants={variants}
               initial="enter" animate="center" exit="exit"
               transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
               style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
             >
-              <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 8px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <StepIcon Icon={ListChecks} bg="rgba(34,197,94,0.1)" color="#22c55e" />
-                <div>
-                  <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.2 }}>{t.step3Title}</div>
-                  <div style={{ fontSize: 13, color: THEME.textSecondary, marginTop: 4, lineHeight: 1.6 }}>{t.step3Sub}</div>
-                </div>
-                {/* Service chips */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {services.map((svc, i) => {
-                    const sel = svc.enabled;
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => {
-                          haptic('selection');
-                          setServices((prev) => prev.map((s, j) => j === i ? { ...s, enabled: !s.enabled } : s));
-                        }}
-                        style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          padding: '12px 14px',
-                          borderRadius: R.md,
-                          border: `1.5px solid ${sel ? THEME.accent : THEME.border}`,
-                          background: sel ? THEME.accentSoft : THEME.surface,
-                          cursor: 'pointer', fontSize: 13,
-                          fontFamily: 'inherit',
-                          transition: 'all 0.15s',
-                          WebkitTapHighlightColor: 'transparent',
-                        }}
-                      >
-                        <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', gap: 2 }}>
-                          <span style={{ fontWeight: 600, color: THEME.text }}>{svc.name}</span>
-                          <span style={{ fontSize: 12, color: THEME.textSecondary }}>
-                            {svc.price > 0 ? `₴${svc.price}` : ''}
-                            {svc.price > 0 && svc.duration_minutes > 0 ? ' · ' : ''}
-                            {svc.duration_minutes > 0 ? `${svc.duration_minutes} хв` : ''}
-                          </span>
-                        </div>
-                        <div style={{
-                          width: 22, height: 22, borderRadius: 11, flexShrink: 0,
-                          border: `1.5px solid ${sel ? THEME.accent : THEME.border}`,
-                          background: sel ? THEME.accent : 'transparent',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          transition: 'all 0.15s',
-                        }}>
-                          {sel && <Check size={11} color="#fff" strokeWidth={3} />}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <BottomCta
-                onNext={handleFinish}
-                onBack={goBack}
-                nextLabel={t.next}
-                loading={saving}
+              <Step3Workplace
+                t={t}
+                selected={workMode}
+                address={address}
+                onSelect={(w) => { haptic('selection'); setWorkMode(w); }}
+                onAddressChange={setAddress}
+                onCoordsChange={setCoords}
+                onNext={goNext}
+              />
+            </motion.div>
+          )}
+
+          {step === 4 && (
+            <motion.div
+              key="step4"
+              custom={direction}
+              variants={variants}
+              initial="enter" animate="center" exit="exit"
+              transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+            >
+              <Step4Services
+                t={t}
+                services={
+                  vertical === 'education' && workMode === 'online'
+                    ? services.filter((s) => s.name !== 'Онлайн-урок')
+                    : services
+                }
+                onChange={setServices}
+                onFinish={() => finish(false)}
+                onSkip={() => finish(true)}
               />
             </motion.div>
           )}
@@ -637,12 +499,697 @@ export default function MasterOnboardingPage() {
   );
 }
 
-// ─── Summary card row ─────────────────────────────────────────────────────────
-function SummaryRow({ Icon, text, color, textColor }: { Icon: IconCmp; text: string; color: string; textColor?: string }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 1 — Vertical
+// ─────────────────────────────────────────────────────────────────────────────
+function Step1Vertical({
+  lang,
+  t,
+  onSelect,
+}: {
+  lang: Lang;
+  t: (typeof T)[Lang];
+  onSelect: (key: string) => void;
+}) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <Icon size={13} color={color} strokeWidth={2} />
-      <span style={{ fontSize: 13, fontWeight: 600, color: textColor ?? THEME.text }}>{text}</span>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ padding: '8px 20px 20px', flexShrink: 0 }}>
+        <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', margin: 0, lineHeight: 1.2 }}>
+          {t.step1Title}
+        </h1>
+        <p style={{ fontSize: 14, color: THEME.textSecondary, marginTop: 6, marginBottom: 0 }}>
+          {t.step1Sub}
+        </p>
+      </div>
+
+      <div
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '0 16px',
+          paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
+        }}
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {VERTICALS.map(({ key, Icon, label, desc }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onSelect(key)}
+              style={{
+                background: THEME.surface,
+                border: `1.5px solid ${THEME.border}`,
+                borderRadius: R.lg,
+                padding: '16px 14px',
+                textAlign: 'left',
+                cursor: 'pointer',
+                boxShadow: SHADOW.card,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                WebkitTapHighlightColor: 'transparent',
+                transition: 'transform 0.12s, box-shadow 0.12s, border-color 0.12s',
+                minHeight: 104,
+              }}
+              onPointerDown={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.96)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = THEME.accent;
+              }}
+              onPointerUp={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = THEME.border;
+              }}
+              onPointerLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = THEME.border;
+              }}
+            >
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  background: THEME.accentSoft,
+                  color: THEME.accent,
+                }}
+              >
+                <Icon size={22} strokeWidth={2} />
+              </span>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: THEME.text, lineHeight: 1.2 }}>
+                  {label[lang]}
+                </div>
+                <div style={{ fontSize: 11, color: THEME.textTertiary, marginTop: 2, lineHeight: 1.3 }}>
+                  {desc[lang]}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 2 — Specialization
+// ─────────────────────────────────────────────────────────────────────────────
+function Step2Spec({
+  t,
+  vertical,
+  selected,
+  onToggle,
+  onNext,
+}: {
+  t: (typeof T)[Lang];
+  vertical: string | null;
+  selected: string[];
+  onToggle: (s: string) => void;
+  onNext: () => void;
+}) {
+  const specs = getSpecializations(vertical);
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ padding: '6px 20px 12px', flexShrink: 0 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', margin: 0, lineHeight: 1.2 }}>
+          {t.step2Title}
+        </h1>
+        <p style={{ fontSize: 12, color: THEME.textSecondary, marginTop: 4, marginBottom: 0 }}>
+          {t.step2Sub} · можна обрати декілька
+        </p>
+      </div>
+
+      {/* Сетка 2 колонки — все варианты помещаются на экран без скролла */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 14px', paddingBottom: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {specs.map((spec) => {
+            const isSelected = selected.includes(spec);
+            return (
+              <button
+                key={spec}
+                type="button"
+                onClick={() => onToggle(spec)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 6,
+                  padding: '10px 12px',
+                  borderRadius: R.md,
+                  border: `1.5px solid ${isSelected ? THEME.accent : THEME.border}`,
+                  background: isSelected ? THEME.accentSoft : THEME.surface,
+                  cursor: 'pointer',
+                  WebkitTapHighlightColor: 'transparent',
+                  transition: 'border-color 0.15s, background 0.15s',
+                  minHeight: 44,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: isSelected ? 600 : 500,
+                    color: isSelected ? THEME.accent : THEME.text,
+                    textAlign: 'left',
+                    lineHeight: 1.25,
+                  }}
+                >
+                  {spec}
+                </span>
+                {isSelected && <Check size={16} color={THEME.accent} strokeWidth={2.5} style={{ flexShrink: 0 }} />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <BottomCta
+        primary={{ label: t.next, onClick: onNext, disabled: selected.length === 0 }}
+        secondary={{ label: t.skip, onClick: onNext }}
+      />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 3 — Workplace (+ address search + OSM map if cabinet/both)
+// ─────────────────────────────────────────────────────────────────────────────
+interface NominatimResult {
+  display_name: string;
+  lat: string;
+  lon: string;
+}
+
+function Step3Workplace({
+  t,
+  selected,
+  address,
+  onSelect,
+  onAddressChange,
+  onCoordsChange,
+  onNext,
+}: {
+  t: (typeof T)[Lang];
+  selected: WorkMode | null;
+  address: string;
+  onSelect: (m: WorkMode) => void;
+  onAddressChange: (a: string) => void;
+  onCoordsChange: (c: { lat: number; lng: number } | null) => void;
+  onNext: () => void;
+}) {
+  const needsAddress = selected === 'cabinet';
+
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<NominatimResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [mapGeo, setMapGeo] = useState<{ lat: number; lon: number } | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Nominatim search with 500ms debounce
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!query.trim() || query.trim().length < 3) { setResults([]); return; }
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}`,
+          { headers: { 'Accept-Language': 'ru,uk,en' } },
+        );
+        const data = (await res.json()) as NominatimResult[];
+        setResults(data);
+      } catch { setResults([]); }
+      setSearching(false);
+    }, 500);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query]);
+
+  function pickResult(r: NominatimResult) {
+    onAddressChange(r.display_name);
+    const latN = Number(r.lat);
+    const lonN = Number(r.lon);
+    setMapGeo({ lat: latN, lon: lonN });
+    onCoordsChange({ lat: latN, lng: lonN });
+    setResults([]);
+    setQuery('');
+  }
+
+  function clearAddress() {
+    onAddressChange('');
+    setMapGeo(null);
+    onCoordsChange(null);
+    setQuery('');
+    setResults([]);
+  }
+
+  // Reverse geocode after pin drag
+  async function handleMapMove(lat: number, lon: number) {
+    setMapGeo({ lat, lon });
+    onCoordsChange({ lat, lng: lon });
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18`,
+        { headers: { 'Accept-Language': 'ru,uk,en' } },
+      );
+      if (res.ok) {
+        const data = (await res.json()) as { display_name?: string };
+        if (data.display_name) onAddressChange(data.display_name);
+      }
+    } catch { /* best-effort */ }
+  }
+
+  const labels: Record<WorkMode, { title: string; sub: string }> = {
+    cabinet: { title: t.step3Cabinet, sub: t.step3CabinetSub },
+    mobile:  { title: t.step3Mobile,  sub: t.step3MobileSub },
+    online:  { title: t.step3Online,  sub: t.step3OnlineSub },
+  };
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ padding: '8px 20px 20px', flexShrink: 0 }}>
+        <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', margin: 0, lineHeight: 1.2 }}>
+          {t.step3Title}
+        </h1>
+        <p style={{ fontSize: 14, color: THEME.textSecondary, marginTop: 6, marginBottom: 0 }}>
+          {t.step3Sub}
+        </p>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px', paddingBottom: 24 }}>
+        {/* Workplace type buttons */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {WORKPLACES.map(({ key, Icon }) => {
+            const isSelected = selected === key;
+            const { title, sub } = labels[key];
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => onSelect(key)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 14,
+                  padding: '16px 16px',
+                  borderRadius: R.md,
+                  border: `1.5px solid ${isSelected ? THEME.accent : THEME.border}`,
+                  background: isSelected ? THEME.accentSoft : THEME.surface,
+                  cursor: 'pointer',
+                  WebkitTapHighlightColor: 'transparent',
+                  transition: 'border-color 0.15s, background 0.15s',
+                  textAlign: 'left',
+                }}
+              >
+                <span
+                  style={{
+                    width: 44, height: 44, borderRadius: 12,
+                    background: isSelected ? THEME.accent : THEME.accentSoft,
+                    color: isSelected ? '#fff' : THEME.accent,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                    transition: 'background 0.15s, color 0.15s',
+                  }}
+                >
+                  <Icon size={22} strokeWidth={2} />
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: isSelected ? THEME.accent : THEME.text }}>
+                    {title}
+                  </div>
+                  <div style={{ fontSize: 12, color: THEME.textTertiary, marginTop: 2 }}>
+                    {sub}
+                  </div>
+                </div>
+                {isSelected && <Check size={18} color={THEME.accent} strokeWidth={2.5} />}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Address section — shown when cabinet or both selected */}
+        <AnimatePresence>
+          {needsAddress && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ duration: 0.22 }}
+              style={{ marginTop: 20 }}
+            >
+              <p style={{ fontSize: 14, fontWeight: 700, color: THEME.text, marginBottom: 10 }}>
+                {t.addressTitle}
+              </p>
+
+              {/* Selected address chip */}
+              {address ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 10,
+                    padding: '12px 14px',
+                    borderRadius: R.md,
+                    border: `1.5px solid ${THEME.accent}`,
+                    background: THEME.accentSoft,
+                    marginBottom: 10,
+                  }}
+                >
+                  <MapPin size={16} color={THEME.accent} style={{ marginTop: 2, flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 13, color: THEME.text, lineHeight: 1.4 }}>
+                    {address}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearAddress}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                  >
+                    <XIcon size={16} color={THEME.textTertiary} />
+                  </button>
+                </div>
+              ) : (
+                /* Search input */
+                <div style={{ position: 'relative', marginBottom: 8 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '12px 14px',
+                      borderRadius: R.md,
+                      border: `1.5px solid ${THEME.border}`,
+                      background: THEME.surface,
+                    }}
+                  >
+                    {searching
+                      ? <Loader2 size={16} color={THEME.textTertiary} className="animate-spin" style={{ flexShrink: 0 }} />
+                      : <Search size={16} color={THEME.textTertiary} style={{ flexShrink: 0 }} />
+                    }
+                    <input
+                      type="text"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder={t.addressPlaceholder}
+                      style={{
+                        flex: 1,
+                        border: 'none',
+                        background: 'transparent',
+                        outline: 'none',
+                        fontSize: 14,
+                        color: THEME.text,
+                        caretColor: THEME.accent,
+                      }}
+                    />
+                    {query && (
+                      <button
+                        type="button"
+                        onClick={() => { setQuery(''); setResults([]); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                      >
+                        <XIcon size={14} color={THEME.textTertiary} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Dropdown results */}
+                  {results.length > 0 && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 4px)',
+                        left: 0,
+                        right: 0,
+                        zIndex: 10,
+                        borderRadius: R.md,
+                        border: `1.5px solid ${THEME.border}`,
+                        background: THEME.surface,
+                        boxShadow: SHADOW.card,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {results.map((r, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => pickResult(r)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 10,
+                            width: '100%',
+                            padding: '11px 14px',
+                            borderTop: i === 0 ? 'none' : `1px solid ${THEME.borderSubtle}`,
+                            background: 'transparent',
+                            border: i === 0 ? 'none' : `1px solid ${THEME.borderSubtle}`,
+                            borderLeft: 'none',
+                            borderRight: 'none',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            WebkitTapHighlightColor: 'transparent',
+                          }}
+                        >
+                          <MapPin size={14} color={THEME.textTertiary} style={{ marginTop: 2, flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, color: THEME.text, lineHeight: 1.4 }}>
+                            {r.display_name}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* OSM Map preview */}
+              {mapGeo && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 200 }}
+                  style={{ borderRadius: R.md, overflow: 'hidden', border: `1px solid ${THEME.border}` }}
+                >
+                  <AddressMap
+                    center={[mapGeo.lat, mapGeo.lon]}
+                    accent={THEME.accent}
+                    onMove={handleMapMove}
+                  />
+                </motion.div>
+              )}
+
+              {/* Skip address */}
+              <button
+                type="button"
+                onClick={onNext}
+                style={{
+                  marginTop: 10,
+                  width: '100%',
+                  padding: '8px 0',
+                  background: 'transparent',
+                  border: 'none',
+                  color: THEME.textTertiary,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                {t.addressSkip}
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <BottomCta primary={{ label: t.next, onClick: onNext }} secondary={needsAddress ? undefined : { label: t.skip, onClick: onNext }} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 4 — Services
+// ─────────────────────────────────────────────────────────────────────────────
+function Step4Services({
+  t,
+  services,
+  onChange,
+  onFinish,
+  onSkip,
+}: {
+  t: (typeof T)[Lang];
+  services: ServiceItem[];
+  onChange: (s: ServiceItem[]) => void;
+  onFinish: () => void;
+  onSkip: () => void;
+}) {
+  const { haptic } = useTelegram();
+  function toggleService(id: number) {
+    haptic('selection');
+    onChange(services.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)));
+  }
+  function updatePrice(id: number, raw: string) {
+    const num = parseInt(raw.replace(/\D/g, ''), 10);
+    const price = isNaN(num) ? 0 : num;
+    onChange(services.map((s) => (s.id === id ? { ...s, price } : s)));
+  }
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ padding: '8px 20px 16px', flexShrink: 0 }}>
+        <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', margin: 0, lineHeight: 1.2 }}>
+          {t.step4Title}
+        </h1>
+        <p style={{ fontSize: 14, color: THEME.textSecondary, marginTop: 6, marginBottom: 0 }}>
+          {t.step4Sub}
+        </p>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px', paddingBottom: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {services.map((svc) => (
+            <div
+              key={svc.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '12px 14px',
+                borderRadius: R.md,
+                border: `1.5px solid ${svc.enabled ? THEME.border : THEME.borderSubtle}`,
+                background: svc.enabled ? THEME.surface : THEME.bgSubtle,
+                opacity: svc.enabled ? 1 : 0.55,
+                transition: 'opacity 0.15s, border-color 0.15s, background 0.15s',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => toggleService(svc.id)}
+                style={{
+                  width: 22, height: 22, borderRadius: 6,
+                  border: `2px solid ${svc.enabled ? THEME.accent : THEME.border}`,
+                  background: svc.enabled ? THEME.accent : 'transparent',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                  transition: 'border-color 0.15s, background 0.15s',
+                }}
+              >
+                {svc.enabled && <Check size={12} color="#fff" strokeWidth={3} />}
+              </button>
+
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 14, fontWeight: 600, color: THEME.text,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}
+                >
+                  {svc.name}
+                </div>
+                {svc.duration_minutes > 0 && (
+                  <div style={{ fontSize: 11, color: THEME.textTertiary, marginTop: 1 }}>
+                    {svc.duration_minutes} {t.minLabel}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                {/* type=text + inputMode=numeric → numeric keyboard but no spin arrows */}
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={svc.price === 0 ? '' : svc.price}
+                  placeholder="0"
+                  onChange={(e) => updatePrice(svc.id, e.target.value)}
+                  disabled={!svc.enabled}
+                  style={{
+                    width: 64, padding: '5px 8px',
+                    borderRadius: R.sm,
+                    border: `1.5px solid ${THEME.border}`,
+                    background: THEME.bgSubtle,
+                    color: THEME.text,
+                    caretColor: THEME.accent,
+                    fontSize: 14, fontWeight: 600,
+                    textAlign: 'right', outline: 'none',
+                  }}
+                />
+                <span style={{ fontSize: 13, color: THEME.textSecondary, fontWeight: 500 }}>
+                  {t.priceLabel}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <BottomCta
+        primary={{ label: t.start, onClick: onFinish }}
+        secondary={{ label: t.skipServices, onClick: onSkip }}
+      />
+    </div>
+  );
+}
+
+// ─── Shared bottom CTA ───────────────────────────────────────────────────────
+function BottomCta({
+  primary,
+  secondary,
+}: {
+  primary: { label: string; onClick: () => void; disabled?: boolean };
+  secondary?: { label: string; onClick: () => void };
+}) {
+  return (
+    <div
+      style={{
+        padding: '12px 20px',
+        paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))',
+        borderTop: `1px solid ${THEME.borderSubtle}`,
+        background: THEME.bg,
+        flexShrink: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+      }}
+    >
+      <button
+        type="button"
+        onClick={primary.onClick}
+        disabled={primary.disabled}
+        style={{
+          width: '100%',
+          padding: '15px 0',
+          borderRadius: R.xl,
+          background: THEME.accent,
+          color: '#fff',
+          fontSize: 16,
+          fontWeight: 700,
+          border: 'none',
+          cursor: primary.disabled ? 'not-allowed' : 'pointer',
+          opacity: primary.disabled ? 0.5 : 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+        }}
+      >
+        {primary.label}
+        <ChevronRight size={18} strokeWidth={2.5} />
+      </button>
+      {secondary && (
+        <button
+          type="button"
+          onClick={secondary.onClick}
+          style={{
+            width: '100%',
+            padding: '10px 0',
+            background: 'transparent',
+            border: 'none',
+            color: THEME.textTertiary,
+            fontSize: 13,
+            cursor: 'pointer',
+          }}
+        >
+          {secondary.label}
+        </button>
+      )}
     </div>
   );
 }
