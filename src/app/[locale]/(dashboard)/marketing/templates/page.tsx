@@ -36,7 +36,7 @@ const GROUPS: GroupDef[] = [
   },
   {
     label: 'Нагадування',
-    kinds: ['reminder_24h', 'reminder_2h', 'pre_visit_master'],
+    kinds: ['reminder_24h', 'reminder_2h'],
   },
   {
     label: 'Автоматика',
