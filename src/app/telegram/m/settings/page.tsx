@@ -956,7 +956,7 @@ function SpecPickerSheet({ open, lang, initial, saving, onClose, onSave }: {
               borderTopLeftRadius: R.lg, borderTopRightRadius: R.lg,
               boxShadow: SHADOW.elevated,
               display: 'flex', flexDirection: 'column',
-              maxHeight: 'calc(100dvh - max(var(--tg-content-top, 0px), 12px))',
+              maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 12px) - 24px)',
               paddingBottom: 'env(safe-area-inset-bottom, 0px)',
             }}
           >

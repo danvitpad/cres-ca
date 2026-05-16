@@ -90,10 +90,12 @@ export function BottomSheet({
           className,
         )}
         style={{
-          // dvh + tg-content-top (выставляется telegram-provider) — иначе на
-          // iOS Telegram верх шторки залезал за Telegram UI и обрезался.
-          height: `${heightPercent * 100}dvh`,
-          maxHeight: 'calc(100dvh - max(var(--tg-content-top, 0px), 12px))',
+          // Используем --tg-viewport-height (px от Telegram SDK) — он точнее
+          // 100dvh на iOS Mini App (там dvh может включать зону за плавающим
+          // Telegram UI). Buffer 24px сверху чтобы заголовок шторки не
+          // прятался под кнопками «Закрыть»/«меню».
+          height: `calc(var(--tg-viewport-height, 100dvh) * ${heightPercent})`,
+          maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 12px) - 24px)',
           transition: dragRef.current.dragging ? 'none' : undefined,
           ...sheetStyle,
         }}

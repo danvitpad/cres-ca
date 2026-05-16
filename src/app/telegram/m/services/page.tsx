@@ -696,7 +696,7 @@ function ServiceSheet({ mode, service, t, categories, onCategoriesChange, onClos
           boxShadow: SHADOW.elevated,
           // Учитываем top-chrome Telegram (× Закрыть, ⋯) — иначе шапка
           // шторки залезает под кнопки TG.
-          maxHeight: 'calc(100dvh - max(var(--tg-content-top, 0px), 12px))',
+          maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 12px) - 24px)',
           overflowY: 'auto',
         }}
       >

@@ -321,7 +321,7 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
               right: 0,
               bottom: 0,
               zIndex: 70,
-              maxHeight: 'calc(100dvh - max(var(--tg-content-top, 0px), 12px))',
+              maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 12px) - 24px)',
               minHeight: '60dvh',
               display: 'flex',
               flexDirection: 'column',
