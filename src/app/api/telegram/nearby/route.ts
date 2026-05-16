@@ -120,7 +120,7 @@ export async function POST(request: Request) {
   if (hasQuery) {
     const tokens = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
 
-    // Masters: chain ilike per token across display_name OR specialization OR city
+    // Query 1: search masters by display_name / specialization / city
     let mastersQuery = admin.from('masters').select(masterSelect).eq('is_active', true);
     if (allowedMasterIds) {
       mastersQuery = mastersQuery.in('id', allowedMasterIds);
@@ -140,42 +140,41 @@ export async function POST(request: Request) {
       salonsQuery = salonsQuery.or(`name.ilike.%${esc}%,city.ilike.%${esc}%`);
     }
 
-    const [mastersRes, salonsRes] = await Promise.all([
+    // Query 2: search profiles by full_name → get matching master profile_ids at DB level.
+    // This catches masters whose display_name is empty or differs from the profile name.
+    let profilesQuery = admin.from('profiles').select('id');
+    for (const t of tokens) {
+      profilesQuery = profilesQuery.ilike('full_name', `%${escLike(t)}%`);
+    }
+
+    const [mastersRes, salonsRes, profilesRes] = await Promise.all([
       mastersQuery.limit(30),
       salonsQuery.limit(30),
+      profilesQuery.limit(100),
     ]);
 
     let masters = mastersRes.data ?? [];
 
-    // Always also do a profile-name fallback: catches ANY master whose profile.full_name
-    // matches all tokens (this is the only way to find e.g. "Падалко Даниил" when
-    // master's display_name is empty or different).
-    let fallbackQuery = admin
-      .from('masters')
-      .select(masterSelect)
-      .eq('is_active', true);
-    if (allowedMasterIds) {
-      fallbackQuery = fallbackQuery.in('id', allowedMasterIds);
-    } else if (verticalFilter) {
-      fallbackQuery = fallbackQuery.or(verticalOrClause(verticalFilter));
-    }
-    const fallback = await fallbackQuery.limit(200);
-    const tokenList = tokens;
-    const profileMatches = (fallback.data ?? []).filter((m: Record<string, unknown>) => {
-      const p = Array.isArray(m.profile) ? m.profile[0] : m.profile;
-      const fullName = ((p as { full_name?: string })?.full_name ?? '').toLowerCase();
-      const displayName = ((m.display_name as string) ?? '').toLowerCase();
-      const spec = ((m.specialization as string) ?? '').toLowerCase();
-      const hay = `${fullName} ${displayName} ${spec}`;
-      return tokenList.every((t) => hay.includes(t));
-    });
-
-    // Merge masters + profileMatches by id (de-dup)
-    const seen = new Set(masters.map((m: Record<string, unknown>) => m.id as string));
-    for (const m of profileMatches) {
-      if (!seen.has(m.id as string)) {
-        masters.push(m);
-        seen.add(m.id as string);
+    // Fetch masters whose profile matched by name (DB-level, not JS filter)
+    const profileIds = (profilesRes.data ?? []).map((p: { id: string }) => p.id);
+    if (profileIds.length > 0) {
+      let profileMastersQuery = admin
+        .from('masters')
+        .select(masterSelect)
+        .eq('is_active', true)
+        .in('profile_id', profileIds);
+      if (allowedMasterIds) {
+        profileMastersQuery = profileMastersQuery.in('id', allowedMasterIds);
+      } else if (verticalFilter) {
+        profileMastersQuery = profileMastersQuery.or(verticalOrClause(verticalFilter));
+      }
+      const profileMastersRes = await profileMastersQuery.limit(30);
+      const seen = new Set(masters.map((m: Record<string, unknown>) => m.id as string));
+      for (const m of profileMastersRes.data ?? []) {
+        if (!seen.has(m.id as string)) {
+          masters.push(m);
+          seen.add(m.id as string);
+        }
       }
     }
 

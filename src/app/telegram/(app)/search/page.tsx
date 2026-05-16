@@ -572,6 +572,7 @@ export default function MiniAppSearchPage() {
 
   const activeFilters = (category !== 'all' ? 1 : 0) + (minRating > 0 ? 1 : 0) + (maxPrice !== null ? 1 : 0) + (sortBy !== 'default' ? 1 : 0);
   const total = filteredMasters.length + filteredSalons.length;
+  const isSearching = query.trim().length > 0;
 
   return (
     <div
@@ -607,6 +608,7 @@ export default function MiniAppSearchPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
             placeholder={tFilter.placeholder}
             style={{
               flex: 1,
@@ -665,57 +667,63 @@ export default function MiniAppSearchPage() {
         </button>
       </div>
 
-      {/* Quick chips — тап на «Усі» сбрасывает запрос, остальные подставляют в строку поиска */}
-      <div className="chips-row">
-        {QUICK_CHIPS[lang].map((label, idx) => {
-          const isAllChip = idx === 0;
-          const active = isAllChip ? query.trim() === '' : query.trim() === label;
-          return (
-            <button
-              key={label}
-              type="button"
-              className={`chip${active ? ' active' : ''}`}
-              onClick={() => { haptic('selection'); setQuery(isAllChip ? '' : label); }}
-            >
-              {isAllChip && <LayoutGrid />}
-              {label}
-            </button>
-          );
-        })}
-      </div>
+      {/* Quick chips — скрываются при вводе запроса */}
+      {!isSearching && (
+        <div className="chips-row">
+          {QUICK_CHIPS[lang].map((label, idx) => {
+            const isAllChip = idx === 0;
+            const active = isAllChip ? query.trim() === '' : query.trim() === label;
+            return (
+              <button
+                key={label}
+                type="button"
+                className={`chip${active ? ' active' : ''}`}
+                onClick={() => { haptic('selection'); setQuery(isAllChip ? '' : label); }}
+              >
+                {isAllChip && <LayoutGrid />}
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-      {/* Category grid — 4×2 иконок. Тап на «Інше» (more) открывает фильтры. */}
-      <div className="cat-grid">
-        {CAT_TILES.map(({ key, icon: Icon }) => {
-          const isMore = key === 'more';
-          const active = !isMore && category === key;
-          const label = isMore
-            ? (lang === 'uk' ? 'Інше' : lang === 'en' ? 'More' : 'Другое')
-            : catLabels[key];
-          return (
-            <button
-              key={key}
-              type="button"
-              className={`cat-item${active ? ' active' : ''}`}
-              onClick={() => {
-                haptic('selection');
-                if (isMore) { setFiltersOpen(true); return; }
-                setCategory(key);
-                const vertKey = key === 'all' ? null : (CATEGORY_TO_VERTICAL[key as keyof typeof CATEGORY_TO_VERTICAL] ?? null);
-                fetchData(undefined, centerRef.current[0], centerRef.current[1], vertKey as string | null);
-              }}
-            >
-              <span className="cat-icon"><Icon /></span>
-              <span className="cat-label">{label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Category grid — скрывается при вводе запроса */}
+      {!isSearching && (
+        <div className="cat-grid">
+          {CAT_TILES.map(({ key, icon: Icon }) => {
+            const isMore = key === 'more';
+            const active = !isMore && category === key;
+            const label = isMore
+              ? (lang === 'uk' ? 'Інше' : lang === 'en' ? 'More' : 'Другое')
+              : catLabels[key];
+            return (
+              <button
+                key={key}
+                type="button"
+                className={`cat-item${active ? ' active' : ''}`}
+                onClick={() => {
+                  haptic('selection');
+                  if (isMore) { setFiltersOpen(true); return; }
+                  setCategory(key);
+                  const vertKey = key === 'all' ? null : (CATEGORY_TO_VERTICAL[key as keyof typeof CATEGORY_TO_VERTICAL] ?? null);
+                  fetchData(undefined, centerRef.current[0], centerRef.current[1], vertKey as string | null);
+                }}
+              >
+                <span className="cat-icon"><Icon /></span>
+                <span className="cat-label">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-      {/* Section header «Майстри поруч» + list/map .btn-icon toggle + geolocate btn */}
+      {/* Section header — «Мастера рядом» когда пусто, «Результаты» при поиске */}
       <div className="flex items-center justify-between" style={{ padding: '4px 16px 10px' }}>
         <div style={{ fontSize: 17, fontWeight: 700, color: T.text, letterSpacing: '-0.01em' }}>
-          {PAGE_LABELS[lang].nearby}
+          {isSearching
+            ? (lang === 'uk' ? 'Результати' : lang === 'en' ? 'Results' : 'Результаты')
+            : PAGE_LABELS[lang].nearby}
           {!loading && (
             <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 500, color: T.textTertiary, fontVariantNumeric: 'tabular-nums' }}>
               {total}
