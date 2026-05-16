@@ -702,7 +702,7 @@ function ServicesCatalogueView() {
               }}>
                 <div>{t('serviceName') || 'Название'}</div>
                 <div style={{ textAlign: 'right' }}>{t('duration') || 'Длительность'}</div>
-                <div style={{ textAlign: 'right' }}>{t('servicePrice') || 'Цена'}</div>
+                <div style={{ textAlign: 'right' }}>Цена</div>
                 <div style={{ textAlign: 'right' }}>Записей</div>
                 <div style={{ textAlign: 'right' }}>Доход</div>
                 <div>Статус</div>
