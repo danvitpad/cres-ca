@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
@@ -24,6 +24,7 @@ import {
   LinkIcon,
   Shield,
   ChevronLeft,
+  ChevronRight,
   BellRing,
   Layers,
   KeyRound,
@@ -33,8 +34,7 @@ import {
   Settings as SettingsCogIcon,
   RotateCcw,
 } from 'lucide-react';
-void ChevronLeft; // legacy import kept for potential reuse in section shell
-import { usePageTheme, FONT, FONT_FEATURES, pageContainer } from '@/lib/dashboard-theme';
+import { usePageTheme, FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
 import {
   SettingsBlock,
   SettingsField,
@@ -45,17 +45,10 @@ import {
 } from '@/components/settings/settings-block';
 import { DEFAULT_FEATURES, type VerticalFeatures } from '@/lib/verticals/feature-flags';
 import { HelpHint } from '@/components/shared/help-hint';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 import { useConfirm } from '@/hooks/use-confirm';
 import type { VerticalKey } from '@/lib/verticals/default-services';
 import { useFeatures } from '@/hooks/use-features';
 import { useUiPrefs } from '@/hooks/use-ui-prefs';
-import { motion } from 'framer-motion';
 import { humanizeError } from '@/lib/format/error';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
@@ -67,9 +60,17 @@ interface SettingSection {
   key: string;
   icon: typeof UserCircle;
   title: string;
-  desc?: string;
+  color: 'cobalt' | 'emerald' | 'amber' | 'sky' | 'purple' | 'danger';
   href?: string;
 }
+
+interface SettingGroup {
+  label: string;
+  items: SettingSection[];
+}
+
+// Context shared between SettingsAllInOneView and SettingsAnchor
+const ActiveSectionCtx = React.createContext<string>('profile');
 
 export default function SettingsPage() {
   const t = useTranslations('profile');
@@ -78,6 +79,15 @@ export default function SettingsPage() {
   const { master, loading, refetch } = useMaster();
   const { userId } = useAuthStore();
   const searchParams = useSearchParams();
+
+  // Mobile: null = show iOS list; string = show that section content.
+  // Desktop: always shows content (defaults to 'profile' via context fallback).
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+
+  useEffect(() => {
+    const s = searchParams.get('section');
+    if (s) setActiveSection(s);
+  }, [searchParams]);
 
   if (loading) {
     return (
@@ -97,219 +107,229 @@ export default function SettingsPage() {
     );
   }
 
-  const sections: SettingSection[] = [
-    { key: 'profile', icon: UserCircle, title: t('editProfile') },
-    { key: 'vertical', icon: Briefcase, title: 'Моя сфера' },
-    { key: 'categories', icon: Layers, title: 'Категории и услуги', desc: 'То, по чему вас ищут клиенты', href: `/${locale}/settings/categories` },
-    { key: 'features', icon: Layers, title: 'Модули' },
-    { key: 'hours', icon: CalendarClock, title: t('workingHours') },
-    { key: 'security', icon: KeyRound, title: 'Безопасность' },
-    { key: 'notifications', icon: BellRing, title: 'Уведомления' },
-    // { key: 'loyalty', icon: Gift, title: 'Лояльность' }, // HIDDEN: temporarily disabled
-    { key: 'policies', icon: Shield, title: t('policies') },
-    { key: 'subscription', icon: CreditCard, title: t('subscription') },
-    { key: 'invite', icon: LinkIcon, title: t('inviteLink') },
-    { key: 'feedback', icon: MessageSquareHeart, title: 'Обратная связь', href: `/${locale}/settings/feedback` },
+  const groups: SettingGroup[] = [
+    {
+      label: 'Профіль',
+      items: [
+        { key: 'profile', icon: UserCircle, title: 'Профіль і контакти', color: 'cobalt' },
+        { key: 'hours', icon: CalendarClock, title: 'Графік роботи', color: 'emerald' },
+        { key: 'categories', icon: Layers, title: 'Категорії та послуги', color: 'amber', href: `/${locale}/settings/categories` },
+      ],
+    },
+    {
+      label: 'Сповіщення',
+      items: [
+        { key: 'notifications', icon: BellRing, title: 'Push і Telegram', color: 'sky' },
+        { key: 'feedback', icon: MessageSquareHeart, title: 'Зворотній зв’язок', color: 'purple', href: `/${locale}/settings/feedback` },
+      ],
+    },
+    {
+      label: 'Підписка',
+      items: [
+        { key: 'subscription', icon: CreditCard, title: 'Тариф і оплата', color: 'cobalt' },
+        { key: 'invite', icon: LinkIcon, title: 'Запрошення', color: 'sky' },
+      ],
+    },
+    {
+      label: 'Загальне',
+      items: [
+        { key: 'vertical', icon: Briefcase, title: 'Вертикаль', color: 'purple' },
+        { key: 'features', icon: Layers, title: 'Модулі', color: 'amber' },
+        { key: 'policies', icon: Shield, title: 'Правила', color: 'emerald' },
+        { key: 'security', icon: KeyRound, title: 'Безпека', color: 'danger' },
+      ],
+    },
   ];
 
+  const allSections = groups.flatMap((g) => g.items);
+  const activeTitle = allSections.find((s) => s.key === activeSection)?.title ?? 'Налаштування';
+
   return (
-    <SettingsAllInOneView sections={sections}>
-      <SettingsAnchor id="profile" title={t('editProfile')} icon={UserCircle}>
+    <SettingsAllInOneView
+      groups={groups}
+      allSections={allSections}
+      activeSection={activeSection}
+      activeTitle={activeTitle}
+      onSelect={setActiveSection}
+    >
+      <SettingsAnchor id="profile" title="Профіль і контакти">
         <ProfileTab master={master} userId={userId!} onSaved={refetch} />
       </SettingsAnchor>
-      <SettingsAnchor id="vertical" title="Моя сфера" icon={Briefcase}>
+      <SettingsAnchor id="vertical" title="Вертикаль">
         <VerticalTab master={master} onSaved={refetch} />
       </SettingsAnchor>
-      <SettingsAnchor id="features" title="Модули" icon={Layers}>
+      <SettingsAnchor id="features" title="Модулі">
         <FeaturesTab master={master} onSaved={refetch} />
       </SettingsAnchor>
-      <SettingsAnchor id="hours" title={t('workingHours')} icon={CalendarClock}>
+      <SettingsAnchor id="hours" title="Графік роботи">
         <WorkingHoursTab master={master} onSaved={refetch} />
       </SettingsAnchor>
-      <SettingsAnchor id="security" title="Безопасность" icon={KeyRound}>
+      <SettingsAnchor id="security" title="Безпека">
         <SecurityTab />
       </SettingsAnchor>
-      <SettingsAnchor id="notifications" title="Уведомления" icon={BellRing}>
+      <SettingsAnchor id="notifications" title="Push і Telegram">
         <NotificationsTab master={master} onSaved={refetch} />
       </SettingsAnchor>
-      {/* LoyaltyTab — HIDDEN: temporarily disabled */}
-      <SettingsAnchor id="policies" title={t('policies')} icon={Shield}>
+      <SettingsAnchor id="policies" title="Правила">
         <PoliciesTab master={master} onSaved={refetch} />
       </SettingsAnchor>
-      <SettingsAnchor id="subscription" title={t('subscription')} icon={CreditCard}>
+      <SettingsAnchor id="subscription" title="Тариф і оплата">
         <SubscriptionTab />
       </SettingsAnchor>
-      <SettingsAnchor id="invite" title={t('inviteLink')} icon={LinkIcon}>
+      <SettingsAnchor id="invite" title="Запрошення">
         <InviteLinkTab master={master} />
       </SettingsAnchor>
-      {/* searchParams используется чтобы при ?section=foo страница сразу
-          скроллилась к нужному якорю — see SettingsAllInOneView */}
-      <SettingsScrollOnLoad searchParams={searchParams} />
     </SettingsAllInOneView>
   );
 }
 
-/* ── New all-in-one settings layout: sticky sidebar of anchors + content ── */
+/* ── iOS-style settings layout: grouped rows (mobile) + subnav panel (desktop) ── */
+
+// Background + text color classes for colored icon boxes matching mock tokens
+const ICON_COLORS: Record<NonNullable<SettingSection['color']>, { bg: string; fg: string }> = {
+  cobalt:  { bg: 'bg-blue-100',    fg: 'text-blue-600' },
+  emerald: { bg: 'bg-emerald-100', fg: 'text-emerald-600' },
+  amber:   { bg: 'bg-amber-100',   fg: 'text-amber-600' },
+  sky:     { bg: 'bg-sky-100',     fg: 'text-sky-600' },
+  purple:  { bg: 'bg-purple-100',  fg: 'text-purple-600' },
+  danger:  { bg: 'bg-red-100',     fg: 'text-red-600' },
+};
+
 function SettingsAllInOneView({
-  sections,
+  groups,
+  allSections,
+  activeSection,
+  activeTitle,
+  onSelect,
   children,
 }: {
-  sections: SettingSection[];
+  groups: SettingGroup[];
+  allSections: SettingSection[];
+  activeSection: string | null;
+  activeTitle: string;
+  onSelect: (key: string | null) => void;
   children: React.ReactNode;
 }) {
   const { C, mounted } = usePageTheme();
-  const [active, setActive] = useState<string>(sections[0]?.key ?? 'profile');
-  const observerRef = useRef<IntersectionObserver | null>(null);
-
-  // IntersectionObserver — подсвечивает текущий якорь в sidebar
-  // когда соответствующая секция в зоне видимости.
-  useEffect(() => {
-    if (!mounted) return;
-    if (observerRef.current) observerRef.current.disconnect();
-    const obs = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) setActive((e.target as HTMLElement).id);
-        }
-      },
-      { rootMargin: '-30% 0px -55% 0px' },
-    );
-    sections.forEach((s) => {
-      const el = document.getElementById(s.key);
-      if (el) obs.observe(el);
-    });
-    observerRef.current = obs;
-    return () => obs.disconnect();
-  }, [sections, mounted]);
-
-  const scrollTo = useCallback((key: string) => {
-    const el = document.getElementById(key);
-    if (!el) return;
-    // Нативный scrollIntoView надёжнее ручного getBoundingClientRect —
-    // работает и в overflow:scroll контейнерах. scrollMarginTop: 88 на
-    // section даёт верхний отступ под sticky-хедер.
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setActive(key);
-  }, []);
+  const desktopActive = activeSection ?? 'profile';
 
   if (!mounted) return null;
 
   return (
-    <div style={{
-      ...pageContainer,
-      color: C.text,
-      background: C.bg,
-      minHeight: '100%',
-      paddingBottom: 96,
-      fontFamily: FONT,
-      fontFeatureSettings: FONT_FEATURES,
-    }}>
-      {/* Hero — те же шрифты/цвета что были */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-        style={{
-          background: C.accentSoft,
-          border: `1px solid ${C.aiBorder}`,
-          borderRadius: 16,
-          padding: '24px 28px',
-          marginBottom: 24,
-        }}
-      >
-        <h1 style={{
-          fontSize: 28, fontWeight: 700, color: C.text, letterSpacing: '-0.02em',
-          margin: 0, display: 'flex', alignItems: 'center', gap: 10, lineHeight: 1,
-        }}>
-          <SettingsCogIcon size={24} style={{ color: C.accent }} />
-          Настройки
-        </h1>
-        <p style={{ fontSize: 14, color: C.textSecondary, margin: '6px 0 0', lineHeight: 1.5 }}>
-          Слева — оглавление. Кликни по разделу — страница плавно прокрутится к нему.
-        </p>
-      </motion.div>
+    <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, minHeight: '100%', paddingBottom: 96, color: C.text }}>
 
-      {/* Mobile: pills сверху (только <md). Без grid-trick'ов чтобы не
-          ломать раскладку. */}
-      <div
-        className="md:hidden flex gap-2 overflow-x-auto pb-2 mb-3"
-        style={{ WebkitOverflowScrolling: 'touch' }}
-      >
-        {sections.map((s) => {
-          const isActive = active === s.key;
-          const baseStyle: React.CSSProperties = {
-            flexShrink: 0,
-            padding: '7px 14px',
-            borderRadius: 999,
-            border: `1px solid ${isActive ? C.accent : C.border}`,
-            background: isActive ? C.accentSoft : C.surface,
-            color: isActive ? C.accent : C.text,
-            fontSize: 12,
-            fontWeight: 600,
-            fontFamily: FONT,
-            cursor: 'pointer',
-            textDecoration: 'none',
-            whiteSpace: 'nowrap',
-          };
-          if (s.href) {
-            return <Link key={s.key} href={s.href} style={baseStyle}>{s.title}</Link>;
-          }
-          return (
-            <button key={s.key} type="button" onClick={() => scrollTo(s.key)} style={baseStyle}>
-              {s.title}
-            </button>
-          );
-        })}
+      {/* ══ MOBILE ══ */}
+
+      {/* iOS grouped list — visible on mobile when no section selected */}
+      <div className={`md:hidden ${activeSection ? 'hidden' : 'block'}`}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0, color: C.text }}>
+            Налаштування
+          </h1>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+          {groups.map((group) => (
+            <div key={group.label}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: C.textTertiary, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, paddingLeft: 4 }}>
+                {group.label}
+              </div>
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: 'hidden' }}>
+                {group.items.map((item, idx) => {
+                  const Icon = item.icon;
+                  const colors = ICON_COLORS[item.color];
+                  const isLast = idx === group.items.length - 1;
+                  if (item.href) {
+                    return (
+                      <Link key={item.key} href={item.href} style={{ textDecoration: 'none' }}>
+                        <SettingsIosRow Icon={Icon} colors={colors} title={item.title} isLast={isLast} C={C} />
+                      </Link>
+                    );
+                  }
+                  return (
+                    <button key={item.key} type="button" onClick={() => onSelect(item.key)} style={{ width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', display: 'block' }}>
+                      <SettingsIosRow Icon={Icon} colors={colors} title={item.title} isLast={isLast} C={C} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              await fetch('/api/account/tour-reset', { method: 'POST' });
+              window.location.href = `/${window.location.pathname.split('/')[1]}/welcome`;
+            } catch {}
+          }}
+          style={{
+            marginTop: 32, width: '100%',
+            padding: '14px 16px', borderRadius: 14,
+            border: `1px solid ${C.border}`, background: C.surface,
+            color: C.textSecondary, fontSize: 14, fontWeight: 500,
+            cursor: 'pointer', fontFamily: FONT,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+        >
+          <RotateCcw size={15} />
+          Пройти навчання знову
+        </button>
       </div>
 
-      {/* Desktop: flex row [sidebar 240px | content 1fr]. На <md sidebar
-          скрыт, контент занимает всю ширину. */}
-      <div className="flex flex-col md:flex-row md:gap-8 md:items-start">
-        {/* Sidebar — sticky на десктопе */}
-        <aside
-          className="hidden md:flex md:flex-col md:gap-0.5 md:w-[240px] md:flex-shrink-0 md:sticky md:self-start"
-          style={{ top: 24 }}
+      {/* Section content (mobile): visible when a section is selected */}
+      <div className={`md:hidden ${activeSection ? 'block' : 'hidden'}`}>
+        <button
+          type="button"
+          onClick={() => onSelect(null)}
+          style={{
+            background: 'none', border: 'none', padding: '0 0 20px',
+            cursor: 'pointer', color: C.accent,
+            display: 'flex', alignItems: 'center', gap: 4,
+            fontSize: 15, fontFamily: FONT,
+          }}
         >
-          {sections.map((s) => {
-            const Icon = s.icon;
-            const isActive = active === s.key;
-            const baseStyle: React.CSSProperties = {
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '10px 12px',
-              borderRadius: 10,
-              border: '1px solid transparent',
-              background: isActive ? C.accentSoft : 'transparent',
-              color: isActive ? C.accent : C.textSecondary,
-              fontSize: 13,
-              fontWeight: isActive ? 600 : 500,
-              fontFamily: FONT,
-              fontFeatureSettings: FONT_FEATURES,
-              textAlign: 'left',
-              cursor: 'pointer',
-              textDecoration: 'none',
-              transition: 'background 0.12s, color 0.12s',
-              width: '100%',
-            };
-            if (s.href) {
+          <ChevronLeft size={18} />
+          Назад
+        </button>
+        <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 20px', color: C.text }}>
+          {activeTitle}
+        </h1>
+        <ActiveSectionCtx.Provider value={activeSection ?? 'profile'}>
+          {children}
+        </ActiveSectionCtx.Provider>
+      </div>
+
+      {/* ══ DESKTOP ══ */}
+      <div className="hidden md:flex md:gap-8 md:items-start">
+        {/* Sub-nav */}
+        <aside style={{ width: 240, flexShrink: 0, position: 'sticky', top: 24, alignSelf: 'flex-start' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, paddingBottom: 12, borderBottom: `1px solid ${C.border}` }}>
+            <SettingsCogIcon size={15} style={{ color: C.accent }} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Налаштування</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {allSections.map((s) => {
+              const Icon = s.icon;
+              const isActive = desktopActive === s.key;
+              if (s.href) {
+                return (
+                  <Link key={s.key} href={s.href} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 9, color: C.textSecondary, fontSize: 13, fontWeight: 500, fontFamily: FONT, textDecoration: 'none' }}>
+                    <Icon size={14} />
+                    <span>{s.title}</span>
+                  </Link>
+                );
+              }
               return (
-                <Link key={s.key} href={s.href} style={baseStyle}>
-                  <Icon size={15} />
-                  <span style={{ flex: 1, minWidth: 0 }}>{s.title}</span>
-                </Link>
+                <button key={s.key} type="button" onClick={() => onSelect(s.key)} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 9, background: isActive ? C.accentSoft : 'transparent', color: isActive ? C.accent : C.textSecondary, fontSize: 13, fontWeight: isActive ? 600 : 500, fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'background 0.12s, color 0.12s' }}>
+                  <Icon size={14} />
+                  <span>{s.title}</span>
+                </button>
               );
-            }
-            return (
-              <button
-                key={s.key}
-                type="button"
-                onClick={() => scrollTo(s.key)}
-                style={baseStyle}
-              >
-                <Icon size={15} />
-                <span style={{ flex: 1, minWidth: 0 }}>{s.title}</span>
-              </button>
-            );
-          })}
+            })}
+          </div>
           <button
             type="button"
             onClick={async () => {
@@ -318,95 +338,58 @@ function SettingsAllInOneView({
                 window.location.href = `/${window.location.pathname.split('/')[1]}/welcome`;
               } catch {}
             }}
-            style={{
-              marginTop: 16,
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '10px 12px',
-              background: 'transparent', border: `1px solid ${C.border}`,
-              borderRadius: 10, color: C.textSecondary,
-              fontSize: 12, fontWeight: 500, cursor: 'pointer',
-              fontFamily: FONT, fontFeatureSettings: FONT_FEATURES,
-            }}
+            style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 9, background: 'transparent', border: `1px solid ${C.border}`, color: C.textSecondary, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, width: '100%' }}
           >
             <RotateCcw size={13} />
-            Пройти обучение заново
+            Пройти навчання знову
           </button>
         </aside>
 
-        {/* Content — все секции подряд */}
-        <div className="flex-1 min-w-0 flex flex-col" style={{ gap: 28 }}>
-          {children}
+        {/* Active section content */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <ActiveSectionCtx.Provider value={desktopActive}>
+            {children}
+          </ActiveSectionCtx.Provider>
         </div>
       </div>
     </div>
   );
 }
 
-/* ── Anchor wrapper for each section ──────────────────────────────────────
- * Важно: НЕ возвращаем null до mount — иначе getElementById не находит
- * якоря и клики в sidebar не работают. Стили подтягиваем когда тема
- * известна, заголовок рендерится сразу. */
-function SettingsAnchor({
-  id, title, icon: Icon, children,
+/* Single iOS-style row used inside grouped list on mobile */
+function SettingsIosRow({
+  Icon, colors, title, isLast, C,
 }: {
-  id: string;
+  Icon: typeof UserCircle;
+  colors: { bg: string; fg: string };
   title: string;
-  icon: typeof UserCircle;
-  children: React.ReactNode;
+  isLast: boolean;
+  C: ReturnType<typeof usePageTheme>['C'];
 }) {
-  const { C, mounted } = usePageTheme();
   return (
-    <section id={id} style={{ scrollMarginTop: 88 }}>
-      <header style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        marginBottom: 14,
-        paddingBottom: 10,
-        borderBottom: `1px solid ${mounted ? C.border : 'transparent'}`,
-      }}>
-        <div style={{
-          width: 30, height: 30, borderRadius: 8,
-          background: mounted ? C.accentSoft : 'transparent',
-          color: mounted ? C.accent : 'transparent',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-        }}>
-          <Icon size={15} />
-        </div>
-        <h2 style={{
-          fontSize: 18, fontWeight: 650,
-          color: mounted ? C.text : 'transparent',
-          letterSpacing: '-0.3px',
-          margin: 0,
-        }}>
-          {title}
-        </h2>
-      </header>
-      {children}
-    </section>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 16px', borderBottom: isLast ? 'none' : `1px solid ${C.border}` }}>
+      <div className={`${colors.bg} ${colors.fg}`} style={{ width: 36, height: 36, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Icon size={18} />
+      </div>
+      <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: C.text }}>{title}</span>
+      <ChevronRight size={16} style={{ color: C.textTertiary, flexShrink: 0 }} />
+    </div>
   );
 }
 
-/* ── Auto-scroll to ?section=key on load (deep-link) ───────────────────── */
-function SettingsScrollOnLoad({ searchParams }: { searchParams: ReturnType<typeof useSearchParams> }) {
-  useEffect(() => {
-    const s = searchParams.get('section');
-    if (!s) return;
-    // wait one frame so layout has anchor positions
-    requestAnimationFrame(() => {
-      const el = document.getElementById(s);
-      if (!el) return;
-      const top = el.getBoundingClientRect().top + window.scrollY - 88;
-      window.scrollTo({ top, behavior: 'smooth' });
-    });
-  }, [searchParams]);
-  return null;
+/* Section content wrapper — renders children only when its id matches the active section */
+function SettingsAnchor({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+  const activeSection = React.useContext(ActiveSectionCtx);
+  if (activeSection !== id) return null;
+  return (
+    <div>
+      <div style={{ marginBottom: 20, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>{title}</h2>
+      </div>
+      {children}
+    </div>
+  );
 }
-
-/* SettingsHomeView и SettingsSectionShell удалены — заменены на
-   SettingsAllInOneView (выше). Все секции теперь рендерятся подряд
-   на одной странице с боковой панелью якорей. */
 
 function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnType<typeof useMaster>['master']>; userId: string; onSaved: () => void }) {
   const t = useTranslations('profile');
