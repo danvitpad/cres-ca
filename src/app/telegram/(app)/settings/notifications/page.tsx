@@ -62,10 +62,10 @@ export default function MiniAppNotificationsPage() {
         <div>
           <h1 className="flex items-center gap-2 text-[22px] font-bold">
             <Bell className="size-5 text-blue-500" />
-            Уведомления
+            Сповіщення
           </h1>
           <p className="text-[12px] text-neutral-500">
-            Когда и о чём получать уведомления в Telegram
+            Коли і про що отримувати сповіщення у Telegram
           </p>
         </div>
       </div>
@@ -80,9 +80,9 @@ export default function MiniAppNotificationsPage() {
               <Cake className="size-4" />
             </span>
             <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-semibold text-neutral-900">Дни рождения друзей</p>
+              <p className="text-[14px] font-semibold text-neutral-900">Дні народження друзів</p>
               <p className="text-[11px] text-neutral-500 mt-0.5">
-                Утренний пуш когда у вашего друга (взаимная подписка) день рождения
+                Ранковий пуш, коли у вашого друга (взаємна підписка) день народження
               </p>
             </div>
             <button

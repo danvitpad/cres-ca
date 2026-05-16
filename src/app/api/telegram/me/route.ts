@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   const { data: profile } = await admin
     .from('profiles')
     .select(
-      'id, full_name, first_name, last_name, bio, slug, public_id, avatar_url, phone, email, bonus_balance, bonus_points, followers_count, following_count',
+      'id, full_name, first_name, last_name, bio, slug, public_id, avatar_url, phone, email, date_of_birth, bonus_balance, bonus_points, followers_count, following_count',
     )
     .eq('telegram_id', result.user.id)
     .maybeSingle();
@@ -37,5 +37,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'not_linked' }, { status: 404 });
   }
 
-  return NextResponse.json({ profile });
+  // Fetch visit stats for completed appointments
+  const { data: stats } = await admin
+    .from('appointments')
+    .select('price')
+    .eq('profile_id', (profile as { id: string }).id)
+    .eq('status', 'completed');
+
+  const visitCount = stats?.length ?? 0;
+  const totalSpent = stats?.reduce((sum, row) => sum + (Number((row as { price?: number }).price) || 0), 0) ?? 0;
+
+  return NextResponse.json({ profile: { ...profile, visit_count: visitCount, total_spent: totalSpent } });
 }

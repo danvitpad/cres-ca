@@ -138,6 +138,8 @@ export default function MiniAppProfilePage() {
   const [, setPublicId] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [followingCount, setFollowingCount] = useState(0);
+  const [visitCount, setVisitCount] = useState(0);
+  const [totalSpent, setTotalSpent] = useState(0);
   const [signingOut, setSigningOut] = useState(false);
 
   // Follow list modal
@@ -203,6 +205,8 @@ export default function MiniAppProfilePage() {
           setPhone(data.phone ?? null);
           setDob(data.date_of_birth ?? null);
           setFollowingCount(Number(data.following_count ?? 0));
+          setVisitCount(Number(data.visit_count ?? 0));
+          setTotalSpent(Number(data.total_spent ?? 0));
         }
       }
       setProfileLoaded(true);
@@ -447,7 +451,7 @@ export default function MiniAppProfilePage() {
           )}
           <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 16 }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)' }}>0</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)' }}>{visitCount}</div>
               <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{lang === 'en' ? 'visits' : lang === 'uk' ? 'відвідувань' : 'посещений'}</div>
             </div>
             <div style={{ width: 1, background: 'var(--border)' }} />
@@ -457,7 +461,7 @@ export default function MiniAppProfilePage() {
             </div>
             <div style={{ width: 1, background: 'var(--border)' }} />
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)' }}>₴0</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)' }}>₴{totalSpent.toLocaleString('uk-UA')}</div>
               <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{lang === 'en' ? 'spent' : lang === 'uk' ? 'витрачено' : 'потрачено'}</div>
             </div>
           </div>

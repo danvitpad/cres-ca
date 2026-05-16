@@ -672,14 +672,20 @@ function AppointmentCard({ appt: a, index: i, t, lang, cardLabels, haptic }: Car
             {statusVariant === 'upcoming' ? (
               <>
                 <button className="bk-act-btn" onClick={() => { haptic('light'); router.push(`/telegram/activity/${a.id}`); }}>Скасувати</button>
-                <button className="bk-act-btn primary" onClick={() => { haptic('light'); router.push(`/telegram/activity/${a.id}`); }}>Перенести</button>
+                <button className="bk-act-btn primary" onClick={() => {
+                  haptic('light');
+                  const url = a.master_id
+                    ? `/telegram/book?master_id=${a.master_id}&reschedule=${a.id}`
+                    : `/telegram/activity/${a.id}`;
+                  router.push(url);
+                }}>Перенести</button>
               </>
             ) : (
               <>
                 <button className="bk-act-btn" onClick={() => { haptic('light'); router.push(a.master_id ? `/telegram/book?master_id=${a.master_id}` : '/telegram/search'); }}>Повторити</button>
                 {a.has_review
                   ? <span style={{ fontSize: 12, color: 'var(--fg-3)', padding: '0 4px', display: 'flex', alignItems: 'center', gap: 4 }}><Check size={12} /> Відгук залишено</span>
-                  : <button className="bk-act-btn primary" onClick={() => { haptic('light'); router.push(`/telegram/activity/${a.id}`); }}>Відгук</button>}
+                  : <button className="bk-act-btn primary" onClick={() => { haptic('light'); router.push(`/telegram/activity/${a.id}?review=1`); }}>Відгук</button>}
               </>
             )}
           </div>

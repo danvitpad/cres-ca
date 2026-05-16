@@ -36,23 +36,40 @@ export default function ClientPrivacyPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('cres:privacy');
-      if (stored) {
-        const parsed = JSON.parse(stored) as Partial<PrivacyState>;
-        setState({ ...DEFAULTS, ...parsed });
-      }
-    } catch {}
-    setLoaded(true);
+    fetch('/api/me/privacy')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: {
+        privacy_profile_visible?: boolean;
+        privacy_show_visit_history?: boolean;
+        privacy_show_in_reviews?: boolean;
+        privacy_share_with_team?: boolean;
+      } | null) => {
+        if (!data) return;
+        setState({
+          profile_visible:    data.privacy_profile_visible    ?? DEFAULTS.profile_visible,
+          show_visit_history: data.privacy_show_visit_history ?? DEFAULTS.show_visit_history,
+          show_in_reviews:    data.privacy_show_in_reviews    ?? DEFAULTS.show_in_reviews,
+          share_with_team:    data.privacy_share_with_team    ?? DEFAULTS.share_with_team,
+        });
+      })
+      .catch(() => { /* use defaults */ })
+      .finally(() => setLoaded(true));
   }, []);
 
-  function toggle<K extends keyof PrivacyState>(key: K) {
-    if (busy) return;
+  async function toggle<K extends keyof PrivacyState>(key: K) {
+    if (busy || !loaded) return;
     haptic('selection');
-    setBusy(true);
     const next = { ...state, [key]: !state[key] };
     setState(next);
-    try { localStorage.setItem('cres:privacy', JSON.stringify(next)); } catch {}
+    setBusy(true);
+    try {
+      const apiKey = `privacy_${key}` as string;
+      await fetch('/api/me/privacy', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [apiKey]: next[key] }),
+      });
+    } catch { /* tolerant */ }
     setBusy(false);
   }
 
@@ -62,10 +79,10 @@ export default function ClientPrivacyPage() {
     title: string;
     sub: string;
   }> = [
-    { key: 'profile_visible',    Icon: Eye,     title: 'Профиль виден',           sub: 'Другие пользователи могут найти вас в поиске' },
-    { key: 'show_visit_history', Icon: History, title: 'История визитов',         sub: 'Мастер видит ваши прошлые записи' },
-    { key: 'show_in_reviews',    Icon: Star,    title: 'Имя в отзывах',           sub: 'Публиковать имя рядом с вашими отзывами' },
-    { key: 'share_with_team',    Icon: Users,   title: 'Доступ команды салона',   sub: 'Все мастера салона видят вашу карточку' },
+    { key: 'profile_visible',    Icon: Eye,     title: 'Профіль видно',           sub: 'Інші користувачі можуть знайти вас у пошуку' },
+    { key: 'show_visit_history', Icon: History, title: 'Історія візитів',         sub: 'Майстер бачить ваші минулі записи' },
+    { key: 'show_in_reviews',    Icon: Star,    title: 'Ім\'я у відгуках',        sub: 'Публікувати ім\'я поряд із вашими відгуками' },
+    { key: 'share_with_team',    Icon: Users,   title: 'Доступ команди салону',   sub: 'Усі майстри салону бачать вашу картку' },
   ];
 
   return (
@@ -101,10 +118,10 @@ export default function ClientPrivacyPage() {
       </Link>
 
       <h1 style={{ fontSize: 24, fontWeight: 800, color: T.text, margin: 0, letterSpacing: '-0.02em' }}>
-        Приватность
+        Приватність
       </h1>
       <p style={{ fontSize: 13, color: T.textSecondary, marginTop: 6 }}>
-        Управляйте, какими данными делиться с мастерами и командами
+        Керуйте, якими даними ділитися з майстрами і командами
       </p>
 
       <div
@@ -183,9 +200,9 @@ export default function ClientPrivacyPage() {
       >
         <Shield size={18} color={T.accent} style={{ flexShrink: 0, marginTop: 1 }} strokeWidth={2} />
         <div>
-          Полная политика конфиденциальности и удаление аккаунта доступны в веб-версии:{' '}
+          Повна політика конфіденційності та видалення акаунту доступні у веб-версії:{' '}
           <a
-            href="https://cres-ca.com/ru/privacy"
+            href="https://cres-ca.com/uk/privacy"
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: T.accent, fontWeight: 600, textDecoration: 'none' }}
