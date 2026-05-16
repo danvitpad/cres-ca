@@ -140,23 +140,27 @@ export async function POST(request: Request) {
       salonsQuery = salonsQuery.or(`name.ilike.%${esc}%,city.ilike.%${esc}%`);
     }
 
-    // Query 2: search profiles by full_name → get matching master profile_ids at DB level.
-    // This catches masters whose display_name is empty or differs from the profile name.
-    let profilesQuery = admin.from('profiles').select('id');
-    for (const t of tokens) {
-      profilesQuery = profilesQuery.ilike('full_name', `%${escLike(t)}%`);
-    }
+    // Query 2: search profiles by full_name — OR across tokens at DB level (reliable),
+    // then AND-filter in JS. Catches masters whose display_name is null/empty.
+    const profileOrCond = tokens.map((t) => `full_name.ilike.%${escLike(t)}%`).join(',');
+    const profilesQuery = admin.from('profiles').select('id,full_name').or(profileOrCond).limit(100);
 
     const [mastersRes, salonsRes, profilesRes] = await Promise.all([
       mastersQuery.limit(30),
       salonsQuery.limit(30),
-      profilesQuery.limit(100),
+      profilesQuery,
     ]);
 
     let masters = mastersRes.data ?? [];
 
-    // Fetch masters whose profile matched by name (DB-level, not JS filter)
-    const profileIds = (profilesRes.data ?? []).map((p: { id: string }) => p.id);
+    // JS AND-filter: all tokens must appear in full_name
+    const profileIds = (profilesRes.data ?? [])
+      .filter((p: { id: string; full_name: string | null }) => {
+        const name = (p.full_name ?? '').toLowerCase();
+        return tokens.every((t) => name.includes(t));
+      })
+      .map((p: { id: string }) => p.id);
+
     if (profileIds.length > 0) {
       let profileMastersQuery = admin
         .from('masters')
