@@ -96,6 +96,15 @@ export default function NotificationsPage() {
   const [feedLoading, setFeedLoading] = useState(true);
   const [category, setCategory] = useState<Category>('all');
   const [followStates, setFollowStates] = useState<Record<string, boolean | 'loading'>>({});
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [mobileFilter, setMobileFilter] = useState<'all' | 'bookings' | 'promos' | 'social'>('all');
+
+  useEffect(() => {
+    const check = () => setIsMobileView(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   useEffect(() => {
     if (!userId) return;
@@ -213,6 +222,183 @@ export default function NotificationsPage() {
     } catch {
       setFollowStates(prev => ({ ...prev, [targetId]: false }));
     }
+  }
+
+  if (isMobileView) {
+    const ACCENT = '#2563eb';
+    const filterLabels: Record<typeof mobileFilter, string> = {
+      all: 'Усі',
+      bookings: 'Записи',
+      promos: 'Промо',
+      social: 'Соціальні',
+    };
+
+    const filtered = feed.filter((n) => {
+      if (mobileFilter === 'all') return true;
+      const cat = categorize(n);
+      if (mobileFilter === 'bookings') return cat === 'bookings' || cat === 'reminders';
+      if (mobileFilter === 'promos') return cat === 'promos';
+      if (mobileFilter === 'social') return cat === 'social';
+      return true;
+    });
+
+    const unreadCount = feed.filter((n) => !n.read_at).length;
+
+    return (
+      <div style={{ minHeight: '100dvh', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+        {/* Header */}
+        <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Bell style={{ width: 20, height: 20, color: '#0f172a' }} />
+            <span style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Сповіщення</span>
+            {unreadCount > 0 && (
+              <span style={{ padding: '2px 7px', borderRadius: 20, background: ACCENT, color: '#fff', fontSize: 11, fontWeight: 600 }}>
+                {unreadCount}
+              </span>
+            )}
+          </div>
+          {unreadCount > 0 && (
+            <button
+              type="button"
+              onClick={markAllRead}
+              style={{ background: 'none', border: 'none', color: ACCENT, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+            >
+              Прочитати всі
+            </button>
+          )}
+        </div>
+
+        {/* Filter chips */}
+        <div style={{ display: 'flex', gap: 8, padding: '12px 16px', overflowX: 'auto' }}>
+          {(Object.keys(filterLabels) as (typeof mobileFilter)[]).map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setMobileFilter(f)}
+              style={{
+                flexShrink: 0,
+                padding: '6px 14px',
+                borderRadius: 20,
+                border: `1.5px solid ${mobileFilter === f ? ACCENT : '#e2e8f0'}`,
+                background: mobileFilter === f ? ACCENT : '#fff',
+                color: mobileFilter === f ? '#fff' : '#64748b',
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {filterLabels[f]}
+            </button>
+          ))}
+        </div>
+
+        {/* Feed */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 0 120px' }}>
+          {feedLoading ? (
+            <div style={{ padding: 32, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Завантаження…</div>
+          ) : filtered.length === 0 ? (
+            <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+              <Bell style={{ width: 40, height: 40, color: '#cbd5e1', margin: '0 auto 12px' }} />
+              <div style={{ fontSize: 14, fontWeight: 500, color: '#64748b' }}>Немає сповіщень</div>
+            </div>
+          ) : (
+            filtered.map((n) => {
+              const cat = categorize(n);
+              const meta = CATEGORY_META[cat];
+              const isUnread = !n.read_at;
+              const notifType = n.data?.type ?? '';
+              const followerProfileId = n.data?.follower_profile_id ?? n.data?.profile_id;
+              const isFollowNotif = (notifType === 'new_follower' || notifType === 'mutual_follow') && followerProfileId;
+              const followState = followerProfileId ? followStates[followerProfileId] : undefined;
+              const Icon = notifType === 'mutual_follow' ? Users : notifType === 'new_follower' ? UserPlus : meta.icon;
+              const timeStr = new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+              return (
+                <div
+                  key={n.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 12,
+                    padding: '14px 16px',
+                    borderBottom: '1px solid #f1f5f9',
+                    background: isUnread ? `${ACCENT}05` : '#fff',
+                    borderLeft: isUnread ? `3px solid ${meta.color}` : '3px solid transparent',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 12,
+                      background: `${meta.color}18`,
+                      color: meta.color,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Icon style={{ width: 18, height: 18 }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                      <div style={{ fontSize: 13, fontWeight: isUnread ? 600 : 500, color: '#0f172a', lineHeight: 1.3 }}>
+                        {n.title}
+                      </div>
+                      <span style={{ fontSize: 10, color: '#94a3b8', flexShrink: 0 }}>{timeStr}</span>
+                    </div>
+                    {n.body && (
+                      <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                        {cleanBody(n.body)}
+                      </div>
+                    )}
+                    {isFollowNotif && notifType === 'new_follower' && followerProfileId && (
+                      <button
+                        type="button"
+                        onClick={() => toggleFollow(followerProfileId)}
+                        disabled={followState === 'loading'}
+                        style={{
+                          marginTop: 8,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '5px 12px',
+                          borderRadius: 8,
+                          border: followState === true ? '1px solid #e2e8f0' : 'none',
+                          background: followState === true ? 'transparent' : ACCENT,
+                          color: followState === true ? '#64748b' : '#fff',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          opacity: followState === 'loading' ? 0.6 : 1,
+                        }}
+                      >
+                        {followState === 'loading' ? (
+                          <Loader2 style={{ width: 12, height: 12 }} />
+                        ) : followState === true ? (
+                          <><UserCheck style={{ width: 12, height: 12 }} /> Взаємно</>
+                        ) : (
+                          <><UserPlus style={{ width: 12, height: 12 }} /> Підписатися</>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => dismissOne(n.id)}
+                    style={{ flexShrink: 0, background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', padding: 4 }}
+                  >
+                    <X style={{ width: 14, height: 14 }} />
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
