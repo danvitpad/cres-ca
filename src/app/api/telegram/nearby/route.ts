@@ -113,8 +113,11 @@ export async function POST(request: Request) {
     }
   }
 
+  // FK-explicit embeds: services has two FKs to masters (master_id + recommended_master_id),
+  // so PostgREST refuses to auto-pick. salon:salons uses masters.salon_id (single FK, but
+  // we still name it for clarity).
   const masterSelect =
-    'id, specialization, rating, salon_id, latitude, longitude, address, city, workplace_name, display_name, avatar_url, vertical, profile:profiles!masters_profile_id_fkey(full_name), salon:salons(id, name, logo_url, city), services(price)';
+    'id, specialization, rating, salon_id, latitude, longitude, address, city, workplace_name, display_name, avatar_url, vertical, profile:profiles!masters_profile_id_fkey(full_name), salon:salons!masters_salon_id_fkey(id, name, logo_url, city), services:services!services_master_id_fkey(price)';
 
   // Name-based search — multi-word AND (ловит «имя фамилия» И «фамилия имя»).
   if (hasQuery) {
@@ -182,19 +185,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({
-      masters,
-      salons: salonsRes.data ?? [],
-      _debug: {
-        v: 'c6dc154+1',
-        tokens,
-        profileRowsRaw: (profilesRes.data ?? []).length,
-        profileIdsAfterFilter: profileIds.length,
-        mastersFromMain: (mastersRes.data ?? []).length,
-        profileError: profilesRes.error?.message ?? null,
-        mastersError: mastersRes.error?.message ?? null,
-      },
-    });
+    return NextResponse.json({ masters, salons: salonsRes.data ?? [] });
   }
 
   // Geo-based search — nearby masters & salons
