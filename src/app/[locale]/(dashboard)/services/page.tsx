@@ -160,6 +160,10 @@ function ServicesCatalogueView() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'active' | 'archive'>('active');
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const [mobileSheetEditing, setMobileSheetEditing] = useState<ServiceRow | null>(null);
 
   // Click-outside + Escape: меню три-точки на карточке услуги закрывается
   // при клике где угодно за его пределами и при нажатии Esc. Раньше его
@@ -183,6 +187,13 @@ function ServicesCatalogueView() {
     };
   }, [menuOpenId]);
 
+  useEffect(() => {
+    const check = () => setIsMobileView(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   const loadServices = useCallback(async () => {
     if (!master) {
       if (!masterLoading) setLoading(false);
@@ -200,7 +211,6 @@ function ServicesCatalogueView() {
         .from('services')
         .select('*, category:service_categories(name, color)')
         .eq('master_id', master.id)
-        .eq('is_active', true)
         .order('created_at', { ascending: true })
         .order('id', { ascending: true });
       if (data) setServices(data as unknown as ServiceRow[]);
@@ -230,6 +240,15 @@ function ServicesCatalogueView() {
   function openNew() {
     setEditing(null);
     setDialogOpen(true);
+  }
+
+  function openMobileEdit(service: ServiceRow) {
+    setMobileSheetEditing(service);
+    setMobileSheetOpen(true);
+  }
+  function openMobileNew() {
+    setMobileSheetEditing(null);
+    setMobileSheetOpen(true);
   }
 
   async function handleDelete(id: string) {
@@ -317,6 +336,166 @@ function ServicesCatalogueView() {
     if (h === 0) return `${m} мин`;
     if (m === 0) return `${h} ч`;
     return `${h} ч ${m} мин`;
+  }
+
+  // ── Mobile view ──
+  if (isMobileView) {
+    const activeList = services.filter((s) => s.is_active);
+    const archiveList = services.filter((s) => !s.is_active);
+    const mobileList = mobileTab === 'active' ? activeList : archiveList;
+
+    return (
+      <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, background: C.bg, minHeight: '100%', position: 'relative', paddingBottom: 140 }}>
+        {/* Pill tabs */}
+        <div style={{ padding: '12px 16px 0' }}>
+          <div style={{ display: 'flex', background: C.surfaceElevated, borderRadius: 999, padding: 3, gap: 2 }}>
+            {(['active', 'archive'] as const).map((tab) => {
+              const isActive = mobileTab === tab;
+              const count = tab === 'active' ? activeList.length : archiveList.length;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setMobileTab(tab)}
+                  style={{
+                    flex: 1, padding: '8px 12px', borderRadius: 999, border: 'none',
+                    background: isActive ? C.accent : 'transparent',
+                    color: isActive ? '#fff' : C.textSecondary,
+                    fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                    fontFamily: FONT, transition: 'all 200ms',
+                  }}
+                >
+                  {tab === 'active' ? `Активні (${count})` : `В архіві (${count})`}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Service list */}
+        <div style={{ padding: '8px 16px 0' }}>
+          {mobileList.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 0', color: C.textTertiary, fontSize: 14 }}>
+              {mobileTab === 'active' ? 'Немає активних послуг' : 'Архів порожній'}
+            </div>
+          ) : mobileList.map((s, i) => (
+            <div
+              key={s.id}
+              onClick={() => openMobileEdit(s)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '12px 0',
+                borderBottom: i < mobileList.length - 1 ? `1px dashed ${C.border}` : 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {/* Color bar */}
+              <div style={{ width: 3, height: 36, borderRadius: 2, background: s.color || C.accent, flexShrink: 0 }} />
+              {/* Name + meta */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {s.name}
+                </div>
+                <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 2 }}>
+                  {formatDuration(s.duration_minutes)} — ₴ {s.price.toLocaleString()}
+                </div>
+              </div>
+              {/* Toggle */}
+              <div
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  const supabase = createClient();
+                  await supabase.from('services').update({ is_active: !s.is_active }).eq('id', s.id);
+                  loadServices();
+                }}
+                style={{
+                  width: 34, height: 19, borderRadius: 999,
+                  background: s.is_active ? C.accent : C.border,
+                  position: 'relative', cursor: 'pointer', flexShrink: 0,
+                  transition: 'background 200ms',
+                }}
+              >
+                <div style={{
+                  width: 15, height: 15, borderRadius: '50%', background: '#fff',
+                  position: 'absolute', top: 2,
+                  left: s.is_active ? 'calc(100% - 17px)' : 2,
+                  transition: 'left 200ms',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                }} />
+              </div>
+              {/* More button */}
+              <button
+                data-service-menu={s.id}
+                onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === s.id ? null : s.id); }}
+                style={{
+                  width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer',
+                  color: C.textSecondary, flexShrink: 0, position: 'relative',
+                }}
+              >
+                <MoreVertical style={{ width: 16, height: 16 }} />
+                {menuOpenId === s.id && (
+                  <div
+                    data-service-menu={s.id}
+                    style={{
+                      position: 'absolute', right: 0, bottom: '100%', zIndex: 50,
+                      background: C.surface, border: `1px solid ${C.border}`,
+                      borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                      overflow: 'hidden', minWidth: 140, fontFamily: FONT,
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      onClick={() => { setMenuOpenId(null); openMobileEdit(s); }}
+                      style={{ display: 'block', width: '100%', padding: '10px 14px', border: 'none', background: 'transparent', textAlign: 'left', fontSize: 14, color: C.text, cursor: 'pointer' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = C.rowHover; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      Редагувати
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpenId(null); handleDelete(s.id); }}
+                      style={{ display: 'block', width: '100%', padding: '10px 14px', border: 'none', background: 'transparent', textAlign: 'left', fontSize: 14, color: '#d4163a', cursor: 'pointer' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = C.rowHover; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      Видалити
+                    </button>
+                  </div>
+                )}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* FAB */}
+        <button
+          onClick={openMobileNew}
+          style={{
+            position: 'fixed', bottom: 80, right: 20, zIndex: 40,
+            width: 52, height: 52, borderRadius: '50%',
+            background: C.accent, border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 16px rgba(37, 99, 235, 0.4)',
+            transition: 'transform 150ms',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.08)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+        >
+          <Plus style={{ width: 24, height: 24, color: '#fff' }} />
+        </button>
+
+        {/* Mobile bottom sheet */}
+        <MobileServiceSheet
+          open={mobileSheetOpen}
+          onClose={() => setMobileSheetOpen(false)}
+          editing={mobileSheetEditing}
+          masterId={master.id}
+          categories={categories}
+          onSaved={() => { setMobileSheetOpen(false); loadServices(); }}
+          C={C}
+        />
+      </div>
+    );
   }
 
   return (
@@ -702,6 +881,186 @@ function ServicesCatalogueView() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/* ─── Mobile bottom sheet for quick service add/edit ─── */
+function MobileServiceSheet({
+  open,
+  onClose,
+  editing,
+  masterId,
+  categories,
+  onSaved,
+  C,
+}: {
+  open: boolean;
+  onClose: () => void;
+  editing: ServiceRow | null;
+  masterId: string;
+  categories: Category[];
+  onSaved: () => void;
+  C: PageTheme;
+}) {
+  const [name, setName] = useState('');
+  const [duration, setDuration] = useState(60);
+  const [price, setPrice] = useState('');
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [color, setColor] = useState('#6366f1');
+  const [saving, setSaving] = useState(false);
+
+  const SWATCH_COLORS = ['#2563eb', '#ec4899', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6'];
+
+  useEffect(() => {
+    if (open) {
+      setName(editing?.name ?? '');
+      setDuration(editing?.duration_minutes ?? 60);
+      setPrice(String(editing?.price ?? ''));
+      setCategoryId(editing?.category_id ?? null);
+      setColor(editing?.color ?? '#6366f1');
+    }
+  }, [open, editing]);
+
+  function fmtDur(min: number) {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    if (h === 0) return `${m} хв`;
+    if (m === 0) return `${h} год`;
+    return `${h} год ${m} хв`;
+  }
+
+  async function handleSave() {
+    if (!name.trim()) { toast.error('Введіть назву послуги'); return; }
+    setSaving(true);
+    const supabase = createClient();
+    const payload = {
+      name: name.trim(),
+      duration_minutes: duration,
+      price: parseFloat(price) || 0,
+      currency: 'UAH',
+      category_id: categoryId || null,
+      color,
+      master_id: masterId,
+    };
+    const { error } = editing
+      ? await supabase.from('services').update(payload).eq('id', editing.id)
+      : await supabase.from('services').insert({ ...payload, is_active: true });
+    setSaving(false);
+    if (error) { toast.error(humanizeError(error)); return; }
+    toast.success(editing ? 'Збережено' : 'Послугу створено');
+    onSaved();
+  }
+
+  const inp: React.CSSProperties = {
+    width: '100%', padding: '9px 12px',
+    background: C.surfaceElevated,
+    border: `1.5px solid ${C.border}`,
+    borderRadius: 10, fontSize: 14, color: C.text,
+    fontFamily: FONT, outline: 'none', boxSizing: 'border-box',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+    letterSpacing: '0.07em', color: C.textTertiary, marginBottom: 6,
+  };
+
+  return (
+    <>
+      {open && (
+        <div
+          onClick={onClose}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50 }}
+        />
+      )}
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        background: C.surface, borderRadius: '24px 24px 0 0',
+        maxHeight: '88%', overflowY: 'auto', zIndex: 51,
+        transform: open ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform 350ms cubic-bezier(0.32, 0.72, 0, 1)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border }} />
+        </div>
+        <div style={{ padding: '0 16px 14px' }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: C.text, fontFamily: FONT }}>
+            {editing ? 'Редагувати послугу' : 'Нова послуга'}
+          </div>
+        </div>
+        <div style={{ padding: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <div style={labelStyle}>Назва</div>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Напр.: Манікюр класичний" style={inp} />
+          </div>
+          <div>
+            <div style={labelStyle}>Тривалість — {fmtDur(duration)}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 12, color: C.textTertiary, minWidth: 28 }}>15</span>
+              <input
+                type="range" min={15} max={180} step={15}
+                value={duration}
+                onChange={(e) => setDuration(Number(e.target.value))}
+                style={{ flex: 1, accentColor: C.accent }}
+              />
+              <span style={{ fontSize: 12, color: C.textTertiary, minWidth: 28, textAlign: 'right' }}>180</span>
+            </div>
+          </div>
+          <div>
+            <div style={labelStyle}>Ціна, ₴</div>
+            <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="500" style={inp} />
+          </div>
+          {categories.length > 0 && (
+            <div>
+              <div style={labelStyle}>Категорія</div>
+              <select value={categoryId ?? ''} onChange={(e) => setCategoryId(e.target.value || null)} style={{ ...inp, appearance: 'none' as const }}>
+                <option value="">Без категорії</option>
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+          )}
+          <div>
+            <div style={labelStyle}>Колір у календарі</div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              {SWATCH_COLORS.map((c) => (
+                <button
+                  key={c} type="button" onClick={() => setColor(c)}
+                  style={{
+                    width: 28, height: 28, borderRadius: '50%', background: c,
+                    border: 'none', cursor: 'pointer',
+                    outline: color === c ? `2px solid ${C.text}` : 'none',
+                    outlineOffset: 2,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, padding: '0 16px 24px' }}>
+          <button
+            onClick={onClose}
+            style={{
+              flex: 1, padding: 13, borderRadius: 12,
+              border: `1.5px solid ${C.border}`, background: C.surfaceElevated,
+              color: C.text, fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+            }}
+          >
+            Скасувати
+          </button>
+          <button
+            onClick={handleSave} disabled={saving}
+            style={{
+              flex: 1, padding: 13, borderRadius: 12,
+              border: 'none', background: C.accent,
+              color: '#fff', fontSize: 15, fontWeight: 600,
+              cursor: 'pointer', fontFamily: FONT, opacity: saving ? 0.6 : 1,
+            }}
+          >
+            {saving ? 'Збереження...' : editing ? 'Зберегти' : 'Створити'}
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 
