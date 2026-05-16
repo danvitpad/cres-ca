@@ -80,6 +80,16 @@ export default function SalonTeamCalendarPage() {
   const [openNew, setOpenNew] = useState(false);
   const [selectedMasterId, setSelectedMasterId] = useState<string | null>(null);
   const [defaultTime, setDefaultTime] = useState<string | undefined>(undefined);
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [mobileMasterId, setMobileMasterId] = useState<string | null>(null);
+  const [masterMenuOpen, setMasterMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobileView(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -143,6 +153,220 @@ export default function SalonTeamCalendarPage() {
   const dayStart = fromDateInput(day);
   const dayStartMs = dayStart.getTime();
   const isUnified = data.salon.team_mode === 'unified';
+
+  if (isMobileView) {
+    const ACCENT = '#2563eb';
+    const MASTER_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#e11d48', '#0891b2', '#16a34a'];
+
+    const masterColor = (idx: number) => MASTER_COLORS[idx % MASTER_COLORS.length];
+
+    // Build 7-day strip around selected day
+    const selectedDate = fromDateInput(day);
+    const weekDays: { label: string; dateStr: string; isToday: boolean; isSelected: boolean }[] = [];
+    const DAY_LABELS = ['НД', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
+    const todayStr = toDateInput(new Date());
+    // Start strip on Monday of current week
+    const startOfStrip = new Date(selectedDate);
+    const dow = startOfStrip.getDay();
+    startOfStrip.setDate(startOfStrip.getDate() - ((dow + 6) % 7));
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startOfStrip);
+      d.setDate(d.getDate() + i);
+      const ds = toDateInput(d);
+      weekDays.push({ label: DAY_LABELS[d.getDay()], dateStr: ds, isToday: ds === todayStr, isSelected: ds === day });
+    }
+
+    // Filter appointments by selected master
+    const mobileAppts = data.appointments
+      .filter((a) => !mobileMasterId || a.master_id === mobileMasterId)
+      .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+
+    const selectedMasterObj = data.masters.find((m) => m.id === mobileMasterId);
+
+    return (
+      <div style={{ minHeight: '100dvh', background: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 16px 8px' }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Календар</div>
+          {/* Master selector */}
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setMasterMenuOpen((o) => !o)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20, border: '1.5px solid #e2e8f0', background: '#fff', cursor: 'pointer' }}
+            >
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: selectedMasterObj ? masterColor(data.masters.indexOf(selectedMasterObj)) : ACCENT }} />
+              <span style={{ fontSize: 12, fontWeight: 500, color: '#0f172a' }}>
+                {selectedMasterObj ? (selectedMasterObj.display_name || 'Майстер') : 'Всі майстри'}
+              </span>
+              <ChevronRight style={{ width: 12, height: 12, color: '#94a3b8', transform: 'rotate(90deg)' }} />
+            </button>
+            {masterMenuOpen && (
+              <div
+                style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 50, minWidth: 180 }}
+              >
+                <button
+                  type="button"
+                  onClick={() => { setMobileMasterId(null); setMasterMenuOpen(false); }}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: !mobileMasterId ? '#f0f7ff' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                >
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: ACCENT }} />
+                  <span style={{ fontSize: 13, color: '#0f172a', fontWeight: !mobileMasterId ? 600 : 400 }}>Всі майстри</span>
+                </button>
+                {data.masters.map((m, idx) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => { setMobileMasterId(m.id); setMasterMenuOpen(false); }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: mobileMasterId === m.id ? '#f0f7ff' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: masterColor(idx) }} />
+                    <div>
+                      <div style={{ fontSize: 13, color: '#0f172a', fontWeight: mobileMasterId === m.id ? 600 : 400 }}>{m.display_name || 'Майстер'}</div>
+                      {m.specialization && <div style={{ fontSize: 11, color: '#64748b' }}>{m.specialization}</div>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 7-day strip */}
+        <div style={{ display: 'flex', gap: 4, padding: '0 12px 12px', overflowX: 'auto' }}>
+          {weekDays.map((d) => (
+            <button
+              key={d.dateStr}
+              type="button"
+              onClick={() => setDay(d.dateStr)}
+              style={{
+                flexShrink: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 2,
+                width: 44,
+                padding: '6px 0',
+                borderRadius: 12,
+                border: 'none',
+                background: d.isSelected ? ACCENT : 'transparent',
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{ fontSize: 10, fontWeight: 500, color: d.isSelected ? 'rgba(255,255,255,0.8)' : '#94a3b8', textTransform: 'uppercase' }}>{d.label}</span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: d.isSelected ? '#fff' : d.isToday ? ACCENT : '#0f172a' }}>{parseInt(d.dateStr.slice(8))}</span>
+              {d.isToday && !d.isSelected && <div style={{ width: 4, height: 4, borderRadius: '50%', background: ACCENT }} />}
+            </button>
+          ))}
+        </div>
+
+        {/* Timeline */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 120px' }}>
+          {loading ? (
+            <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Завантаження…</div>
+          ) : mobileAppts.length === 0 ? (
+            <div style={{ padding: '40px 0', textAlign: 'center' }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>📅</div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: '#64748b' }}>Записів немає</div>
+            </div>
+          ) : (
+            mobileAppts.map((a) => {
+              const masterIdx = data.masters.findIndex((m) => m.id === a.master_id);
+              const mColor = masterColor(masterIdx >= 0 ? masterIdx : 0);
+              const master = data.masters[masterIdx];
+              const startTime = new Date(a.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const endTime = new Date(a.ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const initials = (master?.display_name || 'М').split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+              const clientInitials = (a.client_name || 'К').split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+              const isCancelled = a.status === 'cancelled';
+              const isCompleted = a.status === 'completed' || a.status === 'paid';
+
+              return (
+                <div
+                  key={a.id}
+                  style={{ display: 'flex', gap: 10, marginBottom: 10 }}
+                >
+                  <div style={{ width: 44, flexShrink: 0, textAlign: 'right', paddingTop: 14 }}>
+                    <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>{startTime}</span>
+                  </div>
+                  <div
+                    style={{
+                      flex: 1,
+                      background: '#fff',
+                      borderRadius: 12,
+                      border: `1px solid ${isCancelled ? '#fecdd3' : isCompleted ? '#bbf7d0' : `${mColor}30`}`,
+                      borderLeft: `3px solid ${isCancelled ? '#f43f5e' : isCompleted ? '#10b981' : mColor}`,
+                      padding: '10px 12px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: `${mColor}20`, color: mColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                        {clientInitials}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {a.client_name || 'Клієнт'}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {a.service_name || 'Послуга не вказана'}
+                        </div>
+                        <div style={{ fontSize: 11, color: mColor, marginTop: 1 }}>
+                          {master?.display_name || 'Майстер'} · {startTime}–{endTime}
+                        </div>
+                      </div>
+                      {!mobileMasterId && (
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: mColor, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                          {initials}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+                      <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                        {startTime}–{endTime}
+                        {a.created_by_role && a.created_by_role !== 'master' && ` · ${roleLabel(a.created_by_role)}`}
+                      </span>
+                      {a.price != null && (
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>₴ {a.price.toLocaleString()}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* FAB */}
+        {data.masters.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedMasterId(mobileMasterId ?? data.masters[0].id);
+              setDefaultTime(undefined);
+              setOpenNew(true);
+            }}
+            style={{ position: 'fixed', bottom: 24, right: 20, width: 52, height: 52, borderRadius: '50%', background: ACCENT, color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(37,99,235,0.4)', zIndex: 40 }}
+          >
+            <Plus style={{ width: 22, height: 22 }} />
+          </button>
+        )}
+
+        {selectedMasterId && (
+          <TeamNewAppointment
+            open={openNew}
+            onOpenChange={setOpenNew}
+            salonId={salonId}
+            masters={data.masters}
+            initialMasterId={selectedMasterId}
+            defaultDate={day}
+            defaultTime={defaultTime}
+            createdByRole={data.role}
+            onCreated={() => load()}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-5 pb-24">
