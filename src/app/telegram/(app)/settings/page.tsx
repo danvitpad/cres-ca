@@ -8,6 +8,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -202,6 +203,12 @@ export default function MiniAppSettingsPage() {
   const [pwSuccess, setPwSuccess] = useState(false);
 
   useTrackSheetOpen(contactOpen || pwOpen);
+
+  // Portal в body — выходим из transform-контекста PageTransition, иначе
+  // position:fixed шторки получают motion.div как containing block и не
+  // дотягивают до низа экрана (под формой остаётся чёрный прямоугольник).
+  const [portalReady, setPortalReady] = useState(false);
+  useEffect(() => { setPortalReady(true); }, []);
 
   useEffect(() => {
     if (!userId) return;
@@ -476,8 +483,9 @@ export default function MiniAppSettingsPage() {
         </motion.button>
       </motion.div>
 
-      {/* Contact edit bottom sheet */}
-      <AnimatePresence>
+      {/* Contact edit bottom sheet — portal в body */}
+      {portalReady && createPortal(
+        <AnimatePresence>
         {contactOpen && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -561,10 +569,13 @@ export default function MiniAppSettingsPage() {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body,
+      )}
 
-      {/* Password change bottom sheet */}
-      <AnimatePresence>
+      {/* Password change bottom sheet — portal в body */}
+      {portalReady && createPortal(
+        <AnimatePresence>
         {pwOpen && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -656,7 +667,9 @@ export default function MiniAppSettingsPage() {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body,
+      )}
     </>
   );
 }

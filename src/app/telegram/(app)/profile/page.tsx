@@ -542,8 +542,9 @@ export default function MiniAppProfilePage() {
         <div style={{ height: 12 }} />
       </motion.div>
 
-      {/* Edit profile bottom sheet */}
-      <AnimatePresence>
+      {/* Edit profile bottom sheet — portal в body чтобы выйти из transform-контекста PageTransition */}
+      {portalReady && createPortal(
+        <AnimatePresence>
         {editOpen && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -704,11 +705,13 @@ export default function MiniAppProfilePage() {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body,
+      )}
 
-      {/* Followers/following sheet (kept for compatibility, but trigger removed
-          from main UI — followers count itself is now hidden, focus on Избранное) */}
-      <AnimatePresence>
+      {/* Followers/following sheet (kept for compatibility) — также через portal */}
+      {portalReady && createPortal(
+        <AnimatePresence>
         {listOpen && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -807,7 +810,9 @@ export default function MiniAppProfilePage() {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body,
+      )}
     </MobilePage>
   );
 }
