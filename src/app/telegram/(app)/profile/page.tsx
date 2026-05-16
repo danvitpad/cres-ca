@@ -10,6 +10,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -173,6 +174,12 @@ export default function MiniAppProfilePage() {
   const [editError, setEditError] = useState<string | null>(null);
 
   const [profileLoaded, setProfileLoaded] = useState(false);
+
+  // Шторки рендерим через portal в document.body — иначе PageTransition
+  // (motion.div с transform) становится containing block для position:fixed
+  // и шторка не дотягивает до низа экрана (виден чёрный прямоугольник).
+  const [portalReady, setPortalReady] = useState(false);
+  useEffect(() => { setPortalReady(true); }, []);
 
   useEffect(() => {
     if (!userId) return;

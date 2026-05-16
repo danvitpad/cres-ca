@@ -229,6 +229,13 @@ export default function FinancePage() {
   const [incCategory, setIncCategory] = useState('Услуга');
 
   const [loading, setLoading] = useState(true);
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const [mobileSheetType, setMobileSheetType] = useState<'income' | 'expense'>('income');
+  const [mobileAmount, setMobileAmount] = useState('');
+  const [mobileCategory, setMobileCategory] = useState('Послуга');
+  const [mobileNote, setMobileNote] = useState('');
+  const [mobileSaving, setMobileSaving] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!master?.id) return;
@@ -312,6 +319,13 @@ export default function FinancePage() {
     setLoading(true);
     loadData().finally(() => setLoading(false));
   }, [loadData]);
+
+  useEffect(() => {
+    const check = () => setIsMobileView(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   useEffect(() => {
     if (!master?.id) return;
@@ -535,6 +549,269 @@ export default function FinancePage() {
     () => incomeRows.reduce((s, r) => s + r.amount, 0),
     [incomeRows],
   );
+
+  async function handleMobileSave() {
+    const amt = Number(mobileAmount);
+    if (!amt || !master?.id) { toast.error('Введіть суму'); return; }
+    setMobileSaving(true);
+    const supabase = createClient();
+    const today = new Date().toISOString().slice(0, 10);
+    if (mobileSheetType === 'income') {
+      const { error } = await supabase.from('manual_incomes').insert({
+        master_id: master.id, amount: amt, currency: 'UAH',
+        date: today, category: mobileCategory || 'Послуга', note: mobileNote || null,
+      });
+      if (error) { toast.error(humanizeError(error)); setMobileSaving(false); return; }
+    } else {
+      const { error } = await supabase.from('expenses').insert({
+        master_id: master.id, amount: amt, currency: 'UAH',
+        date: today, category: mobileCategory || 'Матеріали', description: mobileNote || null,
+      });
+      if (error) { toast.error(humanizeError(error)); setMobileSaving(false); return; }
+    }
+    setMobileSaving(false);
+    setMobileAmount('');
+    setMobileNote('');
+    setMobileSheetOpen(false);
+    toast.success(mobileSheetType === 'income' ? 'Дохід додано' : 'Витрату додано');
+    loadData();
+  }
+
+  // ── Mobile view ──
+  if (isMobileView) {
+    const PERIOD_LABELS: { key: PeriodKey; label: string }[] = [
+      { key: 'today', label: 'Сьогодні' },
+      { key: 'week', label: 'Тиждень' },
+      { key: 'month', label: 'Місяць' },
+      { key: 'year', label: 'Рік' },
+    ];
+
+    const allMobileTxns = [
+      ...incomeRows.map((r) => ({ id: r.id, type: 'income' as const, title: r.title, sub: r.subtitle, amount: r.amount, date: r.date })),
+      ...expenses.map((e) => ({ id: e.id, type: 'expense' as const, title: e.category || 'Витрата', sub: e.description || e.vendor || '', amount: Number(e.amount), date: e.date + 'T00:00:00' })),
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 30);
+
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+    const weekBars = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(weekStart);
+      d.setDate(weekStart.getDate() + i);
+      const dayStr = d.toISOString().slice(0, 10);
+      const total = incomeRows.filter((r) => r.date.slice(0, 10) === dayStr).reduce((s, r) => s + r.amount, 0);
+      return { label: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'][i], val: total, isToday: dayStr === todayStr };
+    });
+    const maxBar = Math.max(...weekBars.map((b) => b.val), 1);
+
+    const INCOME_CATS = ['Послуга', 'Чайові', 'Інше'];
+    const EXPENSE_CATS = ['Матеріали', 'Оренда', 'Реклама', 'Транспорт', 'Інше'];
+
+    const inp2: React.CSSProperties = {
+      width: '100%', padding: '10px 12px',
+      background: C.surfaceElevated, border: `1.5px solid ${C.border}`,
+      borderRadius: 10, fontSize: 15, color: C.text,
+      fontFamily: FONT, outline: 'none', boxSizing: 'border-box',
+    };
+
+    return (
+      <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, background: C.bg, minHeight: '100%', position: 'relative', paddingBottom: 140 }}>
+        {/* Period strip */}
+        <div style={{ display: 'flex', gap: 6, padding: '12px 16px 8px' }}>
+          {PERIOD_LABELS.map(({ key, label }) => {
+            const on = periodKey === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setPeriodKey(key)}
+                style={{
+                  flex: 1, padding: '6px 0', textAlign: 'center', borderRadius: 999,
+                  border: `1.5px solid ${on ? C.accent : C.border}`,
+                  background: on ? C.accent : C.surface, color: on ? '#fff' : C.textSecondary,
+                  fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
+                  transition: 'all 150ms',
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Summary card */}
+        <div style={{ margin: '0 16px 12px', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: 16 }}>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 14 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, fontWeight: 500, color: C.textTertiary, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 4 }}>Доходи</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#10b981', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+                ₴ {loading ? '—' : revenue.toLocaleString()}
+              </div>
+            </div>
+            <div style={{ width: 1, background: C.border, alignSelf: 'stretch' }} />
+            <div style={{ flex: 1, paddingLeft: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 500, color: C.textTertiary, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 4 }}>Витрати</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: C.textSecondary, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+                ₴ {loading ? '—' : expenseTotal.toLocaleString()}
+              </div>
+            </div>
+          </div>
+          <div style={{ height: 1, background: C.border, marginBottom: 14 }} />
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: C.textTertiary }}>Прибуток</span>
+            <span style={{ fontSize: 28, fontWeight: 800, color: C.accent, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>
+              ₴ {loading ? '—' : profit.toLocaleString()}
+            </span>
+          </div>
+        </div>
+
+        {/* Bar chart */}
+        <div style={{ margin: '0 16px 12px', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: C.textTertiary, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 12 }}>
+            Цей тиждень — доходи по днях
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 80 }}>
+            {weekBars.map((b, i) => {
+              const h = b.val > 0 ? Math.max(4, Math.round((b.val / maxBar) * 72)) : 4;
+              return (
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <div style={{
+                    width: '100%', borderRadius: '4px 4px 0 0',
+                    height: h, background: C.accent,
+                    opacity: b.val > 0 ? 1 : 0.2,
+                    boxShadow: b.isToday ? '0 2px 8px rgba(37,99,235,0.4)' : 'none',
+                  }} />
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 4 }}>
+            {weekBars.map((b, i) => (
+              <span key={i} style={{ fontSize: 10, fontWeight: b.isToday ? 700 : 500, color: b.isToday ? C.accent : C.textTertiary }}>
+                {b.label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Transactions list */}
+        <div style={{ padding: '0 16px', marginBottom: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.textTertiary, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+            Останні операції
+          </div>
+          {allMobileTxns.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: C.textTertiary, fontSize: 14 }}>Поки немає операцій</div>
+          ) : allMobileTxns.map((txn, i) => (
+            <div key={txn.id} style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '12px 0',
+              borderBottom: i < allMobileTxns.length - 1 ? `1px solid ${C.border}` : 'none',
+              cursor: 'default',
+            }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: 16, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: txn.type === 'income' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+                color: txn.type === 'income' ? '#10b981' : '#ef4444',
+                fontSize: 16, fontWeight: 700,
+              }}>
+                {txn.type === 'income' ? '+' : '−'}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{txn.title}</div>
+                {txn.sub && <div style={{ fontSize: 12, color: C.textTertiary, marginTop: 1 }}>{txn.sub}</div>}
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, flexShrink: 0, fontVariantNumeric: 'tabular-nums', color: txn.type === 'income' ? '#10b981' : '#ef4444' }}>
+                {txn.type === 'income' ? '+' : '−'}₴{txn.amount.toLocaleString()}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* FAB */}
+        <button
+          onClick={() => { setMobileSheetOpen(true); setMobileSheetType('income'); setMobileAmount(''); setMobileNote(''); }}
+          style={{
+            position: 'fixed', bottom: 80, right: 20, zIndex: 40,
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '12px 20px', borderRadius: 999,
+            background: C.accent, border: 'none', cursor: 'pointer',
+            color: '#fff', fontSize: 15, fontWeight: 600, fontFamily: FONT,
+            boxShadow: '0 4px 16px rgba(37,99,235,0.4)',
+          }}
+        >
+          <Plus style={{ width: 16, height: 16 }} />
+          Додати
+        </button>
+
+        {/* Mobile bottom sheet */}
+        {mobileSheetOpen && (
+          <div onClick={() => setMobileSheetOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50 }} />
+        )}
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0,
+          background: C.surface, borderRadius: '24px 24px 0 0',
+          maxHeight: '85%', overflowY: 'auto', zIndex: 51,
+          transform: mobileSheetOpen ? 'translateY(0)' : 'translateY(100%)',
+          transition: 'transform 350ms cubic-bezier(0.32, 0.72, 0, 1)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border }} />
+          </div>
+          <div style={{ textAlign: 'center', fontSize: 16, fontWeight: 700, color: C.text, fontFamily: FONT, paddingBottom: 14 }}>Нова операція</div>
+          <div style={{ padding: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Type toggle */}
+            <div style={{ display: 'flex', background: C.surfaceElevated, borderRadius: 14, padding: 3, gap: 4 }}>
+              {(['income', 'expense'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => { setMobileSheetType(t); setMobileCategory(t === 'income' ? 'Послуга' : 'Матеріали'); }}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: 12, border: 'none',
+                    background: mobileSheetType === t ? C.surface : 'transparent',
+                    color: mobileSheetType === t ? C.text : C.textSecondary,
+                    fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+                    boxShadow: mobileSheetType === t ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                  }}
+                >
+                  {t === 'income' ? 'Дохід' : 'Витрата'}
+                </button>
+              ))}
+            </div>
+            {/* Amount */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: C.textTertiary, marginBottom: 6 }}>Сума (₴)</div>
+              <input type="number" value={mobileAmount} onChange={(e) => setMobileAmount(e.target.value)} placeholder="0.00" style={{ ...inp2, fontVariantNumeric: 'tabular-nums' }} />
+            </div>
+            {/* Category */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: C.textTertiary, marginBottom: 6 }}>Категорія</div>
+              <select value={mobileCategory} onChange={(e) => setMobileCategory(e.target.value)} style={{ ...inp2, appearance: 'none' as const }}>
+                {(mobileSheetType === 'income' ? INCOME_CATS : EXPENSE_CATS).map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            {/* Note */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: C.textTertiary, marginBottom: 6 }}>Примітка</div>
+              <input value={mobileNote} onChange={(e) => setMobileNote(e.target.value)} placeholder="Необов'язково…" style={inp2} />
+            </div>
+            <button
+              onClick={handleMobileSave}
+              disabled={mobileSaving || !mobileAmount}
+              style={{
+                padding: '14px', borderRadius: 14, border: 'none',
+                background: C.accent, color: '#fff',
+                fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+                opacity: mobileSaving || !mobileAmount ? 0.6 : 1,
+              }}
+            >
+              {mobileSaving ? 'Збереження...' : 'Зберегти'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ ...pageContainer, color: C.text, background: C.bg, minHeight: '100%', paddingBottom: 96 }}>

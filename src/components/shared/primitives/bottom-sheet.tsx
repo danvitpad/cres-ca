@@ -8,6 +8,8 @@
 
 'use client';
 
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 
@@ -33,10 +35,16 @@ export function BottomSheet({
   // Регистрация в глобальном счётчике — layout прячет bottom-nav пока есть
   // хоть одна открытая шторка.
   useTrackSheetOpen(open);
+  // Mounted gate — createPortal требует document.body, который недоступен в SSR.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  // Портал в document.body — иначе шторка живёт внутри PageTransition (motion.div
+  // с transform), который для position:fixed становится containing block. Sheet
+  // не дотягивает до низа экрана → виден чёрный прямоугольник под формой.
+  return createPortal(
     <div
       className="fixed z-50 animate-fade-in"
       style={{
@@ -80,6 +88,7 @@ export function BottomSheet({
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
