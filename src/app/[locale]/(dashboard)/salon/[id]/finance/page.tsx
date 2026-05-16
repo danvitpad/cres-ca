@@ -62,6 +62,14 @@ export default function SalonFinancePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [isMobileView, setIsMobileView] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobileView(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -131,6 +139,120 @@ export default function SalonFinancePage() {
   }
 
   const isUnified = data.salon.team_mode === 'unified';
+
+  if (isMobileView) {
+    const ACCENT = '#2563eb';
+    const PERIOD_LABELS: Record<Period, string> = { week: 'Тиждень', month: 'Місяць', year: 'Рік' };
+    const TOTALS = [
+      { label: 'Виручка', value: formatCurrency(data.totals.revenue), color: '#10b981' },
+      { label: 'Витрати', value: formatCurrency(data.totals.expenses), color: '#f43f5e' },
+      { label: 'Виплати', value: formatCurrency(data.totals.payouts), color: '#f59e0b' },
+      { label: 'Прибуток', value: formatCurrency(data.totals.profit), color: ACCENT },
+    ];
+
+    return (
+      <div style={{ minHeight: '100dvh', background: '#f8fafc', padding: '16px 16px 120px' }}>
+        {/* Header */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Фінанси · {isUnified ? 'Єдиний бізнес' : 'Коворкінг'}
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a' }}>{data.salon.name}</div>
+        </div>
+
+        {/* Period selector */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 20, background: '#f1f5f9', borderRadius: 12, padding: 4 }}>
+          {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPeriod(p)}
+              style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', background: period === p ? '#fff' : 'transparent', color: period === p ? '#0f172a' : '#64748b', fontSize: 13, fontWeight: period === p ? 600 : 400, cursor: 'pointer', boxShadow: period === p ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}
+            >
+              {PERIOD_LABELS[p]}
+            </button>
+          ))}
+        </div>
+
+        {/* KPI 2×2 */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+          {TOTALS.map((t) => (
+            <div key={t.label} style={{ background: '#fff', borderRadius: 16, padding: '14px 16px', border: '1px solid #f1f5f9' }}>
+              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>{t.label}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: t.color }}>{t.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Per-master */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>По майстрах</span>
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={busyId === 'generate'}
+            style={{ padding: '7px 14px', borderRadius: 10, border: 'none', background: ACCENT, color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: busyId === 'generate' ? 0.6 : 1 }}
+          >
+            {busyId === 'generate' ? 'Рахую…' : 'Сформувати'}
+          </button>
+        </div>
+
+        {data.per_master.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8', fontSize: 13 }}>Немає майстрів у команді</div>
+        ) : (
+          data.per_master.map((m) => {
+            const payoutStatusLabel = !m.payout ? 'не сформовано' : m.payout.status === 'paid' ? 'виплачено' : m.payout.status === 'confirmed' ? 'підтверджено' : 'чернетка';
+            const payoutStatusColor = !m.payout ? '#94a3b8' : m.payout.status === 'paid' ? '#10b981' : m.payout.status === 'confirmed' ? '#6366f1' : '#f59e0b';
+
+            return (
+              <div key={m.id} style={{ background: '#fff', borderRadius: 14, padding: '14px', marginBottom: 10, border: '1px solid #f1f5f9' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${ACCENT}15`, color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+                    {(m.display_name || 'M')[0].toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{m.display_name || 'Майстер'}</div>
+                    <div style={{ fontSize: 11, color: '#64748b' }}>
+                      Виручка: {formatCurrency(m.revenue)}
+                      {isUnified ? ` · ${m.commission_percent}%` : m.rent_amount > 0 ? ` · оренда ${formatCurrency(m.rent_amount)}` : ''}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{formatCurrency(m.net_payout)}</div>
+                    <div style={{ fontSize: 10, color: payoutStatusColor }}>{payoutStatusLabel}</div>
+                  </div>
+                </div>
+                {m.payout && m.payout.status !== 'paid' && (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {m.payout.status === 'draft' && (
+                      <button
+                        type="button"
+                        onClick={() => setPayoutStatus(m.payout!, 'confirmed')}
+                        disabled={busyId === m.payout.id}
+                        style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: '1px solid #e2e8f0', background: 'transparent', color: '#0f172a', fontSize: 12, fontWeight: 500, cursor: 'pointer', opacity: busyId === m.payout.id ? 0.5 : 1 }}
+                      >
+                        Підтвердити
+                      </button>
+                    )}
+                    {m.payout.status === 'confirmed' && (
+                      <button
+                        type="button"
+                        onClick={() => setPayoutStatus(m.payout!, 'paid')}
+                        disabled={busyId === m.payout.id}
+                        style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: 'none', background: '#10b981', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: busyId === m.payout.id ? 0.5 : 1 }}
+                      >
+                        Виплачено ✓
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-6 pb-20">
