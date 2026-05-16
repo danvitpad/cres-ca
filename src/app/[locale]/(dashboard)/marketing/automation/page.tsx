@@ -8,8 +8,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useLocale } from 'next-intl';
 import { toast } from 'sonner';
-import { Clock, Star, Heart, TrendingUp, BarChart3, Bell, Settings, Cake, Pencil, CheckCircle2, CalendarClock, XCircle } from 'lucide-react';
+import { Clock, Star, Heart, TrendingUp, BarChart3, Bell, Settings, Cake, Pencil, CheckCircle2, CalendarClock, XCircle, FileText } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { Switch } from '@/components/ui/switch';
@@ -115,6 +117,7 @@ const RULES: {
 export default function AutomationPage() {
   const supabase = createClient();
   const { master } = useMaster();
+  const locale = useLocale();
   const [settings, setSettings] = useState<Settings>(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [bdayDialogOpen, setBdayDialogOpen] = useState(false);
@@ -272,9 +275,18 @@ export default function AutomationPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
-      <p className="text-sm text-muted-foreground">
-        Встроенные правила автоматических сообщений. Настраивай тексты, включай/выключай нужные правила и пробуй на себе.
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          Встроенные правила автоматических сообщений. Настраивай тексты, включай/выключай нужные правила и пробуй на себе.
+        </p>
+        <Link
+          href={`/${locale}/marketing/templates`}
+          className="flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+        >
+          <FileText className="size-3.5" />
+          Всі шаблони
+        </Link>
+      </div>
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Загрузка…</p>
