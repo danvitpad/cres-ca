@@ -1255,14 +1255,18 @@ function PrimaryButton({
       onClick={onClick}
       disabled={disabled}
       style={{
-        width: "100%", height: 48, borderRadius: 14,
+        width: '100%', height: 50, borderRadius: 9999,
         background: 'var(--aviolet)', color: '#fff',
         border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
-        fontSize: 14, fontWeight: 600, letterSpacing: '.005em',
+        fontSize: 15, fontWeight: 700, letterSpacing: '.01em',
         opacity: disabled ? 0.55 : 1,
-        transition: 'all .2s ease',
-        boxShadow: disabled ? 'none' : '0 6px 20px color-mix(in oklab, var(--aviolet) 32%, transparent)',
+        transition: 'all .2s cubic-bezier(0.16,1,0.3,1)',
+        boxShadow: disabled ? 'none' : '0 4px 16px oklch(58% .180 255 / .30)',
+        transform: 'scale(1)',
       }}
+      onMouseDown={e => { if (!disabled) (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.97)'; }}
+      onMouseUp={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}
     >
       {children}
     </button>
