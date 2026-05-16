@@ -8,7 +8,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Tag,
@@ -126,6 +126,7 @@ const I18N: Record<MiniAppLang, {
 export default function MiniAppAppointmentDetail() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { userId } = useAuthStore();
   const { haptic } = useTelegram();
   const lang = useMiniAppLocale();
@@ -172,6 +173,9 @@ export default function MiniAppAppointmentDetail() {
       if (!json.appointment) { setNotFound(true); setLoading(false); return; }
       setRow(json.appointment as DetailRow);
       setReviewExists(!!json.reviewExists);
+      if (searchParams.get('review') === '1' && !json.reviewExists) {
+        setRatingOpen(true);
+      }
       setBeforeAfterPhotos((json.beforeAfterPhotos ?? []) as typeof beforeAfterPhotos);
       setLoading(false);
     })();
