@@ -24,6 +24,8 @@ import {
   Send,
   Info,
   Moon,
+  Phone,
+  Mail,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -58,6 +60,7 @@ const I18N: Record<Lang, {
   about: string; version: string;
   signOut: string; signOutConfirm: string;
   contactSheet: string; save: string; emailLabel: string; phoneLabel: string;
+  changePhone: string; changeEmail: string;
   pwSheet: string; pwNew: string; pwRepeat: string; pwMinLen: string; pwMismatch: string;
   pwNewPlaceholder: string; pwRepeatPlaceholder: string; pwSaved: string;
   emailConfirm: string; close: string;
@@ -85,6 +88,7 @@ const I18N: Record<Lang, {
     about: 'Про застосунок', version: 'v1.4',
     signOut: 'Вийти з акаунта', signOutConfirm: 'Точно вийти?',
     contactSheet: 'Контактні дані', save: 'Зберегти', emailLabel: 'Email', phoneLabel: 'Телефон',
+    changePhone: 'Змінити телефон', changeEmail: 'Змінити пошту',
     pwSheet: 'Змінити пароль', pwNew: 'Новий пароль', pwRepeat: 'Повторіть пароль',
     pwMinLen: 'Пароль має бути не менше 8 символів', pwMismatch: 'Паролі не збігаються',
     pwNewPlaceholder: 'Мінімум 6 символів', pwRepeatPlaceholder: 'Ще раз',
@@ -114,6 +118,7 @@ const I18N: Record<Lang, {
     about: 'О приложении', version: 'v1.4',
     signOut: 'Выйти из аккаунта', signOutConfirm: 'Точно выйти?',
     contactSheet: 'Контактные данные', save: 'Сохранить', emailLabel: 'Email', phoneLabel: 'Телефон',
+    changePhone: 'Сменить телефон', changeEmail: 'Сменить почту',
     pwSheet: 'Сменить пароль', pwNew: 'Новый пароль', pwRepeat: 'Повторите пароль',
     pwMinLen: 'Пароль должен быть не короче 8 символов', pwMismatch: 'Пароли не совпадают',
     pwNewPlaceholder: 'Минимум 6 символов', pwRepeatPlaceholder: 'Ещё раз',
@@ -143,6 +148,7 @@ const I18N: Record<Lang, {
     about: 'About', version: 'v1.4',
     signOut: 'Sign out', signOutConfirm: 'Log out?',
     contactSheet: 'Contact info', save: 'Save', emailLabel: 'Email', phoneLabel: 'Phone',
+    changePhone: 'Change phone', changeEmail: 'Change email',
     pwSheet: 'Change password', pwNew: 'New password', pwRepeat: 'Repeat password',
     pwMinLen: 'Password must be at least 8 characters', pwMismatch: 'Passwords do not match',
     pwNewPlaceholder: 'Minimum 6 characters', pwRepeatPlaceholder: 'Once more',
@@ -173,8 +179,10 @@ export default function MiniAppSettingsPage() {
   const [email, setEmail] = useState<string | null>(null);
   const [phone, setPhone] = useState<string | null>(null);
 
-  // Edit contact modal
+  // Edit contact modal — `contactFocus` подсказывает какое поле автофокусить
+  // (когда пришли из ряда «Сменить телефон» или «Сменить почту»).
   const [contactOpen, setContactOpen] = useState(false);
+  const [contactFocus, setContactFocus] = useState<'phone' | 'email'>('phone');
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [contactBusy, setContactBusy] = useState(false);
@@ -209,11 +217,12 @@ export default function MiniAppSettingsPage() {
     })();
   }, [userId]);
 
-  function openContactEdit() {
+  function openContactEdit(focus: 'phone' | 'email' = 'phone') {
     setEditPhone(phone ? phone.replace(/^\+380/, '') : '');
     setEditEmail(email ?? '');
     setContactError(null);
     setEmailConfirmSent(false);
+    setContactFocus(focus);
     setContactOpen(true);
     haptic('light');
   }
@@ -336,20 +345,70 @@ export default function MiniAppSettingsPage() {
         <h1 style={{ ...TYPE.h2, color: T.text, margin: '8px 4px 16px' }}>{t.title}</h1>
 
 
-        {/* SECTION: Сповіщення */}
-        <div className="section-label">{t.sectionNotif}</div>
+        {/* Единый блок: контакты/пароль/уведомления/приватность/поддержка/о приложении.
+            Без подзаголовков — просто строки в одной карточке с разделителями. */}
         <div className="card-block">
           <Row
+            icon={<Phone size={16} color="var(--fg-2)" />}
+            label={t.changePhone}
+            sub={phone ?? t.notSet}
+            onClick={() => openContactEdit('phone')}
+            trail={<div className="setting-arrow"><ChevronRight size={16} /></div>}
+          />
+          <Row
+            icon={<Mail size={16} color="var(--fg-2)" />}
+            label={t.changeEmail}
+            sub={email ?? t.notSet}
+            onClick={() => openContactEdit('email')}
+            trail={<div className="setting-arrow"><ChevronRight size={16} /></div>}
+          />
+          <Row
+            icon={<KeyRound size={16} color="var(--fg-2)" />}
+            label={t.changePassword}
+            onClick={() => {
+              setPwNew(''); setPwConfirm(''); setPwError(null); setPwSuccess(false);
+              setPwOpen(true); haptic('light');
+            }}
+            trail={<div className="setting-arrow"><ChevronRight size={16} /></div>}
+          />
+          <Row
             icon={<Bell size={16} color="var(--fg-2)" />}
-            label={t.reminders}
-            sub={t.reminderDesc}
+            label={t.sectionNotif}
             onClick={() => { haptic('light'); router.push('/telegram/settings/notifications'); }}
             trail={<div className="setting-arrow"><ChevronRight size={16} /></div>}
           />
+          <Row
+            icon={<Shield size={16} color="var(--fg-2)" />}
+            label={t.privacy}
+            onClick={() => { haptic('light'); router.push('/telegram/settings/privacy'); }}
+            trail={<div className="setting-arrow"><ChevronRight size={16} /></div>}
+          />
+          <Link
+            href={SUPPORT_BOT_URL}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => haptic('light')}
+            style={{ display: 'block', textDecoration: 'none' }}
+          >
+            <div className="setting-row">
+              <div style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--accent-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Send size={16} color="var(--accent)" strokeWidth={2} />
+              </div>
+              <span className="setting-label">{t.writeSupport}</span>
+              <div className="setting-arrow"><ChevronRight size={16} /></div>
+            </div>
+          </Link>
+          <div className="setting-row" style={{ cursor: 'default' }}>
+            <div style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Info size={16} color="var(--fg-3)" strokeWidth={2} />
+            </div>
+            <span className="setting-label">{t.about}</span>
+            <span className="setting-value">{t.version}</span>
+          </div>
         </div>
 
-        {/* SECTION: Зовнішній вигляд */}
-        <div className="section-label">{t.sectionAppearance}</div>
+        {/* SECTION: Внешний вид — единственный отдельный раздел */}
+        <div className="section-label" style={{ marginTop: 20 }}>{t.sectionAppearance}</div>
         <div className="card-block">
           <Row
             icon={<Globe size={16} color="var(--fg-2)" />}
@@ -377,54 +436,6 @@ export default function MiniAppSettingsPage() {
             }}
             trail={<Switch on={resolvedTheme === 'dark'} />}
           />
-        </div>
-
-        {/* SECTION: Безпека */}
-        <div className="section-label">{t.sectionSecurity}</div>
-        <div className="card-block">
-          <Row
-            icon={<KeyRound size={16} color="var(--fg-2)" />}
-            label={t.changePassword}
-            onClick={() => {
-              setPwNew(''); setPwConfirm(''); setPwError(null); setPwSuccess(false);
-              setPwOpen(true); haptic('light');
-            }}
-            trail={<div className="setting-arrow"><ChevronRight size={16} /></div>}
-          />
-          <Row
-            icon={<Shield size={16} color="var(--fg-2)" />}
-            label={t.privacy}
-            sub={t.privacyDesc}
-            onClick={() => { haptic('light'); router.push('/telegram/settings/privacy'); }}
-            trail={<div className="setting-arrow"><ChevronRight size={16} /></div>}
-          />
-        </div>
-
-        {/* SECTION: Підтримка */}
-        <div className="section-label">{t.sectionSupport}</div>
-        <div className="card-block">
-          <Link
-            href={SUPPORT_BOT_URL}
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => haptic('light')}
-            style={{ display: 'block', textDecoration: 'none' }}
-          >
-            <div className="setting-row">
-              <div style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--accent-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Send size={16} color="var(--accent)" strokeWidth={2} />
-              </div>
-              <span className="setting-label">{t.writeSupport}</span>
-              <div className="setting-arrow"><ChevronRight size={16} /></div>
-            </div>
-          </Link>
-          <div className="setting-row" style={{ cursor: 'default' }}>
-            <div style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Info size={16} color="var(--fg-3)" strokeWidth={2} />
-            </div>
-            <span className="setting-label">{t.about}</span>
-            <span className="setting-value">{t.version}</span>
-          </div>
         </div>
 
         {/* Logout */}
@@ -499,6 +510,7 @@ export default function MiniAppSettingsPage() {
                 <FieldBox label="Email">
                   <input
                     type="email"
+                    autoFocus={contactFocus === 'email'}
                     value={editEmail}
                     onChange={(e) => setEditEmail(e.target.value.slice(0, 120))}
                     placeholder="you@example.com"
@@ -515,6 +527,7 @@ export default function MiniAppSettingsPage() {
                     <input
                       type="tel"
                       inputMode="numeric"
+                      autoFocus={contactFocus === 'phone'}
                       value={editPhone}
                       onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
                       placeholder="501234567"
