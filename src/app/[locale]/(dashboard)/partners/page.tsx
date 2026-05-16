@@ -12,7 +12,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Handshake, ArrowRight, Users, Star } from 'lucide-react';
+import { Handshake, ArrowRight, Users, Star, ChevronRight, Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -44,6 +44,17 @@ export default function PartnersListPage() {
   const { C, mounted } = usePageTheme();
   const [partners, setPartners] = useState<PartnerCard[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Mobile state
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [mobilePillTab, setMobilePillTab] = useState<'my' | 'invites' | 'recommended'>('my');
+
+  useEffect(() => {
+    const check = () => setIsMobileView(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const load = useCallback(async () => {
     if (!master?.id) return;
@@ -93,6 +104,100 @@ export default function PartnersListPage() {
 
   const accepted = partners.filter((p) => p.status === 'accepted');
   const pending = partners.filter((p) => p.status === 'pending');
+
+  // ── MOBILE VIEW ──────────────────────────────────────────────────────────
+  if (isMobileView) {
+    const mobileList = mobilePillTab === 'my' ? accepted : mobilePillTab === 'invites' ? pending : [];
+
+    return (
+      <div style={{ background: '#f8fafc', minHeight: '100vh', paddingBottom: 100 }}>
+        {/* Header */}
+        <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Партнери</span>
+        </div>
+
+        {/* KPI strip */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, padding: '12px 16px 0' }}>
+          {[
+            { label: 'Активних', value: String(accepted.length) },
+            { label: 'Запрошення', value: String(pending.length) },
+            { label: 'Дохід', value: '—' },
+          ].map(k => (
+            <div key={k.label} style={{ background: '#fff', borderRadius: 12, padding: '10px 12px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>{k.value}</div>
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{k.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Pill tabs */}
+        <div style={{ display: 'flex', gap: 8, padding: '12px 16px' }}>
+          {([
+            { key: 'my' as const,          label: `Мої (${accepted.length})` },
+            { key: 'invites' as const,     label: `Запрошення (${pending.length})` },
+            { key: 'recommended' as const, label: 'Рекомендовані' },
+          ] as const).map(t => (
+            <button
+              key={t.key}
+              onClick={() => setMobilePillTab(t.key)}
+              style={{
+                padding: '6px 12px', borderRadius: 18, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
+                background: mobilePillTab === t.key ? '#2563eb' : '#fff',
+                color: mobilePillTab === t.key ? '#fff' : '#64748b',
+                boxShadow: mobilePillTab === t.key ? '0 2px 8px rgba(37,99,235,0.25)' : '0 1px 3px rgba(0,0,0,0.08)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Partner list */}
+        <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {loading ? (
+            [0,1,2].map(i => <div key={i} style={{ height: 68, background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0' }} />)
+          ) : mobileList.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8', fontSize: 14 }}>
+              {mobilePillTab === 'recommended' ? 'Функція незабаром' : 'Список порожній'}
+            </div>
+          ) : (
+            mobileList.map(p => {
+              const initials = (p.fullName ?? '??').split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+              return (
+                <Link
+                  key={p.partnershipId}
+                  href={`/partners/${p.partnershipId}`}
+                  style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}
+                >
+                  <div style={{ width: 40, height: 40, borderRadius: 20, background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
+                    {initials}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.fullName ?? 'Невідомий'}</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {p.specialization ?? 'Майстер'}
+                      {p.status === 'pending' && p.isIncoming && (
+                        <span style={{ fontSize: 10, fontWeight: 600, color: '#d97706', background: '#fffbeb', padding: '1px 6px', borderRadius: 8, marginLeft: 4 }}>очікує</span>
+                      )}
+                    </div>
+                  </div>
+                  <ChevronRight style={{ width: 16, height: 16, color: '#cbd5e1', flexShrink: 0 }} />
+                </Link>
+              );
+            })
+          )}
+        </div>
+
+        {/* FAB */}
+        <button
+          style={{ position: 'fixed', bottom: 88, right: 20, width: 52, height: 52, borderRadius: 26, background: '#2563eb', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 16px rgba(37,99,235,0.35)', zIndex: 40 }}
+        >
+          <Plus style={{ width: 24, height: 24, color: '#fff' }} />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div style={{
