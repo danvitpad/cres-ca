@@ -54,6 +54,14 @@ export default function SalonDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMobileView, setIsMobileView] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobileView(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,6 +120,105 @@ export default function SalonDashboardPage() {
   }
 
   const isUnified = data.salon.team_mode === 'unified';
+
+  if (isMobileView) {
+    const ACCENT = '#2563eb';
+    const avgLoad = data.team.length > 0
+      ? Math.round(data.team.reduce((s, m) => s + m.load_percent, 0) / data.team.length)
+      : 0;
+
+    return (
+      <div style={{ minHeight: '100dvh', background: '#f8fafc', padding: '16px 16px 120px' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {isUnified ? 'Єдиний бізнес' : 'Коворкінг'}
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a' }}>{data.salon.name}</div>
+          </div>
+          <button type="button" style={{ width: 36, height: 36, borderRadius: '50%', border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}>
+            <Building2 style={{ width: 16, height: 16, color: '#64748b' }} />
+          </button>
+        </div>
+
+        {/* 2x2 KPI grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+          {[
+            { label: 'Дохід сьогодні', value: formatCurrency(data.metrics.revenue_today), color: '#10b981' },
+            { label: 'Записів сьогодні', value: String(data.metrics.appointments_today), color: ACCENT },
+            { label: 'Зайнятість', value: `${avgLoad}%`, color: avgLoad > 80 ? '#f43f5e' : avgLoad > 50 ? '#10b981' : '#f59e0b' },
+            { label: 'Майстрів', value: String(data.metrics.masters_count), color: '#8b5cf6' },
+          ].map((kpi) => (
+            <div key={kpi.label} style={{ background: '#fff', borderRadius: 16, padding: '14px 16px', border: '1px solid #f1f5f9' }}>
+              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>{kpi.label}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: kpi.color }}>{kpi.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Weekly revenue */}
+        <div style={{ background: `${ACCENT}10`, borderRadius: 16, padding: '14px 16px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>Дохід за тиждень</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: ACCENT }}>{formatCurrency(data.metrics.revenue_week)}</div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 11, color: '#64748b' }}>За місяць</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>{formatCurrency(data.metrics.revenue_month)}</div>
+          </div>
+        </div>
+
+        {/* Alerts */}
+        {data.alerts.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            {data.alerts.map((a, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#fffbeb', borderRadius: 12, border: '1px solid #fde68a', marginBottom: 8 }}>
+                <AlertTriangle style={{ width: 14, height: 14, color: '#d97706', flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: '#92400e' }}>{a.message}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Team section */}
+        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>Команда сьогодні</span>
+          <button type="button" onClick={() => router.push(`/settings/team`)} style={{ background: 'none', border: 'none', color: ACCENT, fontSize: 12, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2 }}>
+            Управляти <ArrowRight style={{ width: 12, height: 12 }} />
+          </button>
+        </div>
+
+        {data.team.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8', fontSize: 13 }}>
+            Поки немає майстрів у команді
+          </div>
+        ) : (
+          data.team.map((m) => (
+            <div key={m.id} style={{ background: '#fff', borderRadius: 14, padding: '12px 14px', marginBottom: 10, border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: `${ACCENT}15`, color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0, overflow: 'hidden' }}>
+                {m.avatar_url ? <img src={m.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (m.display_name || 'M')[0].toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.display_name || 'Майстер'}</div>
+                <div style={{ fontSize: 11, color: '#64748b' }}>{m.specialization || 'Без спеціалізації'}</div>
+                <div style={{ marginTop: 6, height: 4, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${m.load_percent}%`, background: m.load_percent > 80 ? '#f43f5e' : m.load_percent > 50 ? '#10b981' : ACCENT, borderRadius: 2, transition: 'width 0.6s' }} />
+                </div>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{m.appointments_today}</div>
+                <div style={{ fontSize: 10, color: '#94a3b8' }}>{m.load_percent}%</div>
+                {isUnified && m.revenue_today !== null && (
+                  <div style={{ fontSize: 11, color: '#64748b' }}>{formatCurrency(m.revenue_today)}</div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-6 pb-20">
