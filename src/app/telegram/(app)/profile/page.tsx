@@ -545,7 +545,10 @@ export default function MiniAppProfilePage() {
             onClick={() => setEditOpen(false)}
             style={{
               position: 'fixed',
-              inset: 0,
+              top: 'var(--tg-content-top, 0px)',
+              left: 0,
+              right: 0,
+              bottom: 0,
               zIndex: 60,
               background: 'rgba(10,10,12,0.5)',
             }}
@@ -557,10 +560,8 @@ export default function MiniAppProfilePage() {
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
               onClick={(e) => e.stopPropagation()}
               style={{
-                // Шторка занимает всё от низа Telegram-шапки до низа экрана —
-                // нет пустых полос ни сверху (под чрому), ни снизу (над nav).
                 position: 'absolute',
-                top: 'max(var(--tg-content-top, 0px), 80px)',
+                top: 0,
                 left: 0,
                 right: 0,
                 bottom: 0,
@@ -709,7 +710,10 @@ export default function MiniAppProfilePage() {
             onClick={() => setListOpen(false)}
             style={{
               position: 'fixed',
-              inset: 0,
+              top: 'var(--tg-content-top, 0px)',
+              left: 0,
+              right: 0,
+              bottom: 0,
               zIndex: 60,
               background: 'rgba(10,10,12,0.5)',
             }}
@@ -722,7 +726,7 @@ export default function MiniAppProfilePage() {
               onClick={(e) => e.stopPropagation()}
               style={{
                 position: 'absolute',
-                top: 'max(var(--tg-content-top, 0px), 80px)',
+                top: 0,
                 left: 0,
                 right: 0,
                 bottom: 0,

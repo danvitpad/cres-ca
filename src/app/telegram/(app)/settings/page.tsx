@@ -485,7 +485,10 @@ export default function MiniAppSettingsPage() {
             exit={{ opacity: 0 }}
             style={{
               position: 'fixed',
-              inset: 0,
+              top: 'var(--tg-content-top, 0px)',
+              left: 0,
+              right: 0,
+              bottom: 0,
               zIndex: 50,
               background: 'rgba(0,0,0,0.5)',
               backdropFilter: 'blur(4px)',
@@ -500,7 +503,7 @@ export default function MiniAppSettingsPage() {
               onClick={(e) => e.stopPropagation()}
               style={{
                 position: 'absolute',
-                top: 'max(var(--tg-content-top, 0px), 80px)',
+                top: 0,
                 left: 0,
                 right: 0,
                 bottom: 0,
@@ -569,7 +572,10 @@ export default function MiniAppSettingsPage() {
             exit={{ opacity: 0 }}
             style={{
               position: 'fixed',
-              inset: 0,
+              top: 'var(--tg-content-top, 0px)',
+              left: 0,
+              right: 0,
+              bottom: 0,
               zIndex: 50,
               background: 'rgba(0,0,0,0.5)',
               backdropFilter: 'blur(4px)',
@@ -584,7 +590,7 @@ export default function MiniAppSettingsPage() {
               onClick={(e) => e.stopPropagation()}
               style={{
                 position: 'absolute',
-                top: 'max(var(--tg-content-top, 0px), 80px)',
+                top: 0,
                 left: 0,
                 right: 0,
                 bottom: 0,

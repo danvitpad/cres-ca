@@ -38,28 +38,34 @@ export function BottomSheet({
 
   return (
     <div
-      className="fixed inset-0 z-50 animate-fade-in"
-      style={{ background: 'rgba(0,0,0,0.4)' }}
+      className="fixed z-50 animate-fade-in"
+      style={{
+        // Backdrop стартует точно с низа Telegram-шапки — никакой тёмной
+        // полосы над шторкой в Telegram chrome area.
+        top: 'var(--tg-content-top, 0px)',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0,0,0,0.4)',
+      }}
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={cn(
-          'rounded-t-2xl bg-card shadow-[var(--shadow-overlay)]',
-          className,
-        )}
+        className={cn('rounded-t-2xl shadow-[var(--shadow-overlay)]', className)}
         style={{
-          // Шторка занимает всё от низа Telegram-шапки до низа экрана.
-          // explicit top + bottom вместо flex-end + maxHeight — на iOS Telegram
-          // flex layout не даёт стабильной полной высоты.
+          // Шторка занимает весь backdrop от top:0 до bottom:0.
+          // bg-card убран — shadcn-токен рендерится тёмным при системной
+          // dark-теме на iOS даже когда Mini App светлый.
           position: 'absolute',
-          top: 'max(var(--tg-content-top, 0px), 80px)',
+          top: 0,
           left: 0,
           right: 0,
           bottom: 0,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          background: 'var(--m-surface, #ffffff)',
           ...sheetStyle,
         }}
       >
