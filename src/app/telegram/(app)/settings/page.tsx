@@ -485,14 +485,8 @@ export default function MiniAppSettingsPage() {
             exit={{ opacity: 0 }}
             style={{
               position: 'fixed',
-              top: 'max(var(--tg-content-top, 0px), 80px)',
-              left: 0,
-              right: 0,
-              bottom: 0,
+              inset: 0,
               zIndex: 50,
-              display: 'flex',
-              alignItems: 'flex-end',
-              justifyContent: 'center',
               background: 'rgba(0,0,0,0.5)',
               backdropFilter: 'blur(4px)',
             }}
@@ -505,12 +499,16 @@ export default function MiniAppSettingsPage() {
               transition={SPRING.default}
               onClick={(e) => e.stopPropagation()}
               style={{
-                width: '100%',
-                maxWidth: 480,
+                position: 'absolute',
+                top: 'max(var(--tg-content-top, 0px), 80px)',
+                left: 0,
+                right: 0,
+                bottom: 0,
                 borderRadius: `${R.lg}px ${R.lg}px 0 0`,
                 background: T.surface,
                 padding: `20px ${PAGE_PADDING_X}px`,
-                paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
+                paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
+                overflowY: 'auto',
               }}
             >
               <SheetHeader title={t.contactSheet} onClose={() => !contactBusy && setContactOpen(false)} closeLabel={t.close} />
@@ -571,14 +569,8 @@ export default function MiniAppSettingsPage() {
             exit={{ opacity: 0 }}
             style={{
               position: 'fixed',
-              top: 'max(var(--tg-content-top, 0px), 80px)',
-              left: 0,
-              right: 0,
-              bottom: 0,
+              inset: 0,
               zIndex: 50,
-              display: 'flex',
-              alignItems: 'flex-end',
-              justifyContent: 'center',
               background: 'rgba(0,0,0,0.5)',
               backdropFilter: 'blur(4px)',
             }}
@@ -591,12 +583,16 @@ export default function MiniAppSettingsPage() {
               transition={SPRING.default}
               onClick={(e) => e.stopPropagation()}
               style={{
-                width: '100%',
-                maxWidth: 480,
+                position: 'absolute',
+                top: 'max(var(--tg-content-top, 0px), 80px)',
+                left: 0,
+                right: 0,
+                bottom: 0,
                 borderRadius: `${R.lg}px ${R.lg}px 0 0`,
                 background: T.surface,
                 padding: `20px ${PAGE_PADDING_X}px`,
-                paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
+                paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
+                overflowY: 'auto',
               }}
             >
               <SheetHeader title={t.pwSheet} onClose={() => !pwBusy && setPwOpen(false)} closeLabel={t.close} />

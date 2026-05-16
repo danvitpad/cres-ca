@@ -545,18 +545,9 @@ export default function MiniAppProfilePage() {
             onClick={() => setEditOpen(false)}
             style={{
               position: 'fixed',
-              // Зажимаем сверху на safe-area Telegram'а — иначе шторка с flex-end
-              // при maxHeight=viewport уезжает вверх за пределы видимой зоны
-              // (top шторки оказывается ВЫШЕ Telegram-шапки и обрезается).
-              top: 'max(var(--tg-content-top, 0px), 80px)',
-              left: 0,
-              right: 0,
-              bottom: 0,
+              inset: 0,
               zIndex: 60,
               background: 'rgba(10,10,12,0.5)',
-              display: 'flex',
-              alignItems: 'flex-end',
-              justifyContent: 'center',
             }}
           >
             <motion.div
@@ -566,9 +557,13 @@ export default function MiniAppProfilePage() {
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
               onClick={(e) => e.stopPropagation()}
               style={{
-                width: '100%',
-                maxWidth: 460,
-                height: '100%',
+                // Шторка занимает всё от низа Telegram-шапки до низа экрана —
+                // нет пустых полос ни сверху (под чрому), ни снизу (над nav).
+                position: 'absolute',
+                top: 'max(var(--tg-content-top, 0px), 80px)',
+                left: 0,
+                right: 0,
+                bottom: 0,
                 background: T.surface,
                 borderRadius: `${R.lg}px ${R.lg}px 0 0`,
                 boxShadow: SHADOW.elevated,
@@ -714,15 +709,9 @@ export default function MiniAppProfilePage() {
             onClick={() => setListOpen(false)}
             style={{
               position: 'fixed',
-              top: 'max(var(--tg-content-top, 0px), 80px)',
-              left: 0,
-              right: 0,
-              bottom: 0,
+              inset: 0,
               zIndex: 60,
               background: 'rgba(10,10,12,0.5)',
-              display: 'flex',
-              alignItems: 'flex-end',
-              justifyContent: 'center',
             }}
           >
             <motion.div
@@ -732,12 +721,14 @@ export default function MiniAppProfilePage() {
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
               onClick={(e) => e.stopPropagation()}
               style={{
-                width: '100%',
-                maxWidth: 460,
-                height: '100%',
+                position: 'absolute',
+                top: 'max(var(--tg-content-top, 0px), 80px)',
+                left: 0,
+                right: 0,
+                bottom: 0,
                 background: T.surface,
                 borderRadius: `${R.lg}px ${R.lg}px 0 0`,
-                paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
+                paddingBottom: 'env(safe-area-inset-bottom, 0px)',
                 overflow: 'hidden',
               }}
             >
