@@ -182,7 +182,19 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ masters, salons: salonsRes.data ?? [] });
+    return NextResponse.json({
+      masters,
+      salons: salonsRes.data ?? [],
+      _debug: {
+        v: 'c6dc154+1',
+        tokens,
+        profileRowsRaw: (profilesRes.data ?? []).length,
+        profileIdsAfterFilter: profileIds.length,
+        mastersFromMain: (mastersRes.data ?? []).length,
+        profileError: profilesRes.error?.message ?? null,
+        mastersError: mastersRes.error?.message ?? null,
+      },
+    });
   }
 
   // Geo-based search — nearby masters & salons
