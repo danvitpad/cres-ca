@@ -318,7 +318,7 @@ function PromoCreateSheet({ masterId, t, onClose, onSaved }: {
           padding: `20px ${PAGE_PADDING_X}px`,
           paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
           boxShadow: SHADOW.elevated,
-          maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 12px) - 24px)',
+          maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 80px))',
           overflowY: 'auto',
         }}
       >

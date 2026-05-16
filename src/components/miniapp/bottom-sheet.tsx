@@ -67,7 +67,7 @@ export function MiniBottomSheet({
               // --tg-content-top подставляется telegram-provider'ом. Без
               // этого title шторки залезал под чрезкие кнопки TG (см. скрин
               // 2026-05-11). 12px минимум на случай браузера без TG.
-              maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 12px) - 24px)',
+              maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 80px))',
               paddingBottom: 'max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px))',
             }}
           >

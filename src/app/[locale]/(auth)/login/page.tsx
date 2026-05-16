@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/input-otp';
 import {
   ArrowLeft, Eye, EyeOff, Mail, Shield,
-  CalendarCheck, User as UserIcon,
+  CalendarCheck, User as UserIcon, Scissors, Check,
 } from 'lucide-react';
 import { humanizeError } from '@/lib/format/error';
 import { isDisposableEmail } from '@/lib/format/email-validator';
@@ -30,21 +30,20 @@ type Mode = 'signin' | 'signup';
 type Sub = 'form' | 'forgot' | 'reset-sent' | 'reset-otp' | 'new-password' | 'signup-otp' | '2fa' | 'restore';
 
 const REMEMBER_KEY = 'cres-ca-remember';
-// Нейтральная teal-tinted Unsplash для нового бренда (deep teal var(--color-accent))
-const HERO_IMG = 'https://images.unsplash.com/photo-1604933762023-7213af7ff7a7?w=2160&q=80';
 
-/* ───── Themed CSS — glass inputs + teal accent (m0038 rebrand) ───── */
+/* ───── Themed CSS — mock-aligned: clean border inputs + cobalt panel ───── */
 const AUTH_CSS = `
 .auth-glass {
-  --af: var(--font-sans, 'Plus Jakarta Sans', sans-serif);
-  --abg: var(--background, #ffffff);
-  --acard: color-mix(in oklab, var(--abg) 92%, white);
-  --afg: var(--foreground, #0a0a0a);
-  --afg2: color-mix(in oklab, var(--afg) 65%, transparent);
-  --afg3: color-mix(in oklab, var(--afg) 45%, transparent);
-  --acb: color-mix(in oklab, var(--afg) 12%, transparent);
-  --aviolet: var(--color-accent); --aviolet-l: #f0fdfa;
-  --adanger: #b91c1c;
+  --af: var(--font-sans, 'Inter', sans-serif);
+  --abg: oklch(98% .004 255);
+  --acard: #fff;
+  --afg: oklch(14% .008 255);
+  --afg2: oklch(52% .014 255);
+  --afg3: oklch(65% .012 255);
+  --acb: oklch(90% .008 255);
+  --aviolet: var(--color-accent, #2563eb);
+  --aviolet-l: oklch(58% .180 255 / .12);
+  --adanger: #dc2626;
   font-family: var(--af);
   background: var(--abg);
   color: var(--afg);
@@ -53,36 +52,40 @@ const AUTH_CSS = `
   width: 100%;
 }
 html.dark .auth-glass {
-  --acard: color-mix(in oklab, var(--abg) 88%, white);
-  --aviolet: #60a5fa; --aviolet-l: rgba(96, 165, 250,.12);
-  --adanger: #f87171;
+  --abg: oklch(14% .008 255);
+  --acard: oklch(19% .010 255);
+  --afg: oklch(95% .004 255);
+  --afg2: oklch(60% .012 255);
+  --afg3: oklch(45% .010 255);
+  --acb: oklch(28% .012 255);
+  --aviolet: #60a5fa;
+  --aviolet-l: rgba(96,165,250,.12);
 }
 .auth-glass input, .auth-glass button, .auth-glass select { font-family: var(--af); }
 .auth-glass a { color: inherit; text-decoration: none; }
+
+/* ─── Inputs: clean border (replaces glass morphism) ─── */
 .glass-wrap {
-  border-radius: 14px;
-  border: 1px solid var(--acb);
-  background: color-mix(in oklab, var(--afg) 5%, transparent);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+  border-radius: 12px;
+  border: 1.5px solid var(--acb);
+  background: var(--acard);
+  transition: border-color .15s ease, box-shadow .15s ease;
 }
-.glass-wrap:hover { border-color: color-mix(in oklab, var(--aviolet) 35%, var(--acb)); }
+.glass-wrap:hover { border-color: oklch(72% .016 255); }
 .glass-wrap:focus-within {
-  border-color: color-mix(in oklab, var(--aviolet) 70%, transparent);
-  background: color-mix(in oklab, var(--aviolet) 10%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--aviolet) 18%, transparent);
+  border-color: var(--aviolet);
+  box-shadow: 0 0 0 3px oklch(58% .180 255 / .15);
 }
+html.dark .glass-wrap { background: oklch(22% .010 255); }
+
 .glass-input {
   width: 100%; height: 46px; padding: 0 16px;
   border: none; outline: none; background: transparent;
-  color: var(--afg); font-size: 14px;
-  border-radius: 14px;
+  color: var(--afg); font-size: 14px; border-radius: 12px;
 }
 .glass-input::placeholder { color: var(--afg3); }
 .auth-label { font-size: 12px; font-weight: 600; color: var(--afg2); display: block; margin-bottom: 6px; letter-spacing: .01em; }
 input[type="checkbox"].auth-cb { accent-color: var(--aviolet); width: 14px; height: 14px; cursor: pointer; }
-@keyframes auth-glow { 0%,100%{opacity:.45} 50%{opacity:.85} }
 
 /* Role tabs — стили через CSS-селектор по data-active. Раньше использовали
    инлайн-стили, но в React 19 + framer-motion AnimatePresence обнаружился
@@ -93,25 +96,42 @@ input[type="checkbox"].auth-cb { accent-color: var(--aviolet); width: 14px; heig
   padding: 9px 6px; border-radius: 10px; border: none; cursor: pointer;
   background: transparent; color: var(--afg2);
   font-size: 13px; font-weight: 600;
-  box-shadow: none;
   transition: background .18s ease, color .18s ease, box-shadow .18s ease;
   outline: none;
 }
 .role-tab[data-active="true"] {
   background: var(--aviolet);
   color: #fff;
-  box-shadow: 0 4px 14px color-mix(in oklab, var(--aviolet) 35%, transparent);
+  box-shadow: 0 4px 14px oklch(58% .180 255 / .30);
 }
 
-/* Desktop layout: страница не скроллится. Если форма signup всё равно
-   выше viewport — скроллится только её колонка, картинка остаётся видна.
-   Mobile (≤767px) — картинка скрыта, страница скроллится свободно. */
+/* ─── Desktop: gradient left panel ─── */
+.auth-panel-left {
+  flex: 1;
+  background: linear-gradient(135deg, var(--aviolet) 0%, oklch(45% .22 280) 100%);
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  padding: 40px; color: #fff; gap: 24px;
+  min-height: 560px;
+}
+.auth-panel-logo { font-size: 26px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+.auth-panel-tagline { font-size: 15px; opacity: .85; line-height: 1.5; max-width: 270px; text-align: center; }
+.auth-panel-features { display: flex; flex-direction: column; gap: 12px; align-self: flex-start; }
+.auth-panel-feature { display: flex; align-items: center; gap: 12px; font-size: 14px; opacity: .9; }
+.auth-panel-check { width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,.2); display: grid; place-items: center; flex-shrink: 0; }
+.auth-panel-count { font-size: 13px; opacity: .7; text-align: center; margin-top: 4px; }
+
+/* Desktop scroll — форма скроллится если signup длиннее viewport */
 @media (min-width: 768px) {
   html, body { overflow: hidden; }
   .auth-glass { height: 100dvh; overflow: hidden; }
   .auth-form-col { overflow-y: auto; max-height: 100%; scrollbar-width: thin; }
   .auth-form-col::-webkit-scrollbar { width: 6px; }
-  .auth-form-col::-webkit-scrollbar-thumb { background: color-mix(in oklab, var(--afg) 18%, transparent); border-radius: 3px; }
+  .auth-form-col::-webkit-scrollbar-thumb { background: oklch(52% .014 255 / .18); border-radius: 3px; }
+  .auth-panel-left { display: flex; }
+}
+@media (max-width: 767px) {
+  .auth-panel-left { display: none !important; }
 }
 `;
 
@@ -120,6 +140,13 @@ const ROLES: { value: Role; label: string; icon: typeof UserIcon }[] = [
   { value: 'client',      label: 'Клиент',   icon: CalendarCheck },
   { value: 'master',      label: 'Мастер',   icon: UserIcon },
 ];
+
+const FEATURES = [
+  'Онлайн-запис для клієнтів 24/7',
+  'Аналітика доходів та фінанси',
+  'AI-помічник та голосові команди',
+  'Програма лояльності та маркетинг',
+] as const;
 
 function readRemembered(): { email?: string; password?: string; role?: Role } {
   if (typeof window === 'undefined') return {};
@@ -634,7 +661,7 @@ export default function AuthPage() {
             transition={{ type: 'spring', stiffness: 180, damping: 26, mass: 0.8 }}
             className="auth-form-col"
             style={{
-              flex: 1, order: isSignUp ? 2 : 1,
+              flex: 1, order: 2,
               display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
               padding: 'clamp(16px, 2.5vw, 28px) clamp(12px, 2.5vw, 32px) clamp(20px, 3vw, 32px)',
             }}
@@ -1082,36 +1109,27 @@ export default function AuthPage() {
               </div>
           </motion.section>
 
-          {/* Hero image column — hidden on mobile */}
-          <motion.section
-            layout
-            transition={{ type: 'spring', stiffness: 180, damping: 26, mass: 0.8 }}
-            className="auth-hero"
-            style={{
-              flex: 1, order: isSignUp ? 1 : 2,
-              position: 'relative',
-              borderRadius: 28,
-              overflow: 'hidden',
-              minHeight: 400,
-            }}
-          >
-              <div style={{
-                position: 'absolute', inset: 0,
-                backgroundImage: `url(${HERO_IMG})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-              }} />
-              <div style={{
-                position: 'absolute', inset: 0,
-                background: 'linear-gradient(135deg, color-mix(in oklab, var(--aviolet) 40%, transparent) 0%, transparent 60%)',
-                mixBlendMode: 'multiply',
-              }} />
-            <style>{`
-              @media (max-width: 767px) {
-                .auth-hero { display: none !important; }
-              }
-            `}</style>
-          </motion.section>
+          {/* Left panel — gradient + feature list (hidden on mobile) */}
+          <div className="auth-panel-left" style={{ order: 1, borderRadius: 20 }}>
+            <div className="auth-panel-logo">
+              <Scissors size={26} />
+              CRES-CA
+            </div>
+            <p className="auth-panel-tagline">
+              Платформа для майстрів, які хочуть більше клієнтів і менше рутини
+            </p>
+            <div className="auth-panel-features">
+              {FEATURES.map(f => (
+                <div key={f} className="auth-panel-feature">
+                  <div className="auth-panel-check">
+                    <Check size={10} />
+                  </div>
+                  {f}
+                </div>
+              ))}
+            </div>
+            <p className="auth-panel-count">Більше 2 400 майстрів у 14 містах</p>
+          </div>
         </div>
       </div>
     </>

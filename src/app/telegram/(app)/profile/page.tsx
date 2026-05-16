@@ -562,7 +562,7 @@ export default function MiniAppProfilePage() {
                 background: T.surface,
                 borderRadius: `${R.lg}px ${R.lg}px 0 0`,
                 boxShadow: SHADOW.elevated,
-                maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 12px) - 24px)',
+                maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 80px))',
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden',
@@ -722,7 +722,7 @@ export default function MiniAppProfilePage() {
               style={{
                 width: '100%',
                 maxWidth: 460,
-                maxHeight: '80dvh',
+                maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 80px))',
                 background: T.surface,
                 borderRadius: `${R.lg}px ${R.lg}px 0 0`,
                 paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',

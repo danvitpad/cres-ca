@@ -269,7 +269,7 @@ export function BlockTimeSheet({ open, onClose, date, defaultTime, onSaved }: Pr
               position: 'fixed',
               inset: 'auto 0 0 0',
               zIndex: 90,
-              maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 12px) - 24px)',
+              maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 80px))',
               background: T.bg,
               color: T.text,
               borderRadius: `${R.lg}px ${R.lg}px 0 0`,

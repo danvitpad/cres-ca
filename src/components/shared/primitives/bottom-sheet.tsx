@@ -51,11 +51,10 @@ export function BottomSheet({
         style={{
           width: '100%',
           // Auto-size to content, capped to viewport-height минус Telegram chrome
-          // + 24px буфер. Раньше шторка имела explicit height (0.7 * viewport),
-          // и на iOS позиционировалась с top за пределы видимой зоны — drag-handle
-          // и заголовок терялись. Теперь авто-размер — top шторки всегда
-          // на расстоянии (maxHeight - content) от низа viewport-height.
-          maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 12px) - 24px)',
+          // (min 80px — Telegram-шапка на iPhone fullscreen ~100-120px, нужен
+          // запас чтобы заголовок шторки не уходил под кнопки «Закрыть»/«меню»).
+          // Раньше использовался buffer 12+24=36px — недостаточно для notch iPhone.
+          maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 80px))',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
