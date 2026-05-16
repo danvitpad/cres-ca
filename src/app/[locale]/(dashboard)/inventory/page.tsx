@@ -21,6 +21,8 @@ import {
   Phone,
   Mail,
   Send,
+  ChevronRight,
+  Search,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -117,6 +119,12 @@ export default function InventoryPage({
   const [supplierTelegramId, setSupplierTelegramId] = useState('');
   const [supplierNotes, setSupplierNotes] = useState('');
 
+  // Mobile state
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'all' | 'low'>('all');
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const [mobileSearch, setMobileSearch] = useState('');
+
   const loadItems = useCallback(async () => {
     if (!master) return;
     setIsLoading(true);
@@ -165,6 +173,13 @@ export default function InventoryPage({
     if (suppliers.length === 0) loadSuppliers();
   }, [suppliers.length, loadSuppliers]);
 
+  useEffect(() => {
+    const check = () => setIsMobileView(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   function openAddDialog() {
     setEditItem(null);
     setName('');
@@ -185,6 +200,21 @@ export default function InventoryPage({
     setLowStockThreshold(String(item.low_stock_threshold));
     setPreferredSupplierId(item.preferred_supplier_id ?? null);
     setDialogOpen(true);
+  }
+
+  function openMobileAdd() {
+    setEditItem(null);
+    setName(''); setQuantity(''); setUnit('шт');
+    setCostPerUnit(''); setLowStockThreshold('5'); setPreferredSupplierId(null);
+    setMobileSheetOpen(true);
+  }
+
+  function openMobileEdit(item: InventoryItem) {
+    setEditItem(item);
+    setName(item.name); setQuantity(String(item.quantity)); setUnit(item.unit);
+    setCostPerUnit(String(item.cost_per_unit)); setLowStockThreshold(String(item.low_stock_threshold));
+    setPreferredSupplierId(item.preferred_supplier_id ?? null);
+    setMobileSheetOpen(true);
   }
 
   async function saveItem() {
@@ -210,6 +240,7 @@ export default function InventoryPage({
 
     toast.success(tc('success'));
     setDialogOpen(false);
+    setMobileSheetOpen(false);
     loadItems();
   }
 
@@ -300,6 +331,191 @@ export default function InventoryPage({
 
   const lowStockItems = items.filter((i) => i.quantity <= i.low_stock_threshold);
   const lowStockCount = lowStockItems.length;
+
+  // ── MOBILE VIEW ──────────────────────────────────────────────────────────
+  if (isMobileView) {
+    const totalValue = items.reduce((sum, i) => sum + i.quantity * (i.cost_per_unit || 0), 0);
+    const filteredItems = items
+      .filter(i => mobileTab === 'low' ? i.quantity <= i.low_stock_threshold : true)
+      .filter(i => !mobileSearch.trim() || i.name.toLowerCase().includes(mobileSearch.toLowerCase()));
+
+    return (
+      <div style={{ background: '#f8fafc', minHeight: '100vh', paddingBottom: 100 }}>
+        {/* Header */}
+        <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Склад</span>
+          <button
+            onClick={openMobileAdd}
+            style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 20, padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+          >
+            + Додати
+          </button>
+        </div>
+
+        {/* Search */}
+        <div style={{ padding: '12px 16px 0' }}>
+          <div style={{ position: 'relative' }}>
+            <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', width: 16, height: 16 }} />
+            <input
+              value={mobileSearch}
+              onChange={e => setMobileSearch(e.target.value)}
+              placeholder="Пошук матеріалів..."
+              style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 14, background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+        </div>
+
+        {/* Stat strip */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, padding: '12px 16px' }}>
+          {[
+            { label: 'Всього', value: String(items.length), warn: false },
+            { label: 'Мало', value: String(lowStockCount), warn: lowStockCount > 0 },
+            { label: 'Вартість', value: `${totalValue.toFixed(0)} ₴`, warn: false },
+          ].map(s => (
+            <div key={s.label} style={{ background: '#fff', borderRadius: 12, padding: '10px 12px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: s.warn ? '#f59e0b' : '#0f172a' }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Filter pill tabs */}
+        <div style={{ display: 'flex', gap: 8, padding: '0 16px 12px' }}>
+          {([
+            { key: 'all' as const, label: `Всі (${items.length})` },
+            { key: 'low' as const, label: `⚠ Мало (${lowStockCount})` },
+          ] as const).map(t => (
+            <button
+              key={t.key}
+              onClick={() => setMobileTab(t.key)}
+              style={{
+                padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
+                background: mobileTab === t.key ? '#2563eb' : '#fff',
+                color: mobileTab === t.key ? '#fff' : '#64748b',
+                boxShadow: mobileTab === t.key ? '0 2px 8px rgba(37,99,235,0.25)' : '0 1px 3px rgba(0,0,0,0.08)',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Material list */}
+        <div style={{ padding: '0 16px' }}>
+          {filteredItems.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8', fontSize: 14 }}>
+              {mobileSearch ? 'Нічого не знайдено' : 'Матеріалів немає'}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {filteredItems.map(item => {
+                const qty = item.quantity;
+                const threshold = item.low_stock_threshold;
+                const level = qty === 0 ? 'critical' : qty <= threshold ? 'low' : 'ok';
+                const iconBg   = level === 'ok' ? '#eff6ff' : level === 'low' ? '#fffbeb' : '#fef2f2';
+                const iconColor = level === 'ok' ? '#2563eb' : level === 'low' ? '#f59e0b' : '#ef4444';
+                const badgeBg   = level === 'ok' ? '#f0fdf4' : level === 'low' ? '#fffbeb' : '#fef2f2';
+                const badgeClr  = level === 'ok' ? '#16a34a' : level === 'low' ? '#d97706' : '#dc2626';
+                const badgeTxt  = level === 'ok' ? 'OK' : level === 'low' ? 'LOW' : 'CRITICAL';
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => openMobileEdit(item)}
+                    style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
+                  >
+                    <div style={{ width: 40, height: 40, borderRadius: 20, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Package style={{ width: 18, height: 18, color: iconColor }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
+                      <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                        {item.quantity} {item.unit}{item.cost_per_unit > 0 ? ` · ₴${item.cost_per_unit}/${item.unit}` : ''}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: badgeClr, background: badgeBg, padding: '2px 7px', borderRadius: 10 }}>{badgeTxt}</span>
+                      <ChevronRight style={{ width: 16, height: 16, color: '#cbd5e1' }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* FAB */}
+        <button
+          onClick={openMobileAdd}
+          style={{ position: 'fixed', bottom: 88, right: 20, width: 52, height: 52, borderRadius: 26, background: '#2563eb', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 16px rgba(37,99,235,0.35)', zIndex: 40 }}
+        >
+          <Plus style={{ width: 24, height: 24, color: '#fff' }} />
+        </button>
+
+        {/* Bottom sheet */}
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, pointerEvents: mobileSheetOpen ? 'auto' : 'none' }}>
+          <div
+            onClick={() => setMobileSheetOpen(false)}
+            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', opacity: mobileSheetOpen ? 1 : 0, transition: 'opacity 300ms' }}
+          />
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: '#fff', borderRadius: '20px 20px 0 0', maxHeight: '88%', overflowY: 'auto', transform: mobileSheetOpen ? 'translateY(0)' : 'translateY(100%)', transition: 'transform 350ms cubic-bezier(0.32, 0.72, 0, 1)', padding: '16px 20px 40px' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#e2e8f0', margin: '0 auto 20px' }} />
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', marginBottom: 20 }}>
+              {editItem ? 'Редагувати матеріал' : 'Новий матеріал'}
+            </div>
+
+            {/* Name */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Назва</label>
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="Назва матеріалу" style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+
+            {/* Qty + Unit */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Кількість</label>
+                <input type="number" min="0" step="0.1" value={quantity} onChange={e => setQuantity(e.target.value)} style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Одиниця</label>
+                <select value={unit} onChange={e => setUnit(e.target.value)} style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 15, outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
+                  {UNIT_OPTIONS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Threshold + Price */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Поріг «мало»</label>
+                <input type="number" min="0" value={lowStockThreshold} onChange={e => setLowStockThreshold(e.target.value)} style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Ціна / од.</label>
+                <input type="number" min="0" step="0.01" value={costPerUnit} onChange={e => setCostPerUnit(e.target.value)} style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+            </div>
+
+            {/* Supplier */}
+            {suppliers.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Постачальник</label>
+                <select value={preferredSupplierId ?? '__none__'} onChange={e => setPreferredSupplierId(e.target.value === '__none__' ? null : e.target.value)} style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 15, outline: 'none', boxSizing: 'border-box', background: '#fff' }}>
+                  <option value="__none__">Без постачальника</option>
+                  {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <button onClick={() => setMobileSheetOpen(false)} style={{ padding: 13, borderRadius: 12, border: '1px solid #e2e8f0', background: '#fff', fontSize: 15, fontWeight: 600, color: '#64748b', cursor: 'pointer' }}>Скасувати</button>
+              <button onClick={saveItem} style={{ padding: 13, borderRadius: 12, border: 'none', background: '#2563eb', fontSize: 15, fontWeight: 600, color: '#fff', cursor: 'pointer' }}>Зберегти</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6" style={{ padding: '32px 40px' }}>
