@@ -38,8 +38,16 @@ export function BottomSheet({
 
   return (
     <div
-      className="fixed inset-0 z-50 animate-fade-in"
+      className="fixed z-50 animate-fade-in"
       style={{
+        // Зажимаем верх под Telegram-шапку. Раньше использовали maxHeight
+        // на самой шторке + inset:0 на wrapper — на iOS Telegram это всё равно
+        // позволяло шторке заехать наверх за чрому при flex-end alignment.
+        // Теперь wrapper физически не покрывает чрому, шторка не может уехать.
+        top: 'max(var(--tg-content-top, 0px), 80px)',
+        left: 0,
+        right: 0,
+        bottom: 0,
         background: 'rgba(0,0,0,0.4)',
         display: 'flex',
         alignItems: 'flex-end',
@@ -55,11 +63,7 @@ export function BottomSheet({
         )}
         style={{
           width: '100%',
-          // Auto-size to content, capped to viewport-height минус Telegram chrome
-          // (min 80px — Telegram-шапка на iPhone fullscreen ~100-120px, нужен
-          // запас чтобы заголовок шторки не уходил под кнопки «Закрыть»/«меню»).
-          // Раньше использовался buffer 12+24=36px — недостаточно для notch iPhone.
-          maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 80px))',
+          maxHeight: '100%',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',

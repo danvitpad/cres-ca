@@ -485,7 +485,10 @@ export default function MiniAppSettingsPage() {
             exit={{ opacity: 0 }}
             style={{
               position: 'fixed',
-              inset: 0,
+              top: 'max(var(--tg-content-top, 0px), 80px)',
+              left: 0,
+              right: 0,
+              bottom: 0,
               zIndex: 50,
               display: 'flex',
               alignItems: 'flex-end',
@@ -568,7 +571,10 @@ export default function MiniAppSettingsPage() {
             exit={{ opacity: 0 }}
             style={{
               position: 'fixed',
-              inset: 0,
+              top: 'max(var(--tg-content-top, 0px), 80px)',
+              left: 0,
+              right: 0,
+              bottom: 0,
               zIndex: 50,
               display: 'flex',
               alignItems: 'flex-end',
