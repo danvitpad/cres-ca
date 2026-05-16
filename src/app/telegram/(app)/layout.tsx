@@ -72,17 +72,17 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
     return () => { cancelled = true; };
   }, [userId, router, setAuth]);
 
-  // Не рендерим контент пока не убедились в auth — иначе подкомпоненты
-  // делают запросы с null userId и получают пустоту.
-  if (!userId && !hydrated) {
-    return null;
-  }
-
   // Fullscreen routes — booking flow has its own sticky footer.
   const isFullscreen = pathname.startsWith('/telegram/book');
   // Любая открытая шторка должна прятать bottom-nav (иначе nav-pill торчит
   // из-под шторки, между «Сохранить» и низом экрана появляется dark gap).
   const sheetOpen = useSheetOpen();
+
+  // Не рендерим контент пока не убедились в auth — иначе подкомпоненты
+  // делают запросы с null userId и получают пустоту.
+  if (!userId && !hydrated) {
+    return null;
+  }
 
   return (
     <TelegramProvider>
