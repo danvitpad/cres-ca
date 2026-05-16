@@ -34,6 +34,7 @@ import {
   AvatarCircle,
 } from '@/components/miniapp/shells';
 import { T, R, TYPE, PAGE_PADDING_X, SHADOW } from '@/components/miniapp/design';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 import '@/styles/od-client-mini-app.css';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 
@@ -159,6 +160,8 @@ export default function MiniAppProfilePage() {
   // Edit profile modal state — first/last разделены, чтобы клиент мог
   // править имя и фамилию по отдельности (потом склеиваем в full_name).
   const [editOpen, setEditOpen] = useState(false);
+  // Любая открытая шторка прячет bottom-nav через глобальный counter.
+  useTrackSheetOpen(editOpen || listOpen);
   const [editFirstName, setEditFirstName] = useState('');
   const [editLastName, setEditLastName] = useState('');
   const [editEmail, setEditEmail] = useState('');

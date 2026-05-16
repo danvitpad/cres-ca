@@ -22,6 +22,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { UserRole, SubscriptionTier } from '@/types';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 import { useSyncLocaleFromDb } from '@/lib/miniapp/use-sync-locale';
+import { useSheetOpen } from '@/lib/miniapp/use-sheet-open';
 
 const NAV_LABELS: Record<'uk' | 'ru' | 'en', readonly [string, string, string, string]> = {
   uk: ['Головна', 'Пошук', 'Записи', 'Профіль'],
@@ -79,6 +80,9 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
 
   // Fullscreen routes — booking flow has its own sticky footer.
   const isFullscreen = pathname.startsWith('/telegram/book');
+  // Любая открытая шторка должна прятать bottom-nav (иначе nav-pill торчит
+  // из-под шторки, между «Сохранить» и низом экрана появляется dark gap).
+  const sheetOpen = useSheetOpen();
 
   return (
     <TelegramProvider>
@@ -112,7 +116,7 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
             { key: 'activity', href: '/telegram/activity', icon: CalendarDays, label: activity },
             { key: 'profile', href: '/telegram/profile', icon: User, label: profile },
           ] satisfies readonly NavTab[]}
-          hidden={isFullscreen}
+          hidden={isFullscreen || sheetOpen}
         />
       </MiniAppThemeProvider>
     </TelegramProvider>

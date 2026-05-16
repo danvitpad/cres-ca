@@ -33,6 +33,7 @@ import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { showConfirm } from '@/lib/telegram/webapp';
 import { mapError } from '@/lib/errors';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE, SPRING } from '@/components/miniapp/design';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 import '@/styles/od-client-mini-app.css';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 import { useMiniAppTheme } from '@/components/miniapp/theme';
@@ -182,6 +183,9 @@ export default function MiniAppSettingsPage() {
   // Edit contact modal — `contactFocus` подсказывает какое поле автофокусить
   // (когда пришли из ряда «Сменить телефон» или «Сменить почту»).
   const [contactOpen, setContactOpen] = useState(false);
+  // Прячем bottom-nav пока открыта любая шторка (контакты или пароль).
+  // Объявление после pwOpen ниже — но useTrackSheetOpen прочитает обе.
+  // (Объединяем в один вызов после деклараций.)
   const [contactFocus, setContactFocus] = useState<'phone' | 'email'>('phone');
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
@@ -196,6 +200,8 @@ export default function MiniAppSettingsPage() {
   const [pwBusy, setPwBusy] = useState(false);
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwSuccess, setPwSuccess] = useState(false);
+
+  useTrackSheetOpen(contactOpen || pwOpen);
 
   useEffect(() => {
     if (!userId) return;

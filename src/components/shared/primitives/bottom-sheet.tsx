@@ -9,6 +9,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 
 interface BottomSheetProps {
   open: boolean;
@@ -29,6 +30,10 @@ export function BottomSheet({
   className,
   sheetStyle,
 }: BottomSheetProps) {
+  // Регистрация в глобальном счётчике — layout прячет bottom-nav пока есть
+  // хоть одна открытая шторка.
+  useTrackSheetOpen(open);
+
   if (!open) return null;
 
   return (
