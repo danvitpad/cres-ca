@@ -7,6 +7,8 @@
  * created: 2026-04-26
  * --- */
 
+'use client';
+
 import Image from 'next/image';
 import { MapPin, Star } from 'lucide-react';
 import { SalonInlineLogoEdit } from './inline/salon-logo-edit';
