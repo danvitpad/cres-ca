@@ -9,7 +9,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { TrendingUp, Tag, Star, Send } from 'lucide-react';
+import { TrendingUp, Tag, Star, Send, Megaphone, Ticket, Heart, ChevronRight, Plus, ArrowLeft } from 'lucide-react';
 import { usePageTheme, pageContainer } from '@/lib/dashboard-theme';
 import { useMaster } from '@/hooks/use-master';
 import { createClient } from '@/lib/supabase/client';
@@ -48,6 +48,17 @@ export default function MarketingPage() {
     totalReviews: number;
     weeklyBroadcasts: number;
   } | null>(null);
+
+  // Mobile state
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [mobileSection, setMobileSection] = useState<TopTab | null>(null);
+
+  useEffect(() => {
+    const check = () => setIsMobileView(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   // Загружаем агрегированные KPI маркетинга
   useEffect(() => {
@@ -102,6 +113,109 @@ export default function MarketingPage() {
     else params.set('tab', key);
     const qs = params.toString();
     router.replace(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false });
+  }
+
+  // ── MOBILE VIEW ──────────────────────────────────────────────────────────
+  if (isMobileView) {
+    // Section detail view (tapped one of the 4 section cards)
+    if (mobileSection) {
+      const sectionLabel = TABS.find(t => t.value === mobileSection)?.label ?? '';
+      return (
+        <div style={{ background: '#f8fafc', minHeight: '100vh', paddingBottom: 100 }}>
+          <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button onClick={() => setMobileSection(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#2563eb', padding: '4px 0' }}>
+              <ArrowLeft style={{ width: 20, height: 20 }} />
+            </button>
+            <span style={{ fontSize: 17, fontWeight: 700, color: '#0f172a' }}>{sectionLabel}</span>
+          </div>
+          <div style={{ padding: '0' }}>
+            {mobileSection === 'campaigns' && <CampaignsWithAudienceSwitcher />}
+            {mobileSection === 'automation' && <AutomationPage />}
+            {mobileSection === 'deals' && <DealsPage />}
+            {mobileSection === 'reviews' && <ReviewsPage />}
+            {mobileSection === 'referrals' && <ReferralProgramPanel />}
+          </div>
+        </div>
+      );
+    }
+
+    // Overview grid
+    const mktSections = [
+      { key: 'deals' as TopTab,      icon: Megaphone, title: 'Акції',    sub: 'Знижки, абонементи',  badge: stats ? `${stats.activeCampaigns} активні` : '—',  badgeWarn: false },
+      { key: 'campaigns' as TopTab,  icon: Ticket,    title: 'Промокоди', sub: 'Разові та багаторазові', badge: stats ? `${stats.activePromos} активні` : '—', badgeWarn: false },
+      { key: 'reviews' as TopTab,    icon: Star,      title: 'Відгуки',  sub: 'Збір та відповіді',   badge: stats ? `${stats.totalReviews} всього` : '—',        badgeWarn: false },
+      { key: 'campaigns' as TopTab,  icon: Send,      title: 'Розсилки', sub: 'Email і Telegram',    badge: stats ? `${stats.weeklyBroadcasts} за тиждень` : '—', badgeWarn: true },
+    ] as const;
+
+    return (
+      <div style={{ background: '#f8fafc', minHeight: '100vh', paddingBottom: 100 }}>
+        {/* Header */}
+        <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Маркетинг</span>
+        </div>
+
+        <div style={{ padding: '16px' }}>
+          {/* Hero KPI card */}
+          <div style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', borderRadius: 16, padding: '20px', marginBottom: 16, position: 'relative', overflow: 'hidden' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>ДОХІД З МАРКЕТИНГУ — {new Date().toLocaleString('uk-UA', { month: 'long' }).toUpperCase()}</div>
+            <div style={{ fontSize: 32, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>₴ 12 480</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>
+              <TrendingUp style={{ width: 13, height: 13 }} />
+              +18% порівняно з минулим місяцем
+            </div>
+          </div>
+
+          {/* 2×2 section grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+            {mktSections.map((sec, i) => (
+              <button
+                key={i}
+                onClick={() => setMobileSection(sec.key)}
+                style={{ background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', padding: '14px', textAlign: 'left', cursor: 'pointer' }}
+              >
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+                  <sec.icon style={{ width: 18, height: 18, color: '#2563eb' }} />
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>{sec.title}</div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>{sec.sub}</div>
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 10,
+                  background: sec.badgeWarn ? '#fffbeb' : '#f0fdf4',
+                  color: sec.badgeWarn ? '#d97706' : '#16a34a',
+                  border: `1px solid ${sec.badgeWarn ? '#fde68a' : '#bbf7d0'}`,
+                }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: sec.badgeWarn ? '#d97706' : '#16a34a' }} />
+                  {sec.badge}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Referral card */}
+          <button
+            onClick={() => setMobileSection('referrals')}
+            style={{ width: '100%', background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', textAlign: 'left' }}
+          >
+            <div style={{ width: 40, height: 40, borderRadius: 20, background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Heart style={{ width: 20, height: 20, color: '#ef4444' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Реферальна програма</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>8 рекомендованих · ₴ 1 200 надійшло</div>
+            </div>
+            <ChevronRight style={{ width: 16, height: 16, color: '#cbd5e1', flexShrink: 0 }} />
+          </button>
+        </div>
+
+        {/* FAB */}
+        <button
+          onClick={() => setMobileSection('deals')}
+          style={{ position: 'fixed', bottom: 88, right: 20, width: 52, height: 52, borderRadius: 26, background: '#2563eb', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 16px rgba(37,99,235,0.35)', zIndex: 40 }}
+        >
+          <Plus style={{ width: 24, height: 24, color: '#fff' }} />
+        </button>
+      </div>
+    );
   }
 
   return (
