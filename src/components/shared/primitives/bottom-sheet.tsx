@@ -1,16 +1,19 @@
 /** --- YAML
  * name: BottomSheet
- * description: Draggable bottom sheet overlay for mobile actions with snap points
+ * description: Bottom sheet overlay for mobile actions. Auto-sizes to content
+ *              up to maxHeight that respects Telegram chrome (top buffer).
+ *              snapPoints kept for API compat but не используются (height
+ *              теперь auto + flex, как у profile-edit, что работает на iOS).
  * --- */
 
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface BottomSheetProps {
   open: boolean;
   onClose: () => void;
+  /** Kept for backwards-compat — not used (sheet auto-sizes now). */
   snapPoints?: number[];
   children: React.ReactNode;
   className?: string;
@@ -22,93 +25,51 @@ interface BottomSheetProps {
 export function BottomSheet({
   open,
   onClose,
-  snapPoints = [0.5, 0.9],
   children,
   className,
   sheetStyle,
 }: BottomSheetProps) {
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef({ startY: 0, startHeight: 0, dragging: false });
-  const [heightPercent, setHeightPercent] = useState(snapPoints[0] ?? 0.5);
-
-  useEffect(() => {
-    if (open) setHeightPercent(snapPoints[0] ?? 0.5);
-  }, [open, snapPoints]);
-
-  const snapTo = useCallback(
-    (current: number) => {
-      if (current < 0.15) {
-        onClose();
-        return;
-      }
-      let closest = snapPoints[0] ?? 0.5;
-      let minDist = Math.abs(current - closest);
-      for (const sp of snapPoints) {
-        const dist = Math.abs(current - sp);
-        if (dist < minDist) {
-          minDist = dist;
-          closest = sp;
-        }
-      }
-      setHeightPercent(closest);
-    },
-    [snapPoints, onClose],
-  );
-
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    dragRef.current = {
-      startY: e.clientY,
-      startHeight: sheetRef.current?.getBoundingClientRect().height ?? 0,
-      dragging: true,
-    };
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  }, []);
-
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragRef.current.dragging) return;
-    const dy = dragRef.current.startY - e.clientY;
-    const newHeight = dragRef.current.startHeight + dy;
-    const vh = window.innerHeight;
-    setHeightPercent(Math.max(0.1, Math.min(0.95, newHeight / vh)));
-  }, []);
-
-  const handlePointerUp = useCallback(() => {
-    dragRef.current.dragging = false;
-    snapTo(heightPercent);
-  }, [heightPercent, snapTo]);
-
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 animate-fade-in">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+    <div
+      className="fixed inset-0 z-50 animate-fade-in"
+      style={{
+        background: 'rgba(0,0,0,0.4)',
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+      }}
+      onClick={onClose}
+    >
       <div
-        ref={sheetRef}
+        onClick={(e) => e.stopPropagation()}
         className={cn(
-          'absolute bottom-0 left-0 right-0 rounded-t-2xl bg-card shadow-[var(--shadow-overlay)]',
-          'transition-[height] duration-200 ease-out',
+          'rounded-t-2xl bg-card shadow-[var(--shadow-overlay)]',
           className,
         )}
         style={{
-          // Используем --tg-viewport-height (px от Telegram SDK) — он точнее
-          // 100dvh на iOS Mini App (там dvh может включать зону за плавающим
-          // Telegram UI). Buffer 24px сверху чтобы заголовок шторки не
-          // прятался под кнопками «Закрыть»/«меню».
-          height: `calc(var(--tg-viewport-height, 100dvh) * ${heightPercent})`,
+          width: '100%',
+          // Auto-size to content, capped to viewport-height минус Telegram chrome
+          // + 24px буфер. Раньше шторка имела explicit height (0.7 * viewport),
+          // и на iOS позиционировалась с top за пределы видимой зоны — drag-handle
+          // и заголовок терялись. Теперь авто-размер — top шторки всегда
+          // на расстоянии (maxHeight - content) от низа viewport-height.
           maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 12px) - 24px)',
-          transition: dragRef.current.dragging ? 'none' : undefined,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
           ...sheetStyle,
         }}
       >
-        <div
-          className="flex cursor-grab items-center justify-center py-3 active:cursor-grabbing"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-        >
+        {/* Drag handle (визуальный индикатор, без resize) */}
+        <div className="flex items-center justify-center py-3" style={{ flexShrink: 0 }}>
           <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
         </div>
-        <div className="overflow-y-auto px-4 pb-[env(safe-area-inset-bottom)] scrollbar-thin" style={{ height: 'calc(100% - 40px)' }}>
+        <div
+          className="overflow-y-auto px-4 pb-[env(safe-area-inset-bottom)] scrollbar-thin"
+          style={{ flex: 1, minHeight: 0 }}
+        >
           {children}
         </div>
       </div>
