@@ -60,6 +60,14 @@ export default function SalonTeamPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{ commission_percent: string; rent_amount: string }>({ commission_percent: '', rent_amount: '' });
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [isMobileView, setIsMobileView] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobileView(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -156,6 +164,167 @@ export default function SalonTeamPage() {
   const masters = data.members.filter((m) => m.role === 'master' || (m.role === 'admin' && m.master_id));
   const receptionists = data.members.filter((m) => m.role === 'receptionist');
   const adminsOnly = data.members.filter((m) => m.role === 'admin' && !m.master_id);
+  const editingMember = editingId ? data.members.find((m) => m.id === editingId) ?? null : null;
+
+  if (isMobileView) {
+    const ACCENT = '#2563eb';
+    const allMembers = [...masters, ...adminsOnly, ...receptionists];
+
+    return (
+      <div style={{ minHeight: '100dvh', background: '#f8fafc', padding: '16px 16px 120px', position: 'relative' }}>
+        {/* Header */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Команда · {isUnified ? 'Єдиний бізнес' : 'Коворкінг'}
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a' }}>{data.salon.name}</div>
+          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+            {isUnified
+              ? `Комісія за замовчуванням: ${data.salon.default_master_commission ?? 50}%`
+              : `Комісія власнику: ${data.salon.owner_commission_percent ?? 0}% · Оренда: ${formatCurrency(Number(data.salon.owner_rent_per_master ?? 0))}`}
+          </div>
+        </div>
+
+        {/* Summary chips */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          {[
+            { label: `Майстрів ${masters.length}`, color: ACCENT },
+            { label: `Адм. ${adminsOnly.length + receptionists.length}`, color: '#64748b' },
+          ].map((c) => (
+            <div key={c.label} style={{ padding: '5px 12px', borderRadius: 20, background: `${c.color}15`, color: c.color, fontSize: 12, fontWeight: 500 }}>
+              {c.label}
+            </div>
+          ))}
+        </div>
+
+        {/* Members list */}
+        {allMembers.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8', fontSize: 13 }}>Немає учасників</div>
+        ) : (
+          allMembers.map((m) => {
+            const roleLabel = m.role === 'admin' ? 'адмін' : m.role === 'receptionist' ? 'ресепшн' : 'майстер';
+            const isEditing = editingId === m.id;
+            const statusColor = m.status === 'active' ? '#10b981' : m.status === 'suspended' ? '#f43f5e' : '#f59e0b';
+
+            return (
+              <div key={m.id} style={{ background: '#fff', borderRadius: 14, padding: '12px 14px', marginBottom: 10, border: '1px solid #f1f5f9' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: `${ACCENT}15`, color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0, overflow: 'hidden' }}>
+                    {m.avatar_url ? <img src={m.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (m.display_name || 'M')[0].toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{m.display_name || 'Учасник'}</span>
+                      {m.is_owner && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 6, background: '#fef3c7', color: '#d97706', fontWeight: 500 }}>власник</span>}
+                      <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 6, background: '#f1f5f9', color: '#64748b' }}>{roleLabel}</span>
+                      {m.status !== 'active' && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 6, background: `${statusColor}15`, color: statusColor }}>{m.status === 'suspended' ? 'призупинено' : 'запрошення'}</span>}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                      {m.specialization || 'Без спеціалізації'} · {m.appointments_week} зап/тиж
+                    </div>
+                    {!isEditing && m.role === 'master' && (
+                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                        {isUnified
+                          ? `Комісія: ${m.commission_percent ?? data.salon.default_master_commission ?? 50}%`
+                          : [
+                              m.commission_percent != null && m.commission_percent > 0 && `Комісія: ${m.commission_percent}%`,
+                              m.rent_amount != null && m.rent_amount > 0 && `Оренда: ${formatCurrency(Number(m.rent_amount))}`,
+                            ].filter(Boolean).join(' · ') || 'За замовчуванням'}
+                      </div>
+                    )}
+                    {isEditing && (
+                      <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Комісія %</div>
+                          <input
+                            type="number"
+                            value={editValues.commission_percent}
+                            onChange={(e) => setEditValues((v) => ({ ...v, commission_percent: e.target.value }))}
+                            style={{ width: '100%', padding: '6px 8px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, background: '#f8fafc', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        {!isUnified && (
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Оренда ₴</div>
+                            <input
+                              type="number"
+                              value={editValues.rent_amount}
+                              onChange={(e) => setEditValues((v) => ({ ...v, rent_amount: e.target.value }))}
+                              style={{ width: '100%', padding: '6px 8px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, background: '#f8fafc', boxSizing: 'border-box' }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {!m.is_owner && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+                      {!isEditing ? (
+                        <>
+                          {(m.role === 'master') && (
+                            <button
+                              type="button"
+                              onClick={() => { setEditingId(m.id); setEditValues({ commission_percent: m.commission_percent != null ? String(m.commission_percent) : '', rent_amount: m.rent_amount != null ? String(m.rent_amount) : '' }); }}
+                              style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}
+                            >
+                              <Pencil style={{ width: 13, height: 13 }} />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => toggleStatus(m)}
+                            disabled={busyId === m.id}
+                            style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b', opacity: busyId === m.id ? 0.5 : 1 }}
+                          >
+                            {m.status === 'active' ? <Pause style={{ width: 13, height: 13 }} /> : <Play style={{ width: 13, height: 13 }} />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeMember(m)}
+                            disabled={busyId === m.id}
+                            style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #fecdd3', background: '#fff5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#f43f5e', opacity: busyId === m.id ? 0.5 : 1 }}
+                          >
+                            <UserMinus style={{ width: 13, height: 13 }} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => editingMember && saveFinance(editingMember)}
+                            disabled={busyId === m.id}
+                            style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', opacity: busyId === m.id ? 0.5 : 1 }}
+                          >
+                            <Check style={{ width: 13, height: 13 }} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingId(null)}
+                            style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}
+                          >
+                            <X style={{ width: 13, height: 13 }} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+
+        {/* FAB — invite */}
+        <a
+          href={`/${locale}/settings/team`}
+          style={{ position: 'fixed', bottom: 24, right: 20, display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px', borderRadius: 28, background: ACCENT, color: '#fff', fontSize: 14, fontWeight: 600, textDecoration: 'none', boxShadow: '0 4px 16px rgba(37,99,235,0.4)', zIndex: 40 }}
+        >
+          <Users style={{ width: 16, height: 16 }} />
+          Запросити
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-6 pb-20">
