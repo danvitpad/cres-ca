@@ -924,3 +924,160 @@
 }
 .od-client-mini-app .mc-rec-r svg { width: 10px; height: 10px; color: #f59e0b; fill: #f59e0b; }
 .od-client-mini-app .mc-rec-p { font-weight: 700; color: var(--accent); }
+
+/* ════════ SEARCH PAGE ════════ */
+
+/* Search input pill (input field, не link как mc-pill) */
+.od-client-mini-app .mc-search-wrap {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 16px 12px; padding: 12px 16px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 9999px;
+}
+.od-client-mini-app .mc-search-wrap > svg { color: var(--fg-3); flex-shrink: 0; }
+.od-client-mini-app .mc-search-input {
+  flex: 1; min-width: 0; background: transparent; border: none;
+  font-size: 14px; color: var(--fg); outline: none; font-family: inherit;
+}
+.od-client-mini-app .mc-search-input::placeholder { color: var(--fg-2); }
+.od-client-mini-app .mc-search-clear {
+  background: transparent; border: none; color: var(--fg-3);
+  cursor: pointer; padding: 4px; display: flex; align-items: center;
+  flex-shrink: 0;
+}
+
+/* Filter chips (horizontal scroll) */
+.od-client-mini-app .mc-fchips {
+  display: flex; gap: 6px;
+  padding: 0 16px 12px; overflow-x: auto; scrollbar-width: none;
+}
+.od-client-mini-app .mc-fchips::-webkit-scrollbar { display: none; }
+.od-client-mini-app .mc-fchip {
+  flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px;
+  padding: 8px 14px; border-radius: 9999px;
+  background: var(--surface); border: 1.5px solid var(--border);
+  font-size: 12px; font-weight: 600; color: var(--fg-2);
+  font-family: inherit; cursor: pointer;
+}
+.od-client-mini-app .mc-fchip.active {
+  background: var(--accent-2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.od-client-mini-app .mc-fchip svg { width: 12px; height: 12px; }
+
+/* Toolbar: count + view-toggle */
+.od-client-mini-app .mc-tools {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px 10px; font-size: 12px; color: var(--fg-2);
+}
+.od-client-mini-app .mc-tools b { color: var(--fg); }
+.od-client-mini-app .mc-tools-r { display: flex; align-items: center; gap: 8px; }
+.od-client-mini-app .mc-view {
+  display: flex; background: var(--n-100);
+  border-radius: 9999px; padding: 3px;
+}
+.od-client-mini-app .mc-view-b {
+  padding: 5px 10px; border-radius: 9999px;
+  background: transparent; border: none;
+  font-size: 11px; color: var(--fg-2);
+  cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; gap: 4px;
+}
+.od-client-mini-app .mc-view-b.active { background: var(--surface); color: var(--fg); box-shadow: var(--shadow-sm); }
+.od-client-mini-app .mc-view-b svg { width: 12px; height: 12px; }
+.od-client-mini-app .mc-icbtn-mini {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--surface); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--fg); cursor: pointer;
+}
+.od-client-mini-app .mc-icbtn-mini:disabled { opacity: 0.5; cursor: wait; }
+.od-client-mini-app .mc-icbtn-mini svg { width: 14px; height: 14px; }
+
+.od-client-mini-app .mc-geohint {
+  margin: 0 16px 8px; padding: 8px 12px;
+  background: var(--accent-2); border-radius: 12px;
+  font-size: 11px; color: var(--accent); text-align: center;
+}
+
+/* Result card */
+.od-client-mini-app .mc-results {
+  padding: 0 16px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.od-client-mini-app .mc-result {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 14px;
+  text-decoration: none; color: var(--fg);
+}
+.od-client-mini-app .mc-result-av {
+  width: 48px; height: 48px; border-radius: 14px;
+  background: var(--accent-2); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; flex-shrink: 0; overflow: hidden;
+}
+.od-client-mini-app .mc-result-i { flex: 1; min-width: 0; }
+.od-client-mini-app .mc-result-n { font-size: 14px; font-weight: 700; color: var(--fg); }
+.od-client-mini-app .mc-result-s { font-size: 11px; color: var(--fg-2); margin-top: 1px; }
+.od-client-mini-app .mc-result-m {
+  font-size: 10px; color: var(--fg-3); margin-top: 4px;
+  display: flex; gap: 8px;
+}
+.od-client-mini-app .mc-result-m span { display: inline-flex; align-items: center; gap: 3px; }
+.od-client-mini-app .mc-result-m svg { width: 10px; height: 10px; }
+.od-client-mini-app .mc-result-m .star { color: #f59e0b; fill: #f59e0b; }
+.od-client-mini-app .mc-result-r { flex-shrink: 0; text-align: right; }
+.od-client-mini-app .mc-result-p { font-size: 12px; font-weight: 700; color: var(--accent); }
+.od-client-mini-app .mc-result-cta {
+  margin-top: 6px; display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 11px; border-radius: 9999px;
+  background: var(--accent); color: #fff;
+  font-size: 11px; font-weight: 700; border: none; cursor: pointer;
+}
+
+/* Loading & empty */
+.od-client-mini-app .mc-loading {
+  display: flex; justify-content: center; padding: 48px 0;
+  color: var(--fg-3);
+}
+.od-client-mini-app .mc-empty {
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; padding: 64px 24px; color: var(--fg-3);
+}
+.od-client-mini-app .mc-empty-t {
+  font-size: 15px; font-weight: 700; color: var(--fg); margin-top: 12px;
+}
+.od-client-mini-app .mc-empty-s {
+  font-size: 12px; color: var(--fg-2); margin-top: 4px;
+}
+
+/* Map placeholder */
+.od-client-mini-app .mc-mapph {
+  position: relative; margin: 0 16px 16px;
+  height: 380px; border-radius: 16px;
+  background: var(--n-100);
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 36px 36px;
+  border: 1px solid var(--border); overflow: hidden;
+}
+.od-client-mini-app .mc-mapph-pin {
+  position: absolute;
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 4px 10px; border-radius: 9999px;
+  background: var(--accent); color: #fff;
+  font-size: 11px; font-weight: 800;
+  border: none; cursor: pointer;
+  box-shadow: var(--shadow-md);
+  font-family: inherit;
+}
+.od-client-mini-app .mc-mapph-l {
+  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+  background: var(--surface); padding: 4px 12px;
+  border-radius: 9999px; font-size: 10px;
+  font-weight: 600; color: var(--fg-2);
+  text-transform: uppercase; letter-spacing: .5px;
+}
