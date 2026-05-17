@@ -33,14 +33,17 @@ interface ApiMasterRow {
   full_name?: string | null;
   specialization: string | null;
   rating: number | null;
+  total_reviews?: number | null;
   reviews_count?: number | null;
   avatar_url: string | null;
   city: string | null;
+  address?: string | null;
+  workplace_name?: string | null;
   latitude: number | null;
   longitude: number | null;
-  price_from?: number | null;
-  next_slots?: string[];
   profile?: { full_name: string | null; avatar_url: string | null } | null;
+  services?: Array<{ price: number | string | null }> | null;
+  salon?: { city: string | null } | { city: string | null }[] | null;
 }
 
 interface Master {
@@ -67,7 +70,7 @@ const T_LABELS: Record<Lang, {
   searchHint: string;
   count: (n: number) => string;
   list: string; map: string;
-  today: string; rating: string; budget: string; distance: string; female: string; mobile: string;
+  today: string; rating: string; budget: string; distance: string;
   empty: string; emptyHint: string;
   bookCta: string; slots: string;
   geoHint: string;
@@ -77,7 +80,7 @@ const T_LABELS: Record<Lang, {
     searchHint: 'Манікюр у Києві сьогодні',
     count: (n) => `${n} ${plural(n, 'uk')}`,
     list: 'Список', map: 'Карта',
-    today: 'Сьогодні', rating: '4.5+', budget: 'до ₴500', distance: '3 км', female: 'Жінка', mobile: 'Виїзд',
+    today: 'Сьогодні', rating: '4.5+', budget: 'до ₴500', distance: '3 км',
     empty: 'Нічого не знайшли',
     emptyHint: 'Спробуйте змінити фільтри або запит',
     bookCta: 'Записатись',
@@ -89,7 +92,7 @@ const T_LABELS: Record<Lang, {
     searchHint: 'Маникюр в Киеве сегодня',
     count: (n) => `${n} ${plural(n, 'ru')}`,
     list: 'Список', map: 'Карта',
-    today: 'Сегодня', rating: '4.5+', budget: 'до ₴500', distance: '3 км', female: 'Женщина', mobile: 'Выезд',
+    today: 'Сегодня', rating: '4.5+', budget: 'до ₴500', distance: '3 км',
     empty: 'Ничего не нашли',
     emptyHint: 'Попробуйте изменить фильтры или запрос',
     bookCta: 'Записаться',
@@ -101,7 +104,7 @@ const T_LABELS: Record<Lang, {
     searchHint: 'Nails in Kyiv today',
     count: (n) => `${n} ${plural(n, 'en')}`,
     list: 'List', map: 'Map',
-    today: 'Today', rating: '4.5+', budget: 'under ₴500', distance: '3 km', female: 'Female', mobile: 'Mobile',
+    today: 'Today', rating: '4.5+', budget: 'under ₴500', distance: '3 km',
     empty: 'Nothing found',
     emptyHint: 'Try a different filter or query',
     bookCta: 'Book',
@@ -140,18 +143,29 @@ function normalize(row: ApiMasterRow, userLoc: [number, number] | null): Master 
   const distance = (userLoc && row.latitude && row.longitude)
     ? haversineKm(userLoc, [row.latitude, row.longitude])
     : null;
+  const salonObj = Array.isArray(row.salon) ? row.salon[0] : row.salon;
+  // Берём min price из services array (API возвращает services!services_master_id_fkey(price))
+  let priceFrom: number | null = null;
+  if (Array.isArray(row.services)) {
+    for (const s of row.services) {
+      if (s.price == null) continue;
+      const p = Number(s.price);
+      if (!p) continue;
+      if (priceFrom == null || p < priceFrom) priceFrom = p;
+    }
+  }
   return {
     id: row.id,
     name,
     specialization: row.specialization,
     rating: Number(row.rating ?? 0),
-    reviewsCount: row.reviews_count ?? 0,
+    reviewsCount: row.total_reviews ?? row.reviews_count ?? 0,
     avatar,
-    city: row.city,
+    city: row.city ?? salonObj?.city ?? row.workplace_name ?? null,
     lat: row.latitude,
     lng: row.longitude,
-    priceFrom: row.price_from ?? null,
-    slots: row.next_slots ?? [],
+    priceFrom,
+    slots: [],
     distanceKm: distance,
   };
 }
@@ -176,8 +190,6 @@ export default function MiniAppSearchPage() {
   const [fRating, setFRating] = useState(false);
   const [fPrice, setFPrice] = useState(false);
   const [fDistance, setFDistance] = useState(false);
-  const [fFemale, setFFemale] = useState(false);
-  const [fMobile, setFMobile] = useState(false);
 
   const [center, setCenter] = useState<[number, number]>(DEFAULT_CENTER);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
@@ -243,9 +255,10 @@ export default function MiniAppSearchPage() {
     let out = masters.slice();
     if (fRating) out = out.filter((m) => m.rating >= 4.5);
     if (fPrice) out = out.filter((m) => m.priceFrom != null && m.priceFrom <= 500);
-    if (fDistance) out = out.filter((m) => m.distanceKm == null || m.distanceKm <= 3);
-    // fToday / fFemale / fMobile — пока без серверной фильтрации (потребует API расширения)
-    // sort by distance if user has location
+    if (fDistance) out = out.filter((m) => m.distanceKm != null && m.distanceKm <= 3);
+    // fToday — без серверной фильтрации (нет данных о слотах per master в /api/telegram/nearby);
+    // при включении показываем всех (UI-only). Реальная серверная фильтрация - отдельная задача.
+    // Sort by distance if user has location
     if (userLocation) out.sort((a, b) => (a.distanceKm ?? 9999) - (b.distanceKm ?? 9999));
     return out;
   }, [masters, fRating, fPrice, fDistance, userLocation]);
@@ -278,7 +291,12 @@ export default function MiniAppSearchPage() {
         </div>
         <button
           className="mc-icbtn"
-          onClick={() => haptic('light')}
+          onClick={() => {
+            haptic('light');
+            // Скролл к chips — пока расширенный фильтр sheet не реализован
+            const chips = document.querySelector('.mc-fchips') as HTMLElement | null;
+            if (chips) chips.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }}
           aria-label="Фільтри"
         >
           <SlidersHorizontal size={16} />
@@ -306,14 +324,12 @@ export default function MiniAppSearchPage() {
         )}
       </div>
 
-      {/* Filter chips — horizontal scroll */}
+      {/* Filter chips — horizontal scroll. Только работающие фильтры. */}
       <div className="mc-fchips">
         <Chip active={fToday} onClick={() => { setFToday(!fToday); haptic('selection'); }} icon={<Check size={12} />}>{t.today}</Chip>
         <Chip active={fRating} onClick={() => { setFRating(!fRating); haptic('selection'); }} icon={<Star size={12} />}>{t.rating}</Chip>
         <Chip active={fPrice} onClick={() => { setFPrice(!fPrice); haptic('selection'); }} icon={<Coins size={12} />}>{t.budget}</Chip>
         <Chip active={fDistance} onClick={() => { setFDistance(!fDistance); haptic('selection'); }} icon={<MapPin size={12} />}>{t.distance}</Chip>
-        <Chip active={fFemale} onClick={() => { setFFemale(!fFemale); haptic('selection'); }}>{t.female}</Chip>
-        <Chip active={fMobile} onClick={() => { setFMobile(!fMobile); haptic('selection'); }}>{t.mobile}</Chip>
       </div>
 
       {/* Toolbar: count + list/map */}
@@ -421,10 +437,18 @@ export default function MiniAppSearchPage() {
                 )}
               </div>
               <div className="mc-result-r">
-                {m.priceFrom != null && (
-                  <div className="mc-result-p">від ₴{Math.round(m.priceFrom)}</div>
-                )}
-                <button className="mc-result-cta" onClick={(e) => { e.preventDefault(); router.push(`/telegram/book?master_id=${m.id}`); haptic('light'); }}>
+                <div className="mc-result-p">
+                  {m.priceFrom != null ? `від ₴${Math.round(m.priceFrom)}` : '—'}
+                </div>
+                <button
+                  className="mc-result-cta"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    haptic('light');
+                    router.push(`/telegram/book?master_id=${m.id}`);
+                  }}
+                >
                   {t.bookCta}
                 </button>
               </div>
