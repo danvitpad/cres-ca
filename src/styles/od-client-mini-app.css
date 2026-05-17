@@ -1081,3 +1081,153 @@
   font-weight: 600; color: var(--fg-2);
   text-transform: uppercase; letter-spacing: .5px;
 }
+
+/* ════════ MASTER DETAIL ════════ */
+
+/* Cover gradient + back/heart/share buttons + 88px avatar overlap */
+.od-client-mini-app .mc-mcov {
+  position: relative; height: 160px;
+  background: linear-gradient(135deg, var(--accent), var(--a-600));
+  margin-bottom: 60px;
+}
+.od-client-mini-app .mc-mcov-back {
+  position: absolute; top: 14px; left: 14px;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(8px);
+  color: #fff; border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.od-client-mini-app .mc-mcov-back svg { width: 16px; height: 16px; }
+.od-client-mini-app .mc-mcov-acts {
+  position: absolute; top: 14px; right: 14px;
+  display: flex; gap: 6px;
+}
+.od-client-mini-app .mc-mcov-act {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(8px);
+  color: #fff; border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.od-client-mini-app .mc-mcov-act.on { background: #fff; color: #ef4444; }
+.od-client-mini-app .mc-mcov-act.on svg { fill: currentColor; }
+.od-client-mini-app .mc-mcov-act:disabled { opacity: 0.5; cursor: wait; }
+.od-client-mini-app .mc-mcov-act svg { width: 16px; height: 16px; }
+.od-client-mini-app .mc-mav {
+  position: absolute; left: 20px; bottom: -40px;
+  width: 88px; height: 88px; border-radius: 50%;
+  border: 4px solid var(--surface);
+  background: var(--accent-2); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 30px;
+  overflow: hidden;
+}
+
+/* Identity row */
+.od-client-mini-app .mc-mid { padding: 0 20px 14px; }
+.od-client-mini-app .mc-mid-n { font-size: 20px; font-weight: 800; letter-spacing: -.01em; color: var(--fg); }
+.od-client-mini-app .mc-mid-s { font-size: 12px; color: var(--fg-2); margin-top: 2px; }
+.od-client-mini-app .mc-mid-m {
+  display: flex; align-items: center; gap: 14px;
+  margin-top: 8px; font-size: 12px; color: var(--fg-2);
+}
+.od-client-mini-app .mc-mid-m span { display: inline-flex; align-items: center; gap: 3px; }
+.od-client-mini-app .mc-mid-m .star { color: #f59e0b; fill: #f59e0b; }
+
+/* Tabs (underline style) */
+.od-client-mini-app .mc-mtabs {
+  display: flex; gap: 18px;
+  border-bottom: 2px solid var(--border);
+  padding: 0 20px; margin-bottom: 8px;
+}
+.od-client-mini-app .mc-mtab {
+  padding: 12px 0; border: none; background: transparent;
+  font-size: 13px; font-weight: 600; color: var(--fg-2);
+  cursor: pointer; font-family: inherit;
+  border-bottom: 2px solid transparent; margin-bottom: -2px;
+}
+.od-client-mini-app .mc-mtab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Services list */
+.od-client-mini-app .mc-msvc { padding: 0 20px; }
+.od-client-mini-app .mc-svc {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 0; border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.od-client-mini-app .mc-svc:last-child { border-bottom: none; }
+.od-client-mini-app .mc-svc-i { flex: 1; min-width: 0; }
+.od-client-mini-app .mc-svc-n { font-size: 14px; font-weight: 700; color: var(--fg); }
+.od-client-mini-app .mc-svc-d { font-size: 11px; color: var(--fg-3); margin-top: 1px; }
+.od-client-mini-app .mc-svc-p {
+  font-size: 15px; font-weight: 800;
+  font-variant-numeric: tabular-nums; color: var(--fg);
+}
+.od-client-mini-app .mc-svc-b {
+  margin-left: 8px; padding: 7px 14px; border-radius: 9999px;
+  background: var(--accent-2); color: var(--accent);
+  font-size: 11px; font-weight: 700; border: none;
+  cursor: pointer; font-family: inherit;
+}
+.od-client-mini-app .mc-msvc-empty {
+  text-align: center; padding: 32px 16px;
+  color: var(--fg-3); font-size: 13px;
+}
+
+/* Portfolio grid */
+.od-client-mini-app .mc-mport { padding: 4px 16px 16px; }
+.od-client-mini-app .mc-mport-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+}
+.od-client-mini-app .mc-mport-item {
+  aspect-ratio: 1; overflow: hidden; border-radius: 8px;
+  background: var(--n-100);
+}
+.od-client-mini-app .mc-mport-item img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Reviews */
+.od-client-mini-app .mc-mrev { padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+.od-client-mini-app .mc-mrev-row {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px;
+}
+.od-client-mini-app .mc-mrev-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.od-client-mini-app .mc-mrev-name { font-size: 13px; font-weight: 700; color: var(--fg); }
+.od-client-mini-app .mc-mrev-score {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 12px; color: var(--fg-2);
+}
+.od-client-mini-app .mc-mrev-score .star { color: #f59e0b; fill: #f59e0b; }
+.od-client-mini-app .mc-mrev-c { font-size: 12px; color: var(--fg-2); line-height: 1.5; }
+
+/* About */
+.od-client-mini-app .mc-mabout { padding: 8px 20px 16px; font-size: 13px; color: var(--fg); line-height: 1.6; }
+.od-client-mini-app .mc-mabout p { margin: 0 0 12px; }
+.od-client-mini-app .mc-mabout-row {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--fg-2); margin-top: 8px;
+}
+
+/* Sticky-like bottom CTA card */
+.od-client-mini-app .mc-mbook {
+  margin: 14px 16px; padding: 14px 16px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; box-shadow: var(--shadow-md);
+}
+.od-client-mini-app .mc-mbook-row {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--fg-2); margin-bottom: 6px;
+}
+.od-client-mini-app .mc-mbook-row svg { width: 13px; height: 13px; color: var(--accent); }
+.od-client-mini-app .mc-mbook-cta {
+  width: 100%; margin-top: 10px; padding: 13px;
+  border-radius: 14px; background: var(--accent); color: #fff;
+  border: none; font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.od-client-mini-app .mc-mbook-cta svg { width: 16px; height: 16px; }
