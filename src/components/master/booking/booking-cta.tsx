@@ -35,12 +35,8 @@ export function BookingCTA({ variant = 'hero', serviceId, children, className }:
       <button
         type="button"
         onClick={() => open(serviceId ?? null)}
-        className={`${baseCls} h-12 w-full rounded-[var(--brand-radius-lg)] text-[15px] hover:opacity-90`}
-        style={{
-          background: 'var(--m-text)',
-          color: 'var(--m-bg)',
-          border: 'none',
-        }}
+        className={`${baseCls} h-12 w-full rounded-[var(--brand-radius-lg)] bg-[#2563eb] text-[15px] text-white shadow-md hover:bg-[#1d4ed8]`}
+        style={{ border: 'none' }}
       >
         <Calendar className="mr-2 size-4" />
         {children ?? 'Записаться'}
@@ -53,11 +49,7 @@ export function BookingCTA({ variant = 'hero', serviceId, children, className }:
       <button
         type="button"
         onClick={() => open(serviceId ?? null)}
-        className={`${baseCls} h-12 w-full gap-2 rounded-[var(--brand-radius-lg)] text-[15px] hover:opacity-90`}
-        style={{
-          background: 'var(--m-text)',
-          color: 'var(--m-bg)',
-        }}
+        className={`${baseCls} h-12 w-full gap-2 rounded-[var(--brand-radius-lg)] bg-[#2563eb] text-[15px] text-white shadow-md hover:bg-[#1d4ed8]`}
       >
         <Calendar className="size-4" />
         {children ?? 'Записаться'}
@@ -65,17 +57,12 @@ export function BookingCTA({ variant = 'hero', serviceId, children, className }:
     );
   }
 
-  // service-row CTA — компактная outline pill, наводя — заливается
+  // service-row CTA — компактная cobalt outline pill
   return (
     <button
       type="button"
       onClick={() => open(serviceId ?? null)}
-      className={`${baseCls} shrink-0 rounded-[var(--brand-radius-lg)] px-5 py-2 text-[13px] hover:opacity-90`}
-      style={{
-        background: 'transparent',
-        color: 'var(--m-text)',
-        border: '1px solid var(--m-text)',
-      }}
+      className={`${baseCls} shrink-0 rounded-[var(--brand-radius-lg)] border border-[#2563eb] bg-transparent px-5 py-2 text-[13px] text-[#2563eb] hover:bg-[#2563eb]/5`}
     >
       {children ?? 'Записаться'}
     </button>

@@ -258,7 +258,15 @@ export default async function PublicSalonPage({ params }: PageProps) {
       masters={bookingMasters}
       services={bookingServices}
     >
-    <div className="min-h-screen bg-white text-neutral-900">
+    <div
+      className="min-h-screen bg-white text-neutral-900"
+      style={{
+        // Telegram WebApp ставит X-Close + Menu сверху и TELEGRAM-label снизу.
+        // Резервируем место чтобы наш контент не залезал под TG controls.
+        // На обычном вебе env() = 0, ничего не меняется.
+        paddingTop: 'max(var(--tg-safe-top, 0px), env(safe-area-inset-top, 0px))',
+      }}
+    >
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -344,11 +352,22 @@ export default async function PublicSalonPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Mobile sticky bottom CTA */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-200 bg-white/95 p-3 backdrop-blur lg:hidden">
+      {/* Mobile sticky bottom CTA — поднята на safe-area-bottom чтобы не залезать
+          под TELEGRAM-label в TG WebApp. */}
+      <div
+        className="fixed inset-x-0 z-30 border-t border-neutral-200 bg-white/95 p-3 backdrop-blur lg:hidden"
+        style={{
+          bottom: 'max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px))',
+        }}
+      >
         <SalonBookingCTA variant="sticky" />
       </div>
-      <div className="h-20 lg:hidden" />
+      <div
+        className="lg:hidden"
+        style={{
+          height: 'calc(96px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',
+        }}
+      />
     </div>
     </SalonBookingProvider>
   );

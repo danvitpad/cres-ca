@@ -616,6 +616,9 @@ export default async function MasterShowcasePage({ params }: PageProps) {
         backgroundColor: 'var(--m-bg)',
         color: 'var(--m-text)',
         ['--page-accent' as string]: accent,
+        // TG WebApp X-Close + Menu сверху накрывают контент — резервируем
+        // safe-area-top. На обычном вебе env() = 0, без изменений.
+        paddingTop: 'max(var(--tg-safe-top, 0px), env(safe-area-inset-top, 0px))',
       }}
     >
       <MiniAppBackBar />

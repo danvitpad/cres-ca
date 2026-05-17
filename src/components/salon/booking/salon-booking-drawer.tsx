@@ -528,7 +528,7 @@ export function SalonBookingDrawer({
                     (step === 'master' && !selectedMaster) ||
                     (step === 'time' && !selectedTime)
                   }
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--brand-radius-lg)] bg-neutral-900 text-[15px] font-semibold text-white disabled:opacity-40"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--brand-radius-lg)] bg-[#2563eb] text-[15px] font-semibold text-white disabled:opacity-40"
                 >
                   {submitting ? (
                     <><Loader2 className="size-4 animate-spin" /> Сохранение…</>
@@ -640,7 +640,7 @@ function ServiceStep({
             className={
               'whitespace-nowrap rounded-full border px-4 py-1.5 text-[13px] font-semibold transition-colors ' +
               (activeCat === 'all'
-                ? 'border-neutral-900 bg-neutral-900 text-white'
+                ? 'border-[#2563eb] bg-[#2563eb] text-white'
                 : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50')
             }
           >
@@ -654,7 +654,7 @@ function ServiceStep({
               className={
                 'whitespace-nowrap rounded-full border px-4 py-1.5 text-[13px] font-semibold transition-colors ' +
                 (activeCat === cat
-                  ? 'border-neutral-900 bg-neutral-900 text-white'
+                  ? 'border-[#2563eb] bg-[#2563eb] text-white'
                   : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50')
               }
             >
@@ -679,7 +679,7 @@ function ServiceStep({
                 className={
                   'block w-full rounded-2xl border bg-white p-5 text-left transition-all ' +
                   (isSelected
-                    ? 'border-neutral-900 ring-2 ring-neutral-900/20'
+                    ? 'border-[#2563eb] ring-2 ring-[#2563eb]/20'
                     : 'border-neutral-200 hover:border-neutral-300')
                 }
               >
@@ -703,7 +703,7 @@ function ServiceStep({
                   <div
                     className={
                       'flex size-7 shrink-0 items-center justify-center rounded-full border transition-colors ' +
-                      (isSelected ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-300 bg-white text-neutral-400')
+                      (isSelected ? 'border-[#2563eb] bg-[#2563eb] text-white' : 'border-neutral-300 bg-white text-neutral-400')
                     }
                   >
                     {isSelected ? <Check className="size-4" /> : <span className="text-[16px] leading-none">+</span>}
@@ -761,7 +761,7 @@ function MasterStep({
                 className={
                   'flex w-full items-center gap-4 rounded-2xl border bg-white p-4 text-left transition-all ' +
                   (isSelected
-                    ? 'border-neutral-900 ring-2 ring-neutral-900/20'
+                    ? 'border-[#2563eb] ring-2 ring-[#2563eb]/20'
                     : 'border-neutral-200 hover:border-neutral-300')
                 }
               >
@@ -794,7 +794,7 @@ function MasterStep({
                 <div
                   className={
                     'flex size-7 shrink-0 items-center justify-center rounded-full border transition-colors ' +
-                    (isSelected ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-300 bg-white text-neutral-400')
+                    (isSelected ? 'border-[#2563eb] bg-[#2563eb] text-white' : 'border-neutral-300 bg-white text-neutral-400')
                   }
                 >
                   {isSelected ? <Check className="size-4" /> : <span className="text-[16px] leading-none">+</span>}
@@ -966,7 +966,7 @@ function DoneStep({
       <button
         type="button"
         onClick={onClose}
-        className="mt-8 inline-flex h-12 min-w-[200px] items-center justify-center rounded-[var(--brand-radius-lg)] bg-neutral-900 px-6 text-[15px] font-semibold text-white"
+        className="mt-8 inline-flex h-12 min-w-[200px] items-center justify-center rounded-[var(--brand-radius-lg)] bg-[#2563eb] px-6 text-[15px] font-semibold text-white"
       >
         Готово
       </button>
@@ -1043,7 +1043,7 @@ function CartPanel({
           type="button"
           onClick={onContinue}
           disabled={!canContinue || submitting}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--brand-radius-lg)] bg-neutral-900 text-[15px] font-semibold text-white disabled:opacity-40"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--brand-radius-lg)] bg-[#2563eb] text-[15px] font-semibold text-white disabled:opacity-40"
         >
           {submitting ? (
             <><Loader2 className="size-4 animate-spin" /> Сохранение…</>
