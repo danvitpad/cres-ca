@@ -35,6 +35,7 @@ interface AppointmentRow {
   cancelled_at?: string | null;
   master_id: string | null;
   master_name: string;
+  service_id: string | null;
   service_name: string;
   service_duration_min: number | null;
   has_review: boolean;
@@ -165,8 +166,9 @@ export default function MiniAppActivityPage() {
             price: number | null;
             currency: string | null;
             cancelled_at?: string | null;
+            service_id?: string | null;
             master: MasterEmbed | null;
-            service: { name: string | null; duration_minutes?: number | null } | { name: string | null; duration_minutes?: number | null }[] | null;
+            service: { id?: string | null; name: string | null; duration_minutes?: number | null } | { id?: string | null; name: string | null; duration_minutes?: number | null }[] | null;
             reviewExists?: boolean;
           };
           const master = Array.isArray(a.master) ? a.master[0] : a.master;
@@ -185,6 +187,7 @@ export default function MiniAppActivityPage() {
             cancelled_at: a.cancelled_at ?? null,
             master_id: master?.id ?? null,
             master_name: master?.display_name ?? masterProfile?.full_name ?? '—',
+            service_id: a.service_id ?? service?.id ?? null,
             service_name: service?.name ?? '—',
             service_duration_min: dur,
             has_review: !!a.reviewExists,
@@ -265,7 +268,22 @@ export default function MiniAppActivityPage() {
       ) : (
         <div className="mc-apl">
           {displayed.map((a) => (
-            <ApptCard key={a.id} row={a} t={t} lang={lang} onClick={() => { haptic('light'); router.push(`/telegram/activity/${a.id}`); }} onRepeat={() => { haptic('light'); router.push(`/telegram/book?master_id=${a.master_id ?? ''}`); }} />
+            <ApptCard
+              key={a.id}
+              row={a}
+              t={t}
+              lang={lang}
+              onClick={() => { haptic('light'); router.push(`/telegram/activity/${a.id}`); }}
+              onRepeat={() => {
+                haptic('light');
+                // «Повторити» — pre-select мастера И услугу, юзеру остаётся только
+                // выбрать дату/время. Сервер /book знает оба ID и пропускает шаги.
+                const qs = new URLSearchParams();
+                if (a.master_id) qs.set('master_id', a.master_id);
+                if (a.service_id) qs.set('service_id', a.service_id);
+                router.push(`/telegram/book?${qs.toString()}`);
+              }}
+            />
           ))}
         </div>
       )}

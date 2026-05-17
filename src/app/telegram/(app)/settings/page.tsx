@@ -12,7 +12,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Sun, Moon, Monitor } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, Sun, Moon, Monitor, Bell, ChevronRight } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage } from '@/components/miniapp/shells';
 import { useMiniAppTheme } from '@/components/miniapp/theme';
@@ -26,6 +27,8 @@ const T_LABELS: Record<Lang, {
   sectionLang: string;
   langUK: string; langRU: string; langEN: string;
   sectionTheme: string; themeLight: string; themeDark: string; themeAuto: string;
+  sectionReminders: string;
+  remindersTitle: string; remindersSub: string;
   sectionNotif: string;
   notifReminder: string; notifReminderSub: string;
   notifConfirm: string; notifConfirmSub: string;
@@ -40,6 +43,8 @@ const T_LABELS: Record<Lang, {
     sectionLang: 'Мова',
     langUK: 'Українська', langRU: 'Російська', langEN: 'Англійська',
     sectionTheme: 'Тема', themeLight: 'Світла', themeDark: 'Темна', themeAuto: 'Авто',
+    sectionReminders: 'Нагадування',
+    remindersTitle: 'Налаштувати нагадування', remindersSub: 'За скільки до запису надсилати',
     sectionNotif: 'Email-сповіщення',
     notifReminder: 'Нагадування про візит', notifReminderSub: 'За 24 години до запису',
     notifConfirm: 'Підтвердження запису', notifConfirmSub: 'Одразу після створення',
@@ -54,6 +59,8 @@ const T_LABELS: Record<Lang, {
     sectionLang: 'Язык',
     langUK: 'Украинский', langRU: 'Русский', langEN: 'Английский',
     sectionTheme: 'Тема', themeLight: 'Светлая', themeDark: 'Тёмная', themeAuto: 'Авто',
+    sectionReminders: 'Напоминания',
+    remindersTitle: 'Настроить напоминания', remindersSub: 'За сколько до записи присылать',
     sectionNotif: 'Email-уведомления',
     notifReminder: 'Напоминание о визите', notifReminderSub: 'За 24 часа до записи',
     notifConfirm: 'Подтверждение записи', notifConfirmSub: 'Сразу после создания',
@@ -68,6 +75,8 @@ const T_LABELS: Record<Lang, {
     sectionLang: 'Language',
     langUK: 'Ukrainian', langRU: 'Russian', langEN: 'English',
     sectionTheme: 'Theme', themeLight: 'Light', themeDark: 'Dark', themeAuto: 'Auto',
+    sectionReminders: 'Reminders',
+    remindersTitle: 'Set reminder timing', remindersSub: 'How long before the appointment',
     sectionNotif: 'Email notifications',
     notifReminder: 'Appointment reminder', notifReminderSub: '24 hours before',
     notifConfirm: 'Booking confirmation', notifConfirmSub: 'Right after creation',
@@ -170,6 +179,27 @@ export default function MiniAppSettingsPage() {
             <Monitor size={18} /> {t.themeAuto}
           </button>
         </div>
+      </div>
+
+      {/* Reminders — custom-timing редактор: за сколько до визита получать
+          напоминание. Юзер сам выбирает (10 мин / 1 час / 2 дня / неделя и т.д.). */}
+      <div className="mps-section-t">{t.sectionReminders}</div>
+      <div className="mps-card" style={{ padding: 0 }}>
+        <Link
+          href="/telegram/settings/notifications"
+          onClick={() => haptic('light')}
+          className="mp-row"
+          style={{ margin: 0, borderRadius: 0 }}
+        >
+          <div className="mp-row-i"><Bell size={18} /></div>
+          <div className="mp-row-l">
+            {t.remindersTitle}
+            <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--fg-2)', marginTop: 2 }}>
+              {t.remindersSub}
+            </div>
+          </div>
+          <div className="mp-row-arr"><ChevronRight size={16} /></div>
+        </Link>
       </div>
 
       {/* Email notifications */}

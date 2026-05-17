@@ -81,7 +81,10 @@ export default function MiniAppProfilePage() {
   const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
-    if (!userId) { setLoading(false); return; }
+    // userId может ещё не быть загруженным (AuthProvider hydrate в TG WebApp).
+    // Ждём — loading остаётся true, exit early. useEffect перезапустится когда
+    // userId появится.
+    if (!userId) return;
     let cancelled = false;
     (async () => {
       const supabase = createClient();
@@ -93,11 +96,11 @@ export default function MiniAppProfilePage() {
       if (cancelled) return;
       if (prof) {
         const p = prof as { full_name: string | null; first_name: string | null; last_name: string | null; phone: string | null; avatar_url: string | null };
-        const fullName = p.full_name
-          ?? [p.first_name, p.last_name].filter(Boolean).join(' ').trim()
-          ?? t.user;
+        // Чистое склеивание first+last — если оба null, fallback на full_name.
+        const composed = [p.first_name, p.last_name].filter(Boolean).join(' ').trim();
+        const fullName = composed || p.full_name || t.user;
         setProfile({
-          full_name: fullName || t.user,
+          full_name: fullName,
           phone: p.phone,
           avatar_url: p.avatar_url,
         });
@@ -126,6 +129,16 @@ export default function MiniAppProfilePage() {
     })();
     return () => { cancelled = true; };
   }, [userId, t.user]);
+
+  // Safety: если AuthProvider за 5 сек не подтянул userId (например cookie
+  // отсутствует в TG WebApp) — снимаем skeleton чтобы юзер видел хотя бы
+  // empty state, а не вечный спиннер.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!userId) setLoading(false);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [userId]);
 
   async function signOut() {
     if (signingOut) return;

@@ -65,6 +65,30 @@ type Lang = 'uk' | 'ru' | 'en';
 
 const DEFAULT_CENTER: [number, number] = [50.4501, 30.5234];
 
+// Маппинг ключей категорий с home-страницы в поисковые термины.
+// API /api/telegram/nearby делает ilike по specialization мастера.
+const CATEGORY_TO_TERM: Record<string, string> = {
+  hair: 'волос',          // ловит: парикмахер / волосся / hair / стрижка
+  nails: 'нігт',          // нігті / манікюр / nails
+  face: 'обличч',         // обличчя / лицо / косметолог / face
+  massage: 'масаж',
+  brows: 'бров',          // брови / brows / eyebrow
+  laser: 'лазер',
+  skin: 'шкір',           // шкіра / skin / косметолог
+  all: '',
+};
+
+// Локализованные заголовки страницы по категории (без знача — общий «Пошук»).
+const CATEGORY_LABELS: Record<string, Record<'uk' | 'ru' | 'en', string>> = {
+  hair:    { uk: 'Волосся',  ru: 'Волосы',    en: 'Hair' },
+  nails:   { uk: 'Нігті',    ru: 'Ногти',     en: 'Nails' },
+  face:    { uk: 'Обличчя',  ru: 'Лицо',      en: 'Face' },
+  massage: { uk: 'Масаж',    ru: 'Массаж',    en: 'Massage' },
+  brows:   { uk: 'Брови',    ru: 'Брови',     en: 'Brows' },
+  laser:   { uk: 'Лазер',    ru: 'Лазер',     en: 'Laser' },
+  skin:    { uk: 'Шкіра',    ru: 'Кожа',      en: 'Skin' },
+};
+
 const T_LABELS: Record<Lang, {
   title: string;
   searchHint: string;
@@ -184,6 +208,9 @@ export default function MiniAppSearchPage() {
 
   const [query, setQuery] = useState(() => sp.get('q') ?? '');
   const [view, setView] = useState<'list' | 'map'>(sp.get('view') === 'map' ? 'map' : 'list');
+  // Категория из ?cat=hair|nails|... — переводим в text-search query или vertical.
+  // Если cat задан → автоматически фильтруем по нему через API param.
+  const cat = sp.get('cat');
 
   // Filter chips
   const [fToday, setFToday] = useState(false);
@@ -225,7 +252,13 @@ export default function MiniAppSearchPage() {
   const fetchData = useCallback(async (q: string, c: [number, number]) => {
     setLoading(true);
     try {
-      const body: Record<string, unknown> = q.trim() ? { q: q.trim() } : { lat: c[0], lng: c[1] };
+      // Если задана категория ?cat= — превращаем в text-query для API
+      // (API делает ilike по specialization), иначе шлём q или geo.
+      const catTerm = cat ? CATEGORY_TO_TERM[cat] ?? null : null;
+      const effectiveQuery = q.trim() || catTerm || '';
+      const body: Record<string, unknown> = effectiveQuery
+        ? { q: effectiveQuery }
+        : { lat: c[0], lng: c[1] };
       const r = await fetch('/api/telegram/nearby', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -240,7 +273,7 @@ export default function MiniAppSearchPage() {
     } finally {
       setLoading(false);
     }
-  }, [userLocation]);
+  }, [userLocation, cat]);
 
   // Initial + on query change
   const queryRef = useRef(query);
@@ -284,10 +317,19 @@ export default function MiniAppSearchPage() {
 
   return (
     <MobilePage className="od-client-mini-app">
-      {/* Top bar: title + filter icon */}
+      {/* Top bar: title + filter icon. Если задана ?cat= — показываем категорию. */}
       <div className="mc-top">
         <div>
-          <div className="mc-top-title">{t.title}</div>
+          <div className="mc-top-title">
+            {cat && CATEGORY_LABELS[cat]?.[lang] ? CATEGORY_LABELS[cat][lang] : t.title}
+          </div>
+          {cat && CATEGORY_LABELS[cat]?.[lang] && (
+            <div className="mc-top-sub" style={{ marginTop: 2 }}>
+              {filtered.length > 0
+                ? `${filtered.length} ${plural(filtered.length, lang)}`
+                : (lang === 'uk' ? 'Поки нікого' : lang === 'ru' ? 'Пока никого' : 'No results')}
+            </div>
+          )}
         </div>
         <button
           className="mc-icbtn"
