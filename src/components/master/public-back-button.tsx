@@ -57,7 +57,10 @@ export function PublicBackButton({ masterProfileId }: { masterProfileId?: string
   const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
-    setShow(!isInsideTelegramMiniApp());
+    // Показываем всегда — даже в TG WebApp. Данил: «нет кнопки выйти»
+    // (TG-native X-Close на iPhone сливается с темной темой страницы,
+    // юзер не видит куда нажать). Дублируем явной web-кнопкой.
+    setShow(true);
   }, []);
 
   useEffect(() => {

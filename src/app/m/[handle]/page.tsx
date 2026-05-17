@@ -613,9 +613,20 @@ export default async function MasterShowcasePage({ params }: PageProps) {
     <div
       className="public-master-scope min-h-screen overflow-x-hidden"
       style={{
-        backgroundColor: 'var(--m-bg)',
-        color: 'var(--m-text)',
+        // Force светлая тема — Данил: «должна быть светлая, учитывая что
+        // весь интерфейс светлый». Раньше тянули --m-bg / --m-text которые
+        // в dark-mode становились тёмными.
+        backgroundColor: '#ffffff',
+        color: '#0a0a0a',
         ['--page-accent' as string]: accent,
+        // Override mini-app theme vars прямо на корне публички, чтобы все
+        // вложенные компоненты тоже стали светлыми.
+        ['--m-bg' as string]: '#ffffff',
+        ['--m-surface' as string]: '#ffffff',
+        ['--m-text' as string]: '#0a0a0a',
+        ['--m-text-secondary' as string]: '#52525b',
+        ['--m-text-tertiary' as string]: '#94a3b8',
+        ['--m-border' as string]: '#e5e7eb',
         // TG WebApp X-Close + Menu сверху накрывают контент — резервируем
         // safe-area-top. На обычном вебе env() = 0, без изменений.
         paddingTop: 'max(var(--tg-safe-top, 0px), env(safe-area-inset-top, 0px))',
@@ -947,25 +958,8 @@ export default async function MasterShowcasePage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Mobile sticky bottom CTA — visible while scrolling on phones.
-          В Mini App клиента поднимается над floating-pill bottom-nav через
-          --mini-app-bottom-pad (см. MiniAppBottomPad). На вебе пад = 0. */}
-      <div
-        className="fixed inset-x-0 z-30 border-t backdrop-blur p-3 lg:hidden"
-        style={{
-          bottom: 'calc(var(--mini-app-bottom-pad, 0px) + env(safe-area-inset-bottom, 0px))',
-          background: 'color-mix(in oklab, var(--m-bg) 95%, transparent)',
-          borderColor: 'var(--m-border)',
-        }}
-      >
-        <BookingCTA variant="sticky">
-          {tt.bookCta}{hasServices && ` · ${tt.from} ${formatMoney(minPrice, currency)}`}
-        </BookingCTA>
-      </div>
-      <div
-        className="lg:hidden"
-        style={{ height: 'calc(80px + var(--mini-app-bottom-pad, 0px))' }}
-      />
+      {/* Sticky bottom CTA удалена по запросу 2026-05-17 — кнопка «Записатися
+          · від N ₴» дублировала hero-CTA и блокировала контент над собой. */}
       </BookingDrawerProvider>
     </div>
   );
