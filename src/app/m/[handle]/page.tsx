@@ -787,7 +787,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
             {/* Services — заголовок «Услуги» + кнопка «Показать все» внутри компонента */}
             {hasServices && (
               <section id="services" className="scroll-mt-24">
-                <PublicServicesList services={services} masterId={master.id} locale="ru" />
+                <PublicServicesList services={services} masterId={master.id} locale={lang} />
               </section>
             )}
 
