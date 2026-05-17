@@ -1,24 +1,26 @@
 /** --- YAML
  * name: MiniAppHomePage
- * description: «Головна» — соответствие прототипу mini-app/. Приветствие + аватар,
- *              hero ближайшей записи ИЛИ зелёный fallback «+ Новий запис»,
- *              feed «Вільні слоти сьогодні» (2 карточки), h-scroll «Рекомендовані»
- *              из /api/marketplace/featured. Категории/AI — в Tab «Найти».
+ * description: «Головна» Mini App — визуал из mobile-client/home мокапа.
+ *              Top bar (сьогодні + bell), greeting, search pill, Hero «Наступний запис»
+ *              (или пустой CTA), «Вільні слоти ваших майстрів», «Ваші постійні»
+ *              (повторити в 1 клік), 8 категорій, «Рекомендовані» horizontal scroll.
+ *              Все fetch'и кэшируются на 60с.
  * created: 2026-04-13
- * updated: 2026-05-15
+ * updated: 2026-05-17
  * --- */
 
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, ChevronRight, Plus, User } from 'lucide-react';
+import {
+  Search, MapPin, Clock, Coins, ChevronRight, CalendarPlus, Repeat, Bell,
+  Scissors, Hand, Smile, Activity, Eye, Zap, Droplets, MoreHorizontal, Star,
+} from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import '@/styles/od-client-mini-app.css';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
-import { formatMoney } from '@/lib/format/money';
 import { MobilePage } from '@/components/miniapp/shells';
 import { getCached, setCached } from '@/lib/miniapp/cache';
 
@@ -37,6 +39,7 @@ interface NextAppointment {
   master_specialization: string | null;
   salon: SalonRef | null;
   service_name: string;
+  service_duration: number | null;
   price: number;
   currency: string | null;
 }
@@ -47,94 +50,128 @@ interface SlotItem {
   date: string;
   time: string;
   iso: string;
+  service?: string | null;
+  duration?: number | null;
+  price?: number | null;
 }
+interface RegularItem {
+  master_id: string;
+  master_name: string;
+  service_id: string;
+  service_name: string;
+  service_price: number | null;
+  visit_count: number;
+}
+type FeaturedMaster = {
+  id: string;
+  slug: string;
+  name: string;
+  specialization: string | null;
+  avatar_url: string | null;
+  rating: number | null;
+  reviews_count: number;
+  price_from: number | null;
+  currency: string | null;
+};
 type Lang = 'uk' | 'ru' | 'en';
 
 const I18N: Record<Lang, {
-  title: string;
-  morningHi: string; dayHi: string; eveningHi: string; nightHi: string;
-  upcoming: string; details: string;
+  greeting: string;
+  searchHint: string;
+  upcomingLabel: string;
   atMaster: string;
   freeSlots: string;
-  recommended: string; from: string;
-  today: string; tomorrow: string;
-  minSuffix: string; masterFallback: string; reviewsSuffix: string;
-  bookCta: string;
-  // Fallback hero когда нет ближайшей записи (по прототипу — зелёный CTA).
+  regulars: string;
+  findNew: string;
+  recommended: string;
+  seeAll: string;
   emptyLabel: string; emptyTitle: string; emptySub: string; emptyCta: string;
+  today: string; tomorrow: string;
+  duration: string;
 }> = {
   uk: {
-    title: 'Привіт',
-    morningHi: 'Доброго ранку', dayHi: 'Доброго дня', eveningHi: 'Доброго вечора', nightHi: 'Доброї ночі',
-    upcoming: 'Наступний запис', details: 'Деталі запису',
-    atMaster: 'з',
-    freeSlots: 'Вільні слоти сьогодні',
-    recommended: 'Рекомендовані', from: 'від',
-    today: 'Сьогодні', tomorrow: 'Завтра',
-    minSuffix: 'хв', masterFallback: 'Майстер', reviewsSuffix: 'відгуків',
-    bookCta: 'Записатися',
-    emptyLabel: 'Почни день',
-    emptyTitle: 'Запишись до майстра',
+    greeting: 'Привіт',
+    searchHint: 'Майстер, послуга, місто…',
+    upcomingLabel: 'Наступний запис',
+    atMaster: 'у',
+    freeSlots: 'Вільні слоти ваших майстрів',
+    regulars: 'Ваші постійні',
+    findNew: 'Знайти нового майстра',
+    recommended: 'Рекомендовані',
+    seeAll: 'Усі',
+    emptyLabel: 'Поки немає записів',
+    emptyTitle: 'Знайти майстра',
     emptySub: 'Більше 500 майстрів у твоєму місті',
-    emptyCta: 'Новий запис',
+    emptyCta: 'До пошуку',
+    today: 'сьогодні',
+    tomorrow: 'завтра',
+    duration: 'хв',
   },
   ru: {
-    title: 'Привет',
-    morningHi: 'Доброе утро', dayHi: 'Добрый день', eveningHi: 'Добрый вечер', nightHi: 'Доброй ночи',
-    upcoming: 'Ближайшая запись', details: 'Детали записи',
+    greeting: 'Привет',
+    searchHint: 'Мастер, услуга, город…',
+    upcomingLabel: 'Ближайшая запись',
     atMaster: 'у',
-    freeSlots: 'Свободные слоты сегодня',
-    recommended: 'Рекомендуем', from: 'от',
-    today: 'Сегодня', tomorrow: 'Завтра',
-    minSuffix: 'мин', masterFallback: 'Мастер', reviewsSuffix: 'отзывов',
-    bookCta: 'Записаться',
-    emptyLabel: 'Начни день',
-    emptyTitle: 'Запишись к мастеру',
+    freeSlots: 'Свободные слоты ваших мастеров',
+    regulars: 'Ваши постоянные',
+    findNew: 'Найти нового мастера',
+    recommended: 'Рекомендуем',
+    seeAll: 'Все',
+    emptyLabel: 'Пока нет записей',
+    emptyTitle: 'Найти мастера',
     emptySub: 'Больше 500 мастеров в твоём городе',
-    emptyCta: 'Новая запись',
+    emptyCta: 'К поиску',
+    today: 'сегодня',
+    tomorrow: 'завтра',
+    duration: 'мин',
   },
   en: {
-    title: 'Hi',
-    morningHi: 'Good morning', dayHi: 'Good afternoon', eveningHi: 'Good evening', nightHi: 'Good night',
-    upcoming: 'Next appointment', details: 'View details',
+    greeting: 'Hi',
+    searchHint: 'Master, service, city…',
+    upcomingLabel: 'Next appointment',
     atMaster: 'with',
-    freeSlots: 'Open slots today',
-    recommended: 'Recommended', from: 'from',
-    today: 'Today', tomorrow: 'Tomorrow',
-    minSuffix: 'min', masterFallback: 'Master', reviewsSuffix: 'reviews',
-    bookCta: 'Book',
-    emptyLabel: 'Start your day',
-    emptyTitle: 'Book a master',
+    freeSlots: 'Open slots of your masters',
+    regulars: 'Your regulars',
+    findNew: 'Find a new master',
+    recommended: 'Recommended',
+    seeAll: 'All',
+    emptyLabel: 'No appointments yet',
+    emptyTitle: 'Find a master',
     emptySub: 'Over 500 masters in your city',
-    emptyCta: 'New booking',
+    emptyCta: 'Open search',
+    today: 'today',
+    tomorrow: 'tomorrow',
+    duration: 'min',
   },
 };
 
+const CATEGORIES = [
+  { key: 'hair',    icon: Scissors,        l: { uk: 'Волосся',  ru: 'Волосы',   en: 'Hair' } },
+  { key: 'nails',   icon: Hand,            l: { uk: 'Нігті',    ru: 'Ногти',    en: 'Nails' } },
+  { key: 'face',    icon: Smile,           l: { uk: 'Обличчя',  ru: 'Лицо',     en: 'Face' } },
+  { key: 'massage', icon: Activity,        l: { uk: 'Масаж',    ru: 'Массаж',   en: 'Massage' } },
+  { key: 'brows',   icon: Eye,             l: { uk: 'Брови',    ru: 'Брови',    en: 'Brows' } },
+  { key: 'laser',   icon: Zap,             l: { uk: 'Лазер',    ru: 'Лазер',    en: 'Laser' } },
+  { key: 'skin',    icon: Droplets,        l: { uk: 'Шкіра',    ru: 'Кожа',     en: 'Skin' } },
+  { key: 'all',     icon: MoreHorizontal,  l: { uk: 'Усі',      ru: 'Все',      en: 'All' } },
+] as const;
 
 export default function MiniAppHomePage() {
   const { haptic } = useTelegram();
-  const router = useRouter();
   const { userId, fullName } = useAuthStore();
-  // Имя для приветствия — берём первую часть full_name (первое имя).
-  // Если профиль ещё не подгрузился — приветствие останется без имени.
   const firstName = fullName?.trim().split(/\s+/)[0] ?? '';
-  // Кэш на 60с — вернулся на главную → данные мгновенно из памяти.
-  type FeaturedMaster = {
-    id: string;
-    slug: string;
-    name: string;
-    specialization: string | null;
-    avatar_url: string | null;
-    rating: number | null;
-    reviews_count: number;
-    price_from: number | null;
-    currency: string | null;
+
+  type CachedHome = {
+    next: NextAppointment | null;
+    slots: SlotItem[];
+    regulars: RegularItem[];
+    featured: FeaturedMaster[];
   };
-  type CachedHome = { next: NextAppointment | null; slots: SlotItem[]; featured: FeaturedMaster[] };
-  const cacheKey = userId ? `c-home-v2:${userId}` : null;
+  const cacheKey = userId ? `c-home-v3:${userId}` : null;
   const initial = cacheKey ? getCached<CachedHome>(cacheKey) : undefined;
   const [next, setNext] = useState<NextAppointment | null>(initial?.next ?? null);
   const [slots, setSlots] = useState<SlotItem[]>(initial?.slots ?? []);
+  const [regulars, setRegulars] = useState<RegularItem[]>(initial?.regulars ?? []);
   const [featured, setFeatured] = useState<FeaturedMaster[]>(initial?.featured ?? []);
   const [lang, setLang] = useState<Lang>('uk');
 
@@ -161,13 +198,11 @@ export default function MiniAppHomePage() {
             const parsed = JSON.parse(stash) as { initData?: string };
             if (parsed.initData) return parsed.initData;
           }
-        } catch { /* ignore */ }
+        } catch {}
         return null;
       })();
 
-      // Параллелим 3 fetch'а — раньше шли последовательно (3 RTT). Теперь
-      // три запроса стартуют одновременно, ждём всех — даёт ~1/3 от старого
-      // времени на cold-load главной.
+      // 4 fetch'а параллельно (раньше было 3 + не было regulars).
       const naFetch = initData
         ? fetch('/api/telegram/c/next-appointment', {
             method: 'POST',
@@ -180,12 +215,16 @@ export default function MiniAppHomePage() {
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null);
 
-      const featuredFetch = fetch('/api/marketplace/featured?limit=12')
+      const regularsFetch = fetch('/api/me/regular-services')
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null);
 
-      const [naJson, slotsJson, featuredJson] = await Promise.all([
-        naFetch, slotsFetch, featuredFetch,
+      const featuredFetch = fetch('/api/marketplace/featured?limit=8')
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+
+      const [naJson, slotsJson, regularsJson, featuredJson] = await Promise.all([
+        naFetch, slotsFetch, regularsFetch, featuredFetch,
       ]);
 
       // Next appointment — нормализация embedded relations
@@ -206,7 +245,7 @@ export default function MiniAppHomePage() {
             profile: { full_name: string; avatar_url: string | null } | { full_name: string; avatar_url: string | null }[] | null;
             salon: SalonEmbed | SalonEmbed[] | null;
           } | null;
-          service: { name: string } | { name: string }[] | null;
+          service: { name: string; duration_minutes?: number | null } | { name: string; duration_minutes?: number | null }[] | null;
         };
         const masterProfile = Array.isArray(a.master?.profile) ? a.master?.profile[0] : a.master?.profile;
         const svc = Array.isArray(a.service) ? a.service[0] : a.service;
@@ -220,12 +259,15 @@ export default function MiniAppHomePage() {
           master_specialization: a.master?.specialization ?? null,
           salon: rawSalon,
           service_name: svc?.name ?? '—',
+          service_duration: svc?.duration_minutes ?? null,
           price: Number(a.price ?? 0),
           currency: a.currency ?? 'UAH',
         };
       }
 
       const slotsSnapshot = (slotsJson?.items ?? []) as SlotItem[];
+      const regularsSnapshot = (Array.isArray(regularsJson?.items) ? regularsJson.items : []) as RegularItem[];
+
       type FeaturedRaw = {
         id: string;
         slug: string | null;
@@ -257,145 +299,202 @@ export default function MiniAppHomePage() {
 
       setNext(nextSnapshot);
       setSlots(slotsSnapshot);
+      setRegulars(regularsSnapshot.slice(0, 3));
       setFeatured(featuredSnapshot);
       if (cacheKey) {
         setCached<CachedHome>(cacheKey, {
           next: nextSnapshot,
           slots: slotsSnapshot,
+          regulars: regularsSnapshot.slice(0, 3),
           featured: featuredSnapshot,
         });
       }
     })();
   }, [userId, cacheKey]);
 
-  const greeting = useMemo(() => {
-    const h = new Date().getHours();
-    if (h < 6) return t.nightHi;
-    if (h < 12) return t.morningHi;
-    if (h < 18) return t.dayHi;
-    return t.eveningHi;
-  }, [t]);
+  // Динамическая дата для top bar — «сьогодні · 17 травня» (или эквивалент).
+  const todayLabel = useMemo(() => {
+    const d = new Date();
+    const dayMonth = d.toLocaleDateString(LOCALE_MAP[lang], { day: 'numeric', month: 'long' });
+    return `${capitalize(t.today)} · ${dayMonth}`;
+  }, [lang, t.today]);
 
   return (
     <MobilePage className="od-client-mini-app">
+      {/* Top bar: дата + bell */}
+      <div className="mc-top">
+        <div>
+          <div className="mc-top-sub">{todayLabel}</div>
+        </div>
+        <Link
+          href="/telegram/notifications"
+          onClick={() => haptic('light')}
+          aria-label="Сповіщення"
+          className="mc-icbtn mc-icbtn-dot"
+        >
+          <Bell size={16} strokeWidth={2} />
+        </Link>
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: 0.28 }}
       >
-        {/* Hello row — «Привіт, Имя» без аватара */}
-        <div className="page-hello">
-          <div>
-            <div className="page-hello-greet">{firstName ? `${t.title},` : greeting}</div>
-            <div className="page-hello-name">{firstName ? `${firstName} 👋` : t.title}</div>
-          </div>
+        {/* Greeting */}
+        <div className="mc-greet">
+          {t.greeting},
+          <b>{firstName || '👋'} {firstName ? '👋' : ''}</b>
         </div>
 
-        {/* Hero — ближайший запис ИЛИ зелёный fallback «+ Новий запис» (по прототипу) */}
+        {/* Search pill → /telegram/search */}
+        <Link
+          href="/telegram/search"
+          onClick={() => haptic('light')}
+          className="mc-pill"
+        >
+          <Search size={18} strokeWidth={2} />
+          <span className="mc-pill-txt">{t.searchHint}</span>
+        </Link>
+
+        {/* Hero — next appointment или empty-CTA */}
         {next ? (
           <Link
             href={`/telegram/activity/${next.id}`}
             onClick={() => haptic('light')}
-            className="hero-scenario"
-            style={{ textDecoration: 'none', display: 'block' }}
+            className="mc-hero"
           >
-            <div className="hero-badge">{t.upcoming}</div>
-            <div className="hero-label">{formatDateTime(next.starts_at, lang)}</div>
-            <div className="hero-title">{next.service_name}</div>
-            <div className="hero-sub">
-              {t.atMaster} {next.master_name}
-              {next.price > 0 ? ` · ${formatMoney(next.price, next.currency)}` : ''}
-              {next.salon?.name ? ` · ${next.salon.name}` : ''}
+            <div className="mc-hero-lab">{t.upcomingLabel}</div>
+            <div className="mc-hero-t">{next.service_name}</div>
+            <div className="mc-hero-s">
+              {t.atMaster} {next.master_name} · {formatWhen(next.starts_at, lang)}
             </div>
-            <span className="hero-action">
-              <Calendar size={15} strokeWidth={2.25} />
-              {t.details}
+            <div className="mc-hero-m">
+              {next.salon?.city && (
+                <span><MapPin size={11} /> {next.salon.city}</span>
+              )}
+              {next.service_duration && (
+                <span><Clock size={11} /> {next.service_duration} {t.duration}</span>
+              )}
+              {next.price > 0 && (
+                <span><Coins size={11} /> ₴{Math.round(next.price)}</span>
+              )}
+            </div>
+            <span className="mc-hero-cta">
+              Деталі <ChevronRight size={11} strokeWidth={2.5} />
             </span>
           </Link>
         ) : (
           <Link
             href="/telegram/search"
             onClick={() => haptic('light')}
-            className="hero-scenario"
-            style={{
-              textDecoration: 'none',
-              display: 'block',
-              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-            }}
+            className="mc-hero"
           >
-            <div className="hero-label">{t.emptyLabel}</div>
-            <div className="hero-title">{t.emptyTitle}</div>
-            <div className="hero-sub">{t.emptySub}</div>
-            <span className="hero-action">
-              <Plus size={15} strokeWidth={2.25} />
-              {t.emptyCta}
+            <div className="mc-hero-lab">{t.emptyLabel}</div>
+            <div className="mc-hero-t">{t.emptyTitle}</div>
+            <div className="mc-hero-s">{t.emptySub}</div>
+            <span className="mc-hero-cta">
+              <Search size={11} strokeWidth={2.5} /> {t.emptyCta}
             </span>
           </Link>
         )}
 
-        {/* Вільні слоти сьогодні — 2 feed-card (по прототипу) */}
+        {/* Free slots — 4 карточки */}
         {slots.length > 0 && (
-          <div className="feed-section">
-            <div className="feed-title">{t.freeSlots}</div>
-            {slots.slice(0, 2).map((s) => (
-              <Link
-                key={s.masterId + s.iso}
-                href={`/telegram/book?master_id=${s.masterId}&date=${s.date}&time=${encodeURIComponent(s.time)}`}
-                onClick={() => haptic('light')}
-                className="feed-card"
-              >
-                <div className="fc-icon">
-                  {s.avatar
-                    ? <img src={s.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: 'inherit', objectFit: 'cover' }} />
-                    : <Clock size={20} />}
-                </div>
-                <div className="fc-info">
-                  <div className="fc-title">{s.name ?? t.masterFallback}</div>
-                  <div className="fc-sub">{formatSlotDate(s.date, s.time, lang)}</div>
-                </div>
-                <div className="fc-cta">
-                  {t.bookCta} <ChevronRight size={13} strokeWidth={2.5} style={{ display: 'inline', verticalAlign: '-2px' }} />
-                </div>
-              </Link>
-            ))}
-          </div>
+          <>
+            <div className="mc-section-head">
+              <span className="mc-section-title">{t.freeSlots}</span>
+              <Link href="/telegram/connections" onClick={() => haptic('light')}>{t.seeAll}</Link>
+            </div>
+            <div className="mc-slots">
+              {slots.slice(0, 4).map((s) => <SlotCard key={s.masterId + s.iso} slot={s} lang={lang} t={t} haptic={haptic} />)}
+            </div>
+          </>
         )}
 
-        {/* Рекомендовані — h-scroll featured masters (по прототипу) */}
+        {/* Regulars — повторити запис */}
+        {regulars.length > 0 && (
+          <>
+            <div className="mc-section-head">
+              <span className="mc-section-title">{t.regulars}</span>
+              <Link href="/telegram/activity?tab=past" onClick={() => haptic('light')}>{t.seeAll}</Link>
+            </div>
+            <div className="mc-reg">
+              {regulars.map((r) => (
+                <Link
+                  key={`${r.master_id}-${r.service_id}`}
+                  href={`/telegram/book?master_id=${r.master_id}&service_id=${r.service_id}`}
+                  onClick={() => haptic('light')}
+                  className="mc-reg-row"
+                >
+                  <div className="mc-reg-av">{initialsOf(r.master_name)}</div>
+                  <div className="mc-reg-i">
+                    <div className="mc-reg-n">{r.service_name}</div>
+                    <div className="mc-reg-s">
+                      {r.master_name} · {r.visit_count} {plural(r.visit_count, lang)}
+                      {r.service_price != null ? ` · ₴${Math.round(Number(r.service_price))}` : ''}
+                    </div>
+                  </div>
+                  <span className="mc-reg-cta" aria-label="Повторити">
+                    <Repeat size={15} strokeWidth={2} />
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Categories */}
+        <div className="mc-section-title">{t.findNew}</div>
+        <div className="mc-cats">
+          {CATEGORIES.map(({ key, icon: Icon, l }) => (
+            <Link
+              key={key}
+              href={`/telegram/search?cat=${key}`}
+              onClick={() => haptic('light')}
+              className="mc-cat"
+            >
+              <span className="mc-cat-ic"><Icon size={18} strokeWidth={2} /></span>
+              <span className="mc-cat-l">{l[lang]}</span>
+            </Link>
+          ))}
+        </div>
+
+        {/* Recommended (h-scroll) */}
         {featured.length > 0 && (
           <>
-            <div className="feed-section" style={{ paddingBottom: 0 }}>
-              <div className="feed-title">{t.recommended}</div>
+            <div className="mc-section-head">
+              <span className="mc-section-title">{t.recommended}</span>
+              <Link href="/telegram/search" onClick={() => haptic('light')}>{t.seeAll}</Link>
             </div>
-            <div className="h-scroll" style={{ marginTop: 8, paddingBottom: 4 }}>
+            <div className="mc-recs">
               {featured.map((m) => (
-                <button
+                <Link
                   key={m.id}
-                  type="button"
-                  onClick={() => {
-                    haptic('light');
-                    router.push(`/telegram/book?master_id=${m.id}`);
-                  }}
-                  className="h-card"
-                  style={{ border: 'none', textAlign: 'left', fontFamily: 'inherit', padding: 0 }}
+                  href={`/m/${m.slug}`}
+                  onClick={() => haptic('light')}
+                  className="mc-rec"
                 >
-                  <div className="h-card-img">
-                    {m.avatar_url
-                      ? <img src={m.avatar_url} alt="" />
-                      : <User size={32} strokeWidth={1.5} />}
-                  </div>
-                  <div className="h-card-body">
-                    <div className="h-card-name">{m.name}</div>
-                    <div className="h-card-sub">
-                      ⭐ {m.rating?.toFixed(1) ?? '—'} · {m.reviews_count} {t.reviewsSuffix}
+                  <div className="mc-rec-c">
+                    <div className="mc-rec-av">
+                      {m.avatar_url
+                        ? <img src={m.avatar_url} alt="" />
+                        : initialsOf(m.name)}
                     </div>
-                    {m.price_from != null && (
-                      <div className="h-card-price">
-                        {t.from} {formatMoney(m.price_from, m.currency)}
-                      </div>
-                    )}
                   </div>
-                </button>
+                  <div className="mc-rec-b">
+                    <div className="mc-rec-n">{m.name}</div>
+                    <div className="mc-rec-s">{m.specialization || '—'}</div>
+                    <div className="mc-rec-m">
+                      <span className="mc-rec-r">
+                        <Star size={10} /> {m.rating?.toFixed(1) ?? '—'} · {m.reviews_count}
+                      </span>
+                      {m.price_from != null && (
+                        <span className="mc-rec-p">від ₴{Math.round(m.price_from)}</span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
               ))}
             </div>
           </>
@@ -403,34 +502,94 @@ export default function MiniAppHomePage() {
 
         <div style={{ height: 12 }} />
       </motion.div>
-
     </MobilePage>
   );
 }
 
-const LOCALE_MAP: Record<Lang, string> = { uk: 'uk-UA', ru: 'ru-RU', en: 'en-US' };
-const TODAY_LABEL: Record<Lang, string> = { uk: 'Сьогодні', ru: 'Сегодня', en: 'Today' };
-const TOMORROW_LABEL: Record<Lang, string> = { uk: 'Завтра', ru: 'Завтра', en: 'Tomorrow' };
+/* ───── Helpers ───── */
 
-function formatDateTime(iso: string, lang: Lang): string {
-  const d = new Date(iso);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(d);
-  target.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today.getTime() + 86400000);
-  const time = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-  if (target.getTime() === today.getTime()) return `${TODAY_LABEL[lang]} ${time}`;
-  if (target.getTime() === tomorrow.getTime()) return `${TOMORROW_LABEL[lang]} ${time}`;
-  return `${d.toLocaleDateString(LOCALE_MAP[lang], { day: 'numeric', month: 'short' })} ${time}`;
+const LOCALE_MAP: Record<Lang, string> = { uk: 'uk-UA', ru: 'ru-RU', en: 'en-US' };
+
+function SlotCard({ slot, lang, t, haptic }: {
+  slot: SlotItem;
+  lang: Lang;
+  t: typeof I18N[Lang];
+  haptic: (k?: 'light' | 'medium' | 'heavy' | 'success' | 'error' | 'warning' | 'selection') => void;
+}) {
+  const d = new Date(slot.iso);
+  const isToday = isSameDay(d, new Date());
+  const isTomorrow = isSameDay(d, addDays(new Date(), 1));
+  const timeStr = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  const timeLabel = isToday
+    ? timeStr
+    : isTomorrow
+      ? `${t.tomorrow} ${timeStr}`
+      : `${d.toLocaleDateString(LOCALE_MAP[lang], { day: 'numeric', month: 'short' })} ${timeStr}`;
+
+  return (
+    <Link
+      href={`/telegram/book?master_id=${slot.masterId}&date=${slot.date}&time=${encodeURIComponent(slot.time)}`}
+      onClick={() => haptic('light')}
+      className="mc-slot"
+    >
+      <div className={`mc-slot-av ${isToday ? 'online' : ''}`}>
+        {slot.avatar
+          ? <img src={slot.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: 'inherit', objectFit: 'cover' }} />
+          : initialsOf(slot.name ?? '?')}
+      </div>
+      <div className="mc-slot-i">
+        <div className="mc-slot-n">{slot.name ?? '—'}</div>
+        <div className="mc-slot-s">
+          {slot.service ?? '—'}{slot.duration ? ` · ${slot.duration} ${t.duration}` : ''}
+        </div>
+      </div>
+      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+        <div className={`mc-slot-t ${!isToday ? 'tom' : ''}`}>{timeLabel}</div>
+        {slot.price != null && <div className="mc-slot-p">₴{Math.round(slot.price)}</div>}
+      </div>
+      <button className="mc-slot-btn" aria-label="Записатись">
+        <CalendarPlus size={14} strokeWidth={2} />
+      </button>
+    </Link>
+  );
 }
 
-function formatSlotDate(dateStr: string, time: string, lang: Lang): string {
-  const d = new Date(dateStr + 'T00:00:00');
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).slice(0, 2);
+  return parts.map((p) => p.charAt(0).toUpperCase()).join('') || '?';
+}
+
+function isSameDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function addDays(d: Date, n: number): Date {
+  const r = new Date(d); r.setDate(r.getDate() + n); return r;
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function plural(n: number, lang: Lang): string {
+  if (lang === 'en') return n === 1 ? 'time' : 'times';
+  const m10 = n % 10, m100 = n % 100;
+  if (lang === 'uk') {
+    if (m10 === 1 && m100 !== 11) return 'раз';
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'рази';
+    return 'разів';
+  }
+  // ru
+  if (m10 === 1 && m100 !== 11) return 'раз';
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'раза';
+  return 'раз';
+}
+
+function formatWhen(iso: string, lang: Lang): string {
+  const d = new Date(iso);
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today.getTime() + 86400000);
-  if (d.getTime() === today.getTime()) return `${TODAY_LABEL[lang]} ${time}`;
-  if (d.getTime() === tomorrow.getTime()) return `${TOMORROW_LABEL[lang]} ${time}`;
+  const time = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  if (isSameDay(d, today)) return `${I18N[lang].today} ${time}`;
+  if (isSameDay(d, addDays(today, 1))) return `${I18N[lang].tomorrow} ${time}`;
   return `${d.toLocaleDateString(LOCALE_MAP[lang], { day: 'numeric', month: 'short' })} ${time}`;
 }

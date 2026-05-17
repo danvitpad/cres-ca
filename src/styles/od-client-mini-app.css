@@ -718,3 +718,209 @@
 .od-client-mini-app .font-bold { font-weight: 700; }
 .od-client-mini-app .font-semibold { font-weight: 600; }
 .od-client-mini-app .font-medium { font-weight: 500; }
+
+/* ════════════════════════════════════════════════════════════
+   MOBILE CLIENT — портированные классы из mobile-client мокапа
+   Применяются на /telegram/(app)/* страницах внутри MobilePage.
+   Все классы — `.mc-*`, scoped через .od-client-mini-app.
+   ════════════════════════════════════════════════════════════ */
+
+/* TOP BAR (sticky white header под statusbar) */
+.od-client-mini-app .mc-top {
+  padding: 10px 20px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0; background: var(--surface);
+}
+.od-client-mini-app .mc-top-title { font-size: 22px; font-weight: 800; letter-spacing: -.01em; color: var(--fg); }
+.od-client-mini-app .mc-top-sub { font-size: 11px; color: var(--fg-2); margin-top: 2px; }
+.od-client-mini-app .mc-icbtn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--bg); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--fg); cursor: pointer; position: relative;
+}
+.od-client-mini-app .mc-icbtn svg { width: 16px; height: 16px; }
+.od-client-mini-app .mc-icbtn-dot::after {
+  content: ''; position: absolute; top: 6px; right: 6px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #ef4444; border: 2px solid var(--bg);
+}
+
+/* GREETING (Привіт + name) */
+.od-client-mini-app .mc-greet { padding: 0 20px 8px; font-size: 13px; color: var(--fg-2); }
+.od-client-mini-app .mc-greet b {
+  display: block; font-size: 24px; font-weight: 800;
+  color: var(--fg); letter-spacing: -.01em; margin-top: 2px;
+}
+
+/* SEARCH PILL (компакт под greeting) */
+.od-client-mini-app .mc-pill {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 16px 12px; padding: 12px 16px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 9999px; cursor: pointer;
+  text-decoration: none; color: var(--fg-2);
+}
+.od-client-mini-app .mc-pill svg { width: 18px; height: 18px; color: var(--fg-3); }
+.od-client-mini-app .mc-pill-txt { flex: 1; font-size: 14px; }
+
+/* HERO — «Наступний запис» / empty CTA (cobalt gradient) */
+.od-client-mini-app .mc-hero {
+  margin: 6px 16px 16px; padding: 18px 20px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--accent), var(--a-600));
+  color: #fff; text-decoration: none; display: block;
+  box-shadow: var(--shadow-md);
+}
+.od-client-mini-app .mc-hero-lab {
+  font-size: 10px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; opacity: .85;
+}
+.od-client-mini-app .mc-hero-t { font-size: 18px; font-weight: 800; margin-top: 4px; }
+.od-client-mini-app .mc-hero-s { font-size: 12px; opacity: .9; margin-top: 2px; }
+.od-client-mini-app .mc-hero-m {
+  display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px;
+  font-size: 11px; opacity: .85;
+}
+.od-client-mini-app .mc-hero-m span { display: inline-flex; align-items: center; gap: 4px; }
+.od-client-mini-app .mc-hero-m svg { width: 11px; height: 11px; }
+.od-client-mini-app .mc-hero-cta {
+  margin-top: 12px; display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 9999px;
+  background: #fff; color: var(--accent);
+  font-size: 12px; font-weight: 700;
+}
+
+/* SECTION HEADER (заголовок + «Усі» ссылка) */
+.od-client-mini-app .mc-section-title {
+  font-size: 13px; font-weight: 700; color: var(--fg);
+  padding: 14px 20px 8px;
+}
+.od-client-mini-app .mc-section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px 8px;
+}
+.od-client-mini-app .mc-section-head .mc-section-title { padding: 0; }
+.od-client-mini-app .mc-section-head a {
+  font-size: 11px; font-weight: 600; color: var(--accent); text-decoration: none;
+}
+
+/* FREE SLOTS — карточки доступных слотов */
+.od-client-mini-app .mc-slots { padding: 0 16px 8px; display: flex; flex-direction: column; gap: 8px; }
+.od-client-mini-app .mc-slot {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 14px;
+  text-decoration: none; color: var(--fg);
+}
+.od-client-mini-app .mc-slot-av {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--accent-2); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 12px; flex-shrink: 0; position: relative;
+}
+.od-client-mini-app .mc-slot-av.online::after {
+  content: ''; position: absolute; bottom: 0; right: 0;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--success); border: 2px solid var(--surface);
+}
+.od-client-mini-app .mc-slot-i { flex: 1; min-width: 0; }
+.od-client-mini-app .mc-slot-n { font-size: 13px; font-weight: 700; color: var(--fg); }
+.od-client-mini-app .mc-slot-s { font-size: 11px; color: var(--fg-2); margin-top: 2px; }
+.od-client-mini-app .mc-slot-t {
+  font-size: 13px; font-weight: 700; color: var(--success);
+  font-variant-numeric: tabular-nums;
+}
+.od-client-mini-app .mc-slot-t.tom { color: var(--fg-2); }
+.od-client-mini-app .mc-slot-p { font-size: 11px; color: var(--fg-3); margin-top: 2px; }
+.od-client-mini-app .mc-slot-btn {
+  width: 34px; height: 34px; border-radius: 10px;
+  background: var(--accent); color: #fff; border: none;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  cursor: pointer;
+}
+.od-client-mini-app .mc-slot-btn svg { width: 14px; height: 14px; }
+
+/* REGULAR (повторити запис) */
+.od-client-mini-app .mc-reg { padding: 0 16px 8px; display: flex; flex-direction: column; gap: 8px; }
+.od-client-mini-app .mc-reg-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 14px;
+  text-decoration: none; color: var(--fg);
+}
+.od-client-mini-app .mc-reg-av {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--accent-2); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px; flex-shrink: 0;
+}
+.od-client-mini-app .mc-reg-i { flex: 1; min-width: 0; }
+.od-client-mini-app .mc-reg-n { font-size: 13px; font-weight: 700; color: var(--fg); }
+.od-client-mini-app .mc-reg-s { font-size: 11px; color: var(--fg-2); margin-top: 2px; }
+.od-client-mini-app .mc-reg-cta {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--accent-2); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; border: none; cursor: pointer;
+}
+.od-client-mini-app .mc-reg-cta svg { width: 15px; height: 15px; }
+
+/* CATEGORIES — 4×2 icon grid */
+.od-client-mini-app .mc-cats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  padding: 6px 16px 8px;
+}
+.od-client-mini-app .mc-cat {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; text-decoration: none; color: inherit;
+}
+.od-client-mini-app .mc-cat-ic {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--accent-2); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+}
+.od-client-mini-app .mc-cat-ic svg { width: 18px; height: 18px; }
+.od-client-mini-app .mc-cat-l { font-size: 11px; font-weight: 600; color: var(--fg-2); text-align: center; }
+
+/* RECOMMENDED — h-scroll cards */
+.od-client-mini-app .mc-recs {
+  padding: 0 16px 16px; display: flex; gap: 10px;
+  overflow-x: auto; scrollbar-width: none; min-height: 200px;
+}
+.od-client-mini-app .mc-recs::-webkit-scrollbar { display: none; }
+.od-client-mini-app .mc-rec {
+  flex-shrink: 0; width: 170px; min-height: 180px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden;
+  text-decoration: none; color: var(--fg);
+}
+.od-client-mini-app .mc-rec-c {
+  height: 80px;
+  background: linear-gradient(135deg, oklch(93% .04 263), oklch(87% .08 263));
+  position: relative;
+}
+.od-client-mini-app .mc-rec-av {
+  position: absolute; bottom: -18px; left: 12px;
+  width: 42px; height: 42px; border-radius: 50%;
+  background: var(--surface); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px;
+  border: 3px solid var(--surface); box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.od-client-mini-app .mc-rec-av img { width: 100%; height: 100%; object-fit: cover; }
+.od-client-mini-app .mc-rec-b { padding: 22px 12px 12px; }
+.od-client-mini-app .mc-rec-n { font-size: 13px; font-weight: 700; color: var(--fg); }
+.od-client-mini-app .mc-rec-s { font-size: 11px; color: var(--fg-2); margin-top: 1px; }
+.od-client-mini-app .mc-rec-m {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 8px; font-size: 11px; color: var(--fg-3);
+}
+.od-client-mini-app .mc-rec-r {
+  display: inline-flex; align-items: center; gap: 3px; color: var(--fg);
+}
+.od-client-mini-app .mc-rec-r svg { width: 10px; height: 10px; color: #f59e0b; fill: #f59e0b; }
+.od-client-mini-app .mc-rec-p { font-weight: 700; color: var(--accent); }
