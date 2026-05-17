@@ -1,12 +1,11 @@
 /** --- YAML
  * name: MiniAppActivityPage
- * description: «Активність» клиента — переключение между Список (карточки записей с
- *              chip-фильтром «Майбутні / Минулі») и Календар (месячная сетка с
- *              точками на днях где есть записи, тап → список записей дня).
- *              Подарочные карты и абонементы убраны до момента когда подключим
- *              данные — пустые табы только сбивали.
+ * description: «Мої записи» Mini App — визуал из mobile-client/appointments мокапа.
+ *              3 segment tabs (Майбутні / Минулі / Скасов.) с count'ами. Каждая
+ *              запись: date-block (ДД/МІС), сервис, мастер, meta (час+ціна),
+ *              status-chip + кнопки действий (Деталі/Перенести/Оцінити/Повторити).
  * created: 2026-04-13
- * updated: 2026-05-07
+ * updated: 2026-05-17
  * --- */
 
 'use client';
@@ -14,166 +13,111 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import {
-  ChevronRight,
-  CalendarDays,
-  List,
-  ChevronLeft,
-  Check,
+  Clock, Coins, Zap, Star, Repeat, RotateCcw, XCircle, X, Check, CalendarDays,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import '@/styles/od-client-mini-app.css';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
-import { resolveCardDisplay, type SalonRef } from '@/lib/client/display-mode';
-import {
-  MobilePage,
-  PageHeader,
-  EmptyState,
-} from '@/components/miniapp/shells';
-import { T, R, TYPE, PAGE_PADDING_X } from '@/components/miniapp/design';
+import { MobilePage } from '@/components/miniapp/shells';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 
 type Lang = 'uk' | 'ru' | 'en';
-
-const I18N: Record<Lang, {
-  title: string;
-  viewList: string; viewCalendar: string;
-  filterUpcoming: string; filterPast: string;
-  noActivity: string; noActivityDesc: string;
-  noActivityOnDay: string;
-  searchVenues: string;
-  weekdaysShort: string[];
-  status: Record<string, string>;
-  monthsLong: string[];
-}> = {
-  uk: {
-    title: 'Записи',
-    viewList: 'Список', viewCalendar: 'Календар',
-    filterUpcoming: 'Майбутні', filterPast: 'Минулі',
-    noActivity: 'Немає записів',
-    noActivityDesc: 'Майбутні зустрічі та історія візитів з’являться тут',
-    noActivityOnDay: 'У цей день записів немає',
-    searchVenues: 'Знайти майстра',
-    weekdaysShort: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'],
-    status: {
-      booked: 'Записано', confirmed: 'Підтверджено', in_progress: 'Йде',
-      completed: 'Завершено', cancelled: 'Скасовано', cancelled_by_client: 'Скасовано',
-      cancelled_by_master: 'Скасовано', no_show: 'Не з\'явився',
-    },
-    monthsLong: ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
-                 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'],
-  },
-  ru: {
-    title: 'Записи',
-    viewList: 'Список', viewCalendar: 'Календарь',
-    filterUpcoming: 'Будущие', filterPast: 'Прошедшие',
-    noActivity: 'Нет записей',
-    noActivityDesc: 'Будущие встречи и история визитов появятся здесь',
-    noActivityOnDay: 'В этот день записей нет',
-    searchVenues: 'Найти мастера',
-    weekdaysShort: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
-    status: {
-      booked: 'Записан', confirmed: 'Подтверждено', in_progress: 'Идёт',
-      completed: 'Завершено', cancelled: 'Отменено', cancelled_by_client: 'Отменено',
-      cancelled_by_master: 'Отменено', no_show: 'Не пришёл',
-    },
-    monthsLong: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-                 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
-  },
-  en: {
-    title: 'Bookings',
-    viewList: 'List', viewCalendar: 'Calendar',
-    filterUpcoming: 'Upcoming', filterPast: 'Past',
-    noActivity: 'No appointments',
-    noActivityDesc: 'Upcoming meetings and visit history will appear here',
-    noActivityOnDay: 'No appointments on this day',
-    searchVenues: 'Find a master',
-    weekdaysShort: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    status: {
-      booked: 'Booked', confirmed: 'Confirmed', in_progress: 'In progress',
-      completed: 'Completed', cancelled: 'Cancelled', cancelled_by_client: 'Cancelled',
-      cancelled_by_master: 'Cancelled', no_show: 'No show',
-    },
-    monthsLong: ['January', 'February', 'March', 'April', 'May', 'June',
-                 'July', 'August', 'September', 'October', 'November', 'December'],
-  },
-};
-
-type SalonEmbed =
-  | { id: string; name: string; logo_url: string | null; city: string | null; rating: number | null }
-  | null;
-
-function unwrapSalon(s: SalonEmbed | SalonEmbed[] | null | undefined): SalonRef | null {
-  if (!s) return null;
-  const obj = Array.isArray(s) ? s[0] ?? null : s;
-  if (!obj) return null;
-  return { id: obj.id, name: obj.name, logo_url: obj.logo_url, city: obj.city, rating: obj.rating };
-}
+type Tab = 'future' | 'past' | 'cancel';
 
 interface AppointmentRow {
   id: string;
   starts_at: string;
+  ends_at: string | null;
   status: string;
-  price: number;
+  price: number | null;
   currency: string | null;
-  service_name: string;
-  service_color: string | null;
+  cancelled_at?: string | null;
   master_id: string | null;
-  master_display_name: string | null;
-  master_avatar: string | null;
-  master_specialization: string | null;
-  master_salon_id: string | null;
-  salon: SalonRef | null;
+  master_name: string;
+  service_name: string;
+  service_duration_min: number | null;
   has_review: boolean;
 }
 
-type View = 'list' | 'calendar';
-type Filter = 'upcoming' | 'past';
+const STATUS_CANCELLED = ['cancelled', 'cancelled_by_client', 'cancelled_by_master', 'no_show'];
 
-const STATUS_DONE = ['completed', 'cancelled', 'cancelled_by_client', 'cancelled_by_master', 'no_show'];
+const T_LABELS: Record<Lang, {
+  title: string;
+  tabFuture: string; tabPast: string; tabCancel: string;
+  empty: (tab: Tab) => string;
+  findCta: string;
+  chipToday: string; chipUpcoming: string;
+  chipDone: string; chipReview: string; chipCancelled: string;
+  details: string; reschedule: string; cancel: string;
+  rate: string; repeat: string; bookAgain: string;
+  cancelledOn: string;
+  withMaster: string;
+  min: string;
+  monthsShort: string[];
+}> = {
+  uk: {
+    title: 'Мої записи',
+    tabFuture: 'Майбутні', tabPast: 'Минулі', tabCancel: 'Скасов.',
+    empty: (t) => t === 'future' ? 'Немає майбутніх записів' : t === 'past' ? 'Історія порожня' : 'Скасованих немає',
+    findCta: 'Знайти майстра',
+    chipToday: 'Сьогодні', chipUpcoming: 'Майбутній',
+    chipDone: 'Виконано', chipReview: 'Залиш відгук', chipCancelled: 'Скасовано',
+    details: 'Деталі', reschedule: 'Перенести', cancel: 'Скасувати',
+    rate: 'Оцінити', repeat: 'Повторити', bookAgain: 'Записатись знову',
+    cancelledOn: 'Скасовано',
+    withMaster: 'з',
+    min: 'хв',
+    monthsShort: ['СІЧ', 'ЛЮТ', 'БЕР', 'КВІ', 'ТРА', 'ЧЕР', 'ЛИП', 'СЕР', 'ВЕР', 'ЖОВ', 'ЛИС', 'ГРУ'],
+  },
+  ru: {
+    title: 'Мои записи',
+    tabFuture: 'Будущие', tabPast: 'Прошлые', tabCancel: 'Отмен.',
+    empty: (t) => t === 'future' ? 'Нет будущих записей' : t === 'past' ? 'История пуста' : 'Отменённых нет',
+    findCta: 'Найти мастера',
+    chipToday: 'Сегодня', chipUpcoming: 'Будущий',
+    chipDone: 'Выполнено', chipReview: 'Оставь отзыв', chipCancelled: 'Отменено',
+    details: 'Детали', reschedule: 'Перенести', cancel: 'Отменить',
+    rate: 'Оценить', repeat: 'Повторить', bookAgain: 'Записаться снова',
+    cancelledOn: 'Отменено',
+    withMaster: 'у',
+    min: 'мин',
+    monthsShort: ['ЯНВ', 'ФЕВ', 'МАР', 'АПР', 'МАЙ', 'ИЮН', 'ИЮЛ', 'АВГ', 'СЕН', 'ОКТ', 'НОЯ', 'ДЕК'],
+  },
+  en: {
+    title: 'My appointments',
+    tabFuture: 'Upcoming', tabPast: 'Past', tabCancel: 'Cancelled',
+    empty: (t) => t === 'future' ? 'No upcoming' : t === 'past' ? 'No history' : 'Nothing cancelled',
+    findCta: 'Find a master',
+    chipToday: 'Today', chipUpcoming: 'Upcoming',
+    chipDone: 'Done', chipReview: 'Leave review', chipCancelled: 'Cancelled',
+    details: 'Details', reschedule: 'Reschedule', cancel: 'Cancel',
+    rate: 'Rate', repeat: 'Repeat', bookAgain: 'Book again',
+    cancelledOn: 'Cancelled',
+    withMaster: 'with',
+    min: 'min',
+    monthsShort: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'],
+  },
+};
 
-function isDoneStatus(s: string): boolean {
-  return STATUS_DONE.includes(s);
-}
-
-/** YYYY-MM-DD по локальному времени. */
-function dayKey(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+function isSameDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
 export default function MiniAppActivityPage() {
+  const router = useRouter();
   const { haptic } = useTelegram();
   const { userId } = useAuthStore();
   const lang = useMiniAppLocale();
-  const t = I18N[lang];
+  const t = T_LABELS[lang];
 
-  const cardLabels = {
-    masterPlaceholder: lang === 'en' ? 'Master' : lang === 'uk' ? 'Майстер' : 'Мастер',
-    salonPlaceholder: lang === 'en' ? 'Salon' : lang === 'uk' ? 'Салон' : 'Салон',
-    managerAssigned: lang === 'en'
-      ? 'Master will be assigned by admin'
-      : lang === 'uk' ? 'Майстра призначить адміністратор' : 'Мастер будет назначен администратором',
-  };
-
-  const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
-  const [view, setView] = useState<View>('list');
-  const [filter, setFilter] = useState<Filter>('upcoming');
-  const [calMonth, setCalMonth] = useState<Date>(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
-  });
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [rows, setRows] = useState<AppointmentRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<Tab>('future');
 
   useEffect(() => {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
+    if (!userId) { setLoading(false); return; }
+    let cancelled = false;
     (async () => {
       const initData = (() => {
         if (typeof window === 'undefined') return null;
@@ -186,530 +130,241 @@ export default function MiniAppActivityPage() {
             const parsed = JSON.parse(stash) as { initData?: string };
             if (parsed.initData) return parsed.initData;
           }
-        } catch { /* ignore */ }
+        } catch {}
         return null;
       })();
-      if (!initData) {
-        setLoading(false);
-        return;
-      }
+      if (!initData) { setLoading(false); return; }
 
-      const res = await fetch('/api/telegram/c/activity', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData }),
-      });
-      if (!res.ok) {
-        setLoading(false);
-        return;
+      try {
+        const res = await fetch('/api/telegram/c/activity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData }),
+        });
+        if (!res.ok) { setLoading(false); return; }
+        const json = await res.json();
+        if (cancelled) return;
+
+        type SalonEmbed = { id: string; name: string | null; logo_url: string | null; city: string | null };
+        type MasterEmbed = {
+          id: string | null;
+          display_name: string | null;
+          avatar_url: string | null;
+          specialization: string | null;
+          salon_id: string | null;
+          profile: { full_name: string | null; avatar_url: string | null } | { full_name: string | null; avatar_url: string | null }[] | null;
+          salon: SalonEmbed | SalonEmbed[] | null;
+        };
+
+        const list = (json.appointments ?? []).map((raw: unknown) => {
+          const a = raw as {
+            id: string;
+            starts_at: string;
+            ends_at: string | null;
+            status: string;
+            price: number | null;
+            currency: string | null;
+            cancelled_at?: string | null;
+            master: MasterEmbed | null;
+            service: { name: string | null; duration_minutes?: number | null } | { name: string | null; duration_minutes?: number | null }[] | null;
+            reviewExists?: boolean;
+          };
+          const master = Array.isArray(a.master) ? a.master[0] : a.master;
+          const masterProfile = master ? (Array.isArray(master.profile) ? master.profile[0] : master.profile) : null;
+          const service = Array.isArray(a.service) ? a.service[0] : a.service;
+          const dur = service?.duration_minutes ?? (a.ends_at && a.starts_at
+            ? Math.max(0, Math.round((new Date(a.ends_at).getTime() - new Date(a.starts_at).getTime()) / 60000))
+            : null);
+          return {
+            id: a.id,
+            starts_at: a.starts_at,
+            ends_at: a.ends_at,
+            status: a.status,
+            price: a.price,
+            currency: a.currency,
+            cancelled_at: a.cancelled_at ?? null,
+            master_id: master?.id ?? null,
+            master_name: master?.display_name ?? masterProfile?.full_name ?? '—',
+            service_name: service?.name ?? '—',
+            service_duration_min: dur,
+            has_review: !!a.reviewExists,
+          } satisfies AppointmentRow;
+        });
+        setRows(list);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      const json = await res.json();
-      const data = json.appointments ?? [];
-      const rows: AppointmentRow[] = data.map((row: unknown) => {
-        const a = row as {
-          id: string;
-          starts_at: string;
-          status: string;
-          price: number | null;
-          currency: string | null;
-          master:
-            | {
-                id: string | null;
-                display_name: string | null;
-                avatar_url: string | null;
-                specialization: string | null;
-                salon_id: string | null;
-                profile:
-                  | { full_name: string | null; avatar_url: string | null }
-                  | { full_name: string | null; avatar_url: string | null }[]
-                  | null;
-                salon: SalonEmbed | SalonEmbed[];
-              }
-            | null;
-          service: { name: string | null; color: string | null } | { name: string | null; color: string | null }[] | null;
-          reviewExists?: boolean;
-        };
-        const master = Array.isArray(a.master) ? a.master[0] ?? null : a.master;
-        const masterProfile =
-          master && master.profile
-            ? ((Array.isArray(master.profile) ? master.profile[0] ?? null : master.profile) as {
-                full_name: string | null;
-                avatar_url: string | null;
-              } | null)
-            : null;
-        const svc = Array.isArray(a.service) ? a.service[0] ?? null : a.service;
-        const salonRaw = master?.salon ?? null;
-        return {
-          id: a.id,
-          starts_at: a.starts_at,
-          status: a.status,
-          price: Number(a.price ?? 0),
-          currency: a.currency ?? 'UAH',
-          service_name: svc?.name ?? '—',
-          service_color: svc?.color ?? null,
-          master_id: master?.id ?? null,
-          master_display_name: master?.display_name ?? masterProfile?.full_name ?? null,
-          master_avatar: master?.avatar_url ?? masterProfile?.avatar_url ?? null,
-          master_specialization: master?.specialization ?? null,
-          master_salon_id: master?.salon_id ?? null,
-          salon: unwrapSalon(salonRaw as SalonEmbed | SalonEmbed[] | null),
-          has_review: a.reviewExists ?? false,
-        };
-      });
-      setAppointments(rows);
-      setLoading(false);
     })();
+    return () => { cancelled = true; };
   }, [userId]);
 
-  /** Разделение записей: будущие = !done && start ≥ now-1h. */
-  const { upcoming, past, byDay } = useMemo(() => {
+  const groups = useMemo(() => {
+    const future: AppointmentRow[] = [];
+    const past: AppointmentRow[] = [];
+    const cancel: AppointmentRow[] = [];
     const now = Date.now();
-    const up: AppointmentRow[] = [];
-    const pa: AppointmentRow[] = [];
-    const map = new Map<string, AppointmentRow[]>();
-    for (const a of appointments) {
-      const startTs = new Date(a.starts_at).getTime();
-      const future = !isDoneStatus(a.status) && startTs >= now - 3600 * 1000;
-      if (future) up.push(a); else pa.push(a);
-      const key = dayKey(new Date(a.starts_at));
-      const list = map.get(key) ?? [];
-      list.push(a);
-      map.set(key, list);
+    for (const a of rows) {
+      if (STATUS_CANCELLED.includes(a.status)) {
+        cancel.push(a);
+      } else if (a.status === 'completed' || new Date(a.starts_at).getTime() < now - 60_000) {
+        past.push(a);
+      } else {
+        future.push(a);
+      }
     }
-    up.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
-    pa.sort((a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime());
-    // День сортируем по времени внутри
-    map.forEach((list) => list.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()));
-    return { upcoming: up, past: pa, byDay: map };
-  }, [appointments]);
+    future.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+    past.sort((a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime());
+    cancel.sort((a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime());
+    return { future, past, cancel };
+  }, [rows]);
 
-  const listVisible = filter === 'upcoming' ? upcoming : past;
+  const displayed = groups[tab];
 
   return (
     <MobilePage className="od-client-mini-app">
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
-      >
-        <PageHeader
-          title={t.title}
-          right={
-            <button
-              type="button"
-              onClick={() => { setView(view === 'list' ? 'calendar' : 'list'); haptic('selection'); }}
-              aria-label={view === 'list' ? t.viewCalendar : t.viewList}
-              style={{
-                width: 36, height: 36, borderRadius: 18,
-                border: `1px solid ${T.borderSubtle}`,
-                background: T.surface, color: T.text,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer',
-              }}
-            >
-              {view === 'list'
-                ? <CalendarDays size={16} strokeWidth={2} />
-                : <List size={16} strokeWidth={2} />}
-            </button>
-          }
-        />
-
-        <div style={{ padding: `8px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  style={{
-                    height: 88,
-                    width: '100%',
-                    borderRadius: R.md,
-                    background: T.bgSubtle,
-                    animation: 'pulse 1.6s ease-in-out infinite',
-                  }}
-                />
-              ))}
-            </div>
-          ) : view === 'list' ? (
-            <ListView
-              filter={filter}
-              setFilter={setFilter}
-              upcoming={upcoming}
-              past={past}
-              listVisible={listVisible}
-              t={t}
-              lang={lang}
-              cardLabels={cardLabels}
-              haptic={haptic}
-            />
-          ) : (
-            <CalendarView
-              calMonth={calMonth}
-              setCalMonth={setCalMonth}
-              selectedDay={selectedDay}
-              setSelectedDay={setSelectedDay}
-              byDay={byDay}
-              t={t}
-              lang={lang}
-              cardLabels={cardLabels}
-              haptic={haptic}
-            />
-          )}
+      {/* Top bar */}
+      <div className="mc-top">
+        <div>
+          <div className="mc-top-title">{t.title}</div>
         </div>
-      </motion.div>
+      </div>
+
+      {/* Segment tabs */}
+      <div className="mc-seg">
+        {([
+          ['future', t.tabFuture, groups.future.length],
+          ['past', t.tabPast, groups.past.length],
+          ['cancel', t.tabCancel, groups.cancel.length],
+        ] as const).map(([k, label, count]) => (
+          <button
+            key={k}
+            className={`mc-seg-b ${tab === k ? 'active' : ''}`}
+            onClick={() => { setTab(k as Tab); haptic('selection'); }}
+          >
+            {label}
+            <span className="c">{count}</span>
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="mc-loading"><CalendarDays size={24} /></div>
+      ) : displayed.length === 0 ? (
+        <div className="mc-empty">
+          <CalendarDays size={36} strokeWidth={1.5} />
+          <p className="mc-empty-t">{t.empty(tab)}</p>
+          <Link
+            href="/telegram/search"
+            onClick={() => haptic('light')}
+            className="mc-result-cta"
+            style={{ marginTop: 12, padding: '8px 16px' }}
+          >
+            {t.findCta}
+          </Link>
+        </div>
+      ) : (
+        <div className="mc-apl">
+          {displayed.map((a) => (
+            <ApptCard key={a.id} row={a} t={t} lang={lang} onClick={() => { haptic('light'); router.push(`/telegram/activity/${a.id}`); }} onRepeat={() => { haptic('light'); router.push(`/telegram/book?master_id=${a.master_id ?? ''}`); }} />
+          ))}
+        </div>
+      )}
+
+      <div style={{ height: 16 }} />
     </MobilePage>
   );
 }
 
-/* ─────────────────── ListView ─────────────────── */
-
-interface ListViewProps {
-  filter: Filter;
-  setFilter: (f: Filter) => void;
-  upcoming: AppointmentRow[];
-  past: AppointmentRow[];
-  listVisible: AppointmentRow[];
-  t: typeof I18N['uk'];
+function ApptCard({
+  row, t, lang, onClick, onRepeat,
+}: {
+  row: AppointmentRow;
+  t: typeof T_LABELS[Lang];
   lang: Lang;
-  cardLabels: { masterPlaceholder: string; salonPlaceholder: string; managerAssigned: string };
-  haptic: (kind: 'light' | 'selection') => void;
-}
+  onClick: () => void;
+  onRepeat: () => void;
+}) {
+  const start = new Date(row.starts_at);
+  const day = start.getDate().toString().padStart(2, '0');
+  const monShort = t.monthsShort[start.getMonth()];
+  const timeStr = `${start.getHours().toString().padStart(2, '0')}:${start.getMinutes().toString().padStart(2, '0')}`;
 
-function ListView({ filter, setFilter, upcoming, past, listVisible, t, lang, cardLabels, haptic }: ListViewProps) {
-  const upcomingCount = upcoming.length;
-  const pastCount = past.length;
+  const isCancelled = STATUS_CANCELLED.includes(row.status);
+  const isCompleted = row.status === 'completed';
+  const isPast = isCancelled || isCompleted || start.getTime() < Date.now() - 60_000;
+  const isToday = isSameDay(start, new Date());
+  const canRate = isCompleted && !row.has_review;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {/* Segment toggle Майбутні / Минулі — стиль эталона (.segment) */}
-      <div className="segment">
-        {(['upcoming', 'past'] as const).map((f) => {
-          const active = filter === f;
-          const count = f === 'upcoming' ? upcomingCount : pastCount;
-          return (
-            <button
-              key={f}
-              type="button"
-              className={`segment-btn${active ? ' active' : ''}`}
-              onClick={() => { setFilter(f); haptic('selection'); }}
-            >
-              {f === 'upcoming' ? t.filterUpcoming : t.filterPast} {count}
-            </button>
-          );
-        })}
+    <div className="mc-ap" onClick={onClick} role="button" tabIndex={0}>
+      <div className={`mc-ap-d ${isPast ? 'past' : ''}`}>
+        <b>{day}</b>
+        <span>{monShort}</span>
       </div>
-
-      {listVisible.length === 0 ? (
-        <EmptyState
-          icon={<CalendarDaysIcon />}
-          title={t.noActivity}
-          desc={t.noActivityDesc}
-          ctaLabel={t.searchVenues}
-          ctaHref="/telegram/search"
-        />
-      ) : (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {listVisible.map((a, i) => (
-            <AppointmentCard key={a.id} appt={a} index={i} t={t} lang={lang} cardLabels={cardLabels} haptic={haptic} />
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-/* ─────────────────── CalendarView ─────────────────── */
-
-interface CalendarViewProps {
-  calMonth: Date;
-  setCalMonth: (d: Date) => void;
-  selectedDay: string | null;
-  setSelectedDay: (d: string | null) => void;
-  byDay: Map<string, AppointmentRow[]>;
-  t: typeof I18N['uk'];
-  lang: Lang;
-  cardLabels: { masterPlaceholder: string; salonPlaceholder: string; managerAssigned: string };
-  haptic: (kind: 'light' | 'selection') => void;
-}
-
-function CalendarView({ calMonth, setCalMonth, selectedDay, setSelectedDay, byDay, t, lang, cardLabels, haptic }: CalendarViewProps) {
-  const monthLabel = `${t.monthsLong[calMonth.getMonth()]} ${calMonth.getFullYear()}`;
-  const todayKey = dayKey(new Date());
-
-  // Сетка месяца: понедельник = первый день недели.
-  const weeks = useMemo(() => {
-    const firstOfMonth = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
-    // jsDay: 0=Sun..6=Sat — переводим в Mon=0..Sun=6
-    const jsDay = firstOfMonth.getDay();
-    const offset = jsDay === 0 ? 6 : jsDay - 1;
-    const start = new Date(firstOfMonth);
-    start.setDate(start.getDate() - offset);
-
-    const grid: Date[][] = [];
-    const cur = new Date(start);
-    for (let w = 0; w < 6; w++) {
-      const week: Date[] = [];
-      for (let d = 0; d < 7; d++) {
-        week.push(new Date(cur));
-        cur.setDate(cur.getDate() + 1);
-      }
-      grid.push(week);
-    }
-    return grid;
-  }, [calMonth]);
-
-  const selectedAppts = selectedDay ? (byDay.get(selectedDay) ?? []) : [];
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Месяц + навигация */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <button
-          onClick={() => {
-            haptic('light');
-            setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1));
-            setSelectedDay(null);
-          }}
-          aria-label="Prev month"
-          style={chevronBtnStyle}
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <div style={{ ...TYPE.h3, color: T.text, fontWeight: 700 }}>{monthLabel}</div>
-        <button
-          onClick={() => {
-            haptic('light');
-            setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1));
-            setSelectedDay(null);
-          }}
-          aria-label="Next month"
-          style={chevronBtnStyle}
-        >
-          <ChevronRight size={18} />
-        </button>
-      </div>
-
-      {/* Шапка недели */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, fontSize: 11, color: T.textTertiary, fontWeight: 600 }}>
-        {t.weekdaysShort.map((w) => (
-          <div key={w} style={{ textAlign: 'center' }}>{w}</div>
-        ))}
-      </div>
-
-      {/* Сетка дней */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {weeks.map((week, wi) => (
-          <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
-            {week.map((day) => {
-              const key = dayKey(day);
-              const inMonth = day.getMonth() === calMonth.getMonth();
-              const isToday = key === todayKey;
-              const isSelected = key === selectedDay;
-              const dayAppts = byDay.get(key) ?? [];
-              const hasItems = dayAppts.length > 0;
-              // Цвет точки: зелёный если есть будущие, серый если только прошлые
-              const now = Date.now();
-              const hasUpcoming = dayAppts.some((a) =>
-                !isDoneStatus(a.status) && new Date(a.starts_at).getTime() >= now - 3600 * 1000,
-              );
-              const dotColor = hasUpcoming ? T.accent : T.textTertiary;
-
-              return (
-                <button
-                  key={key}
-                  onClick={() => { haptic('selection'); setSelectedDay(isSelected ? null : key); }}
-                  style={{
-                    aspectRatio: '1 / 1',
-                    borderRadius: R.sm,
-                    border: `1px solid ${isSelected ? T.text : 'transparent'}`,
-                    background: isSelected ? T.bgSubtle : 'transparent',
-                    color: inMonth ? T.text : T.textTertiary,
-                    fontFamily: 'inherit',
-                    fontSize: 14,
-                    fontWeight: isToday ? 800 : 500,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 2,
-                    padding: 0,
-                    opacity: inMonth ? 1 : 0.45,
-                    position: 'relative',
-                  }}
-                >
-                  <span>{day.getDate()}</span>
-                  {hasItems && (
-                    <span
-                      style={{
-                        width: 5,
-                        height: 5,
-                        borderRadius: '50%',
-                        background: dotColor,
-                      }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-
-      {/* Список выбранного дня */}
-      {selectedDay && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
-          <div style={{ ...TYPE.caption, color: T.textTertiary, fontWeight: 600 }}>
-            {(() => {
-              const [y, m, d] = selectedDay.split('-').map(Number);
-              const dt = new Date(y, m - 1, d);
-              const locale = lang === 'en' ? 'en-GB' : lang === 'uk' ? 'uk-UA' : 'ru-RU';
-              return dt.toLocaleDateString(locale, { day: 'numeric', month: 'long', weekday: 'long' });
-            })()}
-          </div>
-          {selectedAppts.length === 0 ? (
-            <div style={{
-              padding: '20px 16px',
-              borderRadius: R.md,
-              background: T.bgSubtle,
-              color: T.textSecondary,
-              fontSize: 13,
-              textAlign: 'center',
-            }}>
-              {t.noActivityOnDay}
-            </div>
-          ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {selectedAppts.map((a, i) => (
-                <AppointmentCard key={a.id} appt={a} index={i} t={t} lang={lang} cardLabels={cardLabels} haptic={haptic} />
-              ))}
-            </ul>
+      <div className="mc-ap-i">
+        <div className="mc-ap-s">{row.service_name}</div>
+        <div className="mc-ap-m">{t.withMaster} {row.master_name}</div>
+        <div className="mc-ap-meta">
+          {!isCancelled && (
+            <span>
+              <Clock />{timeStr}{row.service_duration_min ? ` · ${row.service_duration_min} ${t.min}` : ''}
+            </span>
+          )}
+          {isCancelled && row.cancelled_at && (
+            <span>
+              <XCircle />{t.cancelledOn} · {formatShortDate(row.cancelled_at, lang)}
+            </span>
+          )}
+          {row.price != null && (
+            <span><Coins />₴{Math.round(row.price)}</span>
           )}
         </div>
-      )}
-    </div>
-  );
-}
 
-const chevronBtnStyle: React.CSSProperties = {
-  width: 36,
-  height: 36,
-  borderRadius: R.pill,
-  border: `1px solid ${T.borderSubtle}`,
-  background: T.surface,
-  color: T.text,
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  cursor: 'pointer',
-};
-
-/* ─────────────────── AppointmentCard (общая) ─────────────────── */
-
-interface CardProps {
-  appt: AppointmentRow;
-  index: number;
-  t: typeof I18N['uk'];
-  lang: Lang;
-  cardLabels: { masterPlaceholder: string; salonPlaceholder: string; managerAssigned: string };
-  haptic: (kind: 'light' | 'selection') => void;
-}
-
-function AppointmentCard({ appt: a, index: i, t, lang, cardLabels, haptic }: CardProps) {
-  const router = useRouter();
-  void List; // отключаем unused-warning, импорт пригодится позже
-  const masterRef = a.master_id
-    ? {
-        id: a.master_id,
-        display_name: a.master_display_name,
-        avatar_url: a.master_avatar,
-        specialization: a.master_specialization,
-        salon_id: a.master_salon_id,
-      }
-    : null;
-  const display = resolveCardDisplay(masterRef, a.salon, cardLabels);
-  const dateLocale = lang === 'en' ? 'en-GB' : lang === 'uk' ? 'uk-UA' : 'ru-RU';
-  const dt = new Date(a.starts_at);
-  const dayNum = dt.getDate();
-  const monthShort = dt
-    .toLocaleDateString(dateLocale, { month: 'short' })
-    .replace(/\./g, '');
-  const timeStr = dt.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' });
-  // Статус как в эталоне: upcoming / done / cancelled
-  const isDone = STATUS_DONE.includes(a.status);
-  const isCancelled = a.status.startsWith('cancelled') || a.status === 'no_show';
-  const statusVariant = isCancelled ? 'cancelled' : isDone ? 'done' : 'upcoming';
-  const statusLabel = t.status[a.status] ?? t.status.booked;
-  return (
-    <motion.li
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: i * 0.02 }}
-    >
-      <div className="bk-item">
-        <Link
-          href={`/telegram/activity/${a.id}`}
-          onClick={() => haptic('light')}
-          className="bk-item-head"
-        >
-          <div className="bk-date-block">
-            <div className="bk-date-day">{dayNum}</div>
-            <div className="bk-date-mon">{monthShort}</div>
-          </div>
-          <div className="bk-info">
-            <div className="bk-service">{a.service_name}</div>
-            <div className="bk-master">
-              {display.primary}
-              {display.secondary ? ` · ${display.secondary}` : ''}
-            </div>
-            <span className={`bk-status ${statusVariant}`}>{statusLabel}</span>
-          </div>
-          <span className="bk-time">{timeStr}</span>
-        </Link>
-        {statusVariant !== 'cancelled' && (
-          <div className="bk-actions">
-            {statusVariant === 'upcoming' ? (
-              <>
-                <button className="bk-act-btn" onClick={() => { haptic('light'); router.push(`/telegram/activity/${a.id}`); }}>Скасувати</button>
-                <button className="bk-act-btn primary" onClick={() => {
-                  haptic('light');
-                  const url = a.master_id
-                    ? `/telegram/book?master_id=${a.master_id}&reschedule=${a.id}`
-                    : `/telegram/activity/${a.id}`;
-                  router.push(url);
-                }}>Перенести</button>
-              </>
-            ) : (
-              <>
-                <button className="bk-act-btn" onClick={() => { haptic('light'); router.push(a.master_id ? `/telegram/book?master_id=${a.master_id}` : '/telegram/search'); }}>Повторити</button>
-                {a.has_review
-                  ? <span style={{ fontSize: 12, color: 'var(--fg-3)', padding: '0 4px', display: 'flex', alignItems: 'center', gap: 4 }}><Check size={12} /> Відгук залишено</span>
-                  : <button className="bk-act-btn primary" onClick={() => { haptic('light'); router.push(`/telegram/activity/${a.id}?review=1`); }}>Відгук</button>}
-              </>
-            )}
-          </div>
+        {/* Status chip */}
+        {canRate ? (
+          <span className="mc-ap-st review"><Star />{t.chipReview}</span>
+        ) : isCompleted ? (
+          <span className="mc-ap-st done">{t.chipDone}</span>
+        ) : isCancelled ? (
+          <span className="mc-ap-st cancel"><X />{t.chipCancelled}</span>
+        ) : isToday ? (
+          <span className="mc-ap-st up"><Zap />{t.chipToday}</span>
+        ) : (
+          <span className="mc-ap-st up">{t.chipUpcoming}</span>
         )}
-      </div>
-    </motion.li>
-  );
-}
 
-function CalendarDaysIcon() {
-  return (
-    <div
-      style={{
-        width: 64,
-        height: 64,
-        borderRadius: R.md,
-        background: `linear-gradient(135deg, ${T.gradientFrom}40 0%, ${T.gradientTo}40 100%)`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <CalendarDays size={32} color={T.accent} strokeWidth={2} />
+        {/* Actions */}
+        <div className="mc-ap-acts" onClick={(e) => e.stopPropagation()}>
+          {isCancelled ? (
+            <button className="mc-apa primary" onClick={onRepeat}>
+              <Repeat />{t.bookAgain}
+            </button>
+          ) : isCompleted ? (
+            <>
+              {canRate && (
+                <button className="mc-apa primary" onClick={(e) => { e.stopPropagation(); onClick(); }}>
+                  <Star />{t.rate}
+                </button>
+              )}
+              <button className="mc-apa" onClick={onRepeat}>
+                <Repeat />{t.repeat}
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="mc-apa" onClick={onClick}>{t.details}</button>
+              <button className="mc-apa" onClick={onClick}>
+                <RotateCcw />{t.reschedule}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
+function formatShortDate(iso: string, lang: Lang): string {
+  const d = new Date(iso);
+  return `${d.getDate().toString().padStart(2, '0')} ${T_LABELS[lang].monthsShort[d.getMonth()].toLowerCase()}`;
+}

@@ -1231,3 +1231,92 @@
   display: flex; align-items: center; justify-content: center; gap: 6px;
 }
 .od-client-mini-app .mc-mbook-cta svg { width: 16px; height: 16px; }
+
+/* ════════ APPOINTMENTS ════════ */
+
+/* Segment control (3 tabs) */
+.od-client-mini-app .mc-seg {
+  display: flex; gap: 4px;
+  background: var(--n-100); border-radius: 9999px;
+  padding: 3px; margin: 0 20px 14px;
+}
+.od-client-mini-app .mc-seg-b {
+  flex: 1; padding: 8px;
+  border-radius: 9999px; background: transparent;
+  border: none; font-size: 12px; font-weight: 600;
+  color: var(--fg-2); cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.od-client-mini-app .mc-seg-b.active {
+  background: var(--surface); color: var(--fg);
+  box-shadow: var(--shadow-sm);
+}
+.od-client-mini-app .mc-seg-b .c {
+  background: var(--accent); color: #fff;
+  padding: 1px 6px; border-radius: 9999px;
+  font-size: 10px; font-weight: 700;
+}
+.od-client-mini-app .mc-seg-b:not(.active) .c { background: var(--fg-3); }
+
+/* Appointment list */
+.od-client-mini-app .mc-apl {
+  padding: 0 16px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+/* Appointment card */
+.od-client-mini-app .mc-ap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px;
+  display: flex; gap: 12px;
+  cursor: pointer;
+}
+.od-client-mini-app .mc-ap-d {
+  width: 54px; flex-shrink: 0; text-align: center;
+  background: var(--accent-2); border-radius: 12px;
+  padding: 10px 0; color: var(--accent);
+}
+.od-client-mini-app .mc-ap-d.past { background: var(--n-100); color: var(--fg-3); }
+.od-client-mini-app .mc-ap-d b { display: block; font-size: 20px; font-weight: 800; line-height: 1; }
+.od-client-mini-app .mc-ap-d span { font-size: 10px; font-weight: 600; text-transform: uppercase; margin-top: 2px; display: block; }
+
+.od-client-mini-app .mc-ap-i { flex: 1; min-width: 0; }
+.od-client-mini-app .mc-ap-s { font-size: 14px; font-weight: 700; color: var(--fg); }
+.od-client-mini-app .mc-ap-m { font-size: 12px; color: var(--fg-2); margin-top: 2px; }
+.od-client-mini-app .mc-ap-meta {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  font-size: 10px; color: var(--fg-3); margin-top: 6px;
+}
+.od-client-mini-app .mc-ap-meta span { display: inline-flex; align-items: center; gap: 3px; }
+.od-client-mini-app .mc-ap-meta svg { width: 10px; height: 10px; }
+
+/* Status chips */
+.od-client-mini-app .mc-ap-st {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 3px 9px; border-radius: 9999px;
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em;
+  margin-top: 6px;
+}
+.od-client-mini-app .mc-ap-st svg { width: 10px; height: 10px; }
+.od-client-mini-app .mc-ap-st.up { background: var(--accent-2); color: var(--accent); }
+.od-client-mini-app .mc-ap-st.done { background: rgba(16, 185, 129, 0.14); color: var(--success); }
+.od-client-mini-app .mc-ap-st.review { background: rgba(217, 119, 6, 0.14); color: #d97706; }
+.od-client-mini-app .mc-ap-st.cancel { background: var(--n-100); color: var(--fg-3); }
+
+/* Action buttons */
+.od-client-mini-app .mc-ap-acts {
+  margin-top: 10px; display: flex; gap: 6px;
+}
+.od-client-mini-app .mc-apa {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center;
+  gap: 4px; padding: 8px; border-radius: 9px;
+  background: var(--surface); border: 1px solid var(--border);
+  font-size: 11px; font-weight: 600; color: var(--fg-2);
+  cursor: pointer; font-family: inherit;
+}
+.od-client-mini-app .mc-apa.primary {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.od-client-mini-app .mc-apa svg { width: 11px; height: 11px; }
