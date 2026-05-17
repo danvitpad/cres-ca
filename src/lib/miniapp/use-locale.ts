@@ -53,7 +53,10 @@ export function useMiniAppLocale(): MiniAppLang {
 }
 
 /** Persist + broadcast new locale. Все компоненты через useMiniAppLocale
- *  моментально перерисуются, без перезагрузки страницы. */
+ *  моментально перерисуются, без перезагрузки страницы.
+ *  Также сохраняем в БД (profiles.ui_language) fire-and-forget — чтобы при
+ *  следующем заходе useSyncLocaleFromDb подтянул сохранённый язык, а не
+ *  сбрасывал на дефолт. */
 export function setMiniAppLocale(code: MiniAppLang): void {
   if (!VALID.includes(code)) return;
   try {
@@ -65,4 +68,11 @@ export function setMiniAppLocale(code: MiniAppLang): void {
   document.cookie = `NEXT_LOCALE=${code}; path=/; max-age=${60 * 60 * 24 * 365}`;
 
   window.dispatchEvent(new CustomEvent<MiniAppLang>(LOCALE_CHANGED_EVENT, { detail: code }));
+
+  // Persist в БД — без await, ошибки игнорируем (offline / unauth).
+  fetch('/api/me/ui-prefs', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ui_language: code }),
+  }).catch(() => { /* tolerant */ });
 }

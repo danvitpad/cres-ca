@@ -49,24 +49,28 @@ interface PageProps {
 
 type Lang = 'uk' | 'ru' | 'en';
 
-async function getServerLocale(isOwner: boolean): Promise<Lang> {
-  // Правило 2026-05-06: публичная страница мастера всем посетителям
-  // показывается ТОЛЬКО на украинском. В других языках её видит лишь сам
-  // владелец (когда залогинен и зашёл на свою страницу) — тогда учитываются
-  // его cookie/accept-language.
-  if (!isOwner) return 'uk';
-  try {
-    const c = await cookies();
-    const fromCookie = c.get('NEXT_LOCALE')?.value;
-    if (fromCookie === 'uk' || fromCookie === 'ru' || fromCookie === 'en') return fromCookie;
-  } catch {}
-  try {
-    const h = await headers();
-    const al = (h.get('accept-language') ?? '').toLowerCase();
-    if (al.startsWith('uk')) return 'uk';
-    if (al.startsWith('ru')) return 'ru';
-    if (al.startsWith('en')) return 'en';
-  } catch {}
+async function getServerLocale(isOwner: boolean, publicLang?: string | null): Promise<Lang> {
+  // Owner видит свой выбранный язык интерфейса (из cookie).
+  if (isOwner) {
+    try {
+      const c = await cookies();
+      const fromCookie = c.get('NEXT_LOCALE')?.value;
+      if (fromCookie === 'uk' || fromCookie === 'ru' || fromCookie === 'en') return fromCookie;
+    } catch {}
+    try {
+      const h = await headers();
+      const al = (h.get('accept-language') ?? '').toLowerCase();
+      if (al.startsWith('uk')) return 'uk';
+      if (al.startsWith('ru')) return 'ru';
+      if (al.startsWith('en')) return 'en';
+    } catch {}
+    return 'uk';
+  }
+  // Гость — отдаём язык, который мастер выбрал для своей публичной страницы
+  // (поле masters.public_language). Если не задано — fallback 'uk'.
+  if (publicLang === 'uk' || publicLang === 'ru' || publicLang === 'en') {
+    return publicLang;
+  }
   return 'uk';
 }
 
@@ -200,6 +204,7 @@ interface MasterRow {
   social_links: Record<string, string> | null;
   page_type: string | null;
   works_online: boolean | null;
+  public_language: string | null;
   // Migration 00114: cached public metrics + languages + workplace
   completed_appointments_count: number;
   served_clients_count: number;
@@ -280,7 +285,7 @@ async function loadMaster(handle: string): Promise<MasterRow | null> {
     'id, profile_id, display_name, specialization, bio, address, city, rating, total_reviews, avatar_url, cover_url, ' +
     'invite_code, slug, is_active, is_public, headline, meta_title, meta_description, og_image_url, badges, level, working_hours, booking_important_info, ' +
     'theme_primary_color, theme_background_color, theme_background_image_url, banner_position_y, banner_position_x, banner_scale, ' +
-    'phone_public, email_public, dob_public, interests, social_links, page_type, works_online, ' +
+    'phone_public, email_public, dob_public, interests, social_links, page_type, works_online, public_language, ' +
     'completed_appointments_count, served_clients_count, languages, workplace_photo_url, workplace_name, salon_id, ' +
     'profile:profiles!masters_profile_id_fkey(full_name, first_name, last_name, phone, email, date_of_birth, deleted_at)';
 
@@ -478,7 +483,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { handle } = await params;
   const master = await loadMaster(handle);
   if (!master) return { title: 'Master not found · CRES-CA' };
-  const lang = await getServerLocale(await isViewerOwner(master.profile_id));
+  const lang = await getServerLocale(await isViewerOwner(master.profile_id), master.public_language);
   const tt = STR[lang];
   const name = master.display_name ?? tt.masterFallback;
   const title =
@@ -521,7 +526,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
   const master = await loadMaster(handle);
   if (!master) notFound();
 
-  const lang = await getServerLocale(await isViewerOwner(master.profile_id));
+  const lang = await getServerLocale(await isViewerOwner(master.profile_id), master.public_language);
   const tt = STR[lang];
 
   const [services, portfolio, beforeAfter, reviewsList, partners, salon, ownedSalon] = await Promise.all([
