@@ -289,9 +289,9 @@ export default function ProfilePage() {
         </button>
       </aside>
 
-      {/* RIGHT — tabs */}
+      {/* RIGHT — tabs (pill-style как в моке) */}
       <div>
-        <div className="mb-5 flex flex-wrap gap-2 border-b border-border">
+        <div className="mb-5 flex flex-wrap gap-2">
           {([
             ['data', 'Дані', UserIcon],
             ['family', 'Сім\'я', Users],
@@ -304,10 +304,10 @@ export default function ProfilePage() {
                 key={k}
                 onClick={() => setPane(k as Pane)}
                 className={cn(
-                  'relative -mb-px flex items-center gap-2 px-4 py-3 text-[13px] font-semibold transition-colors',
+                  'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-semibold transition-colors',
                   active
-                    ? 'border-b-2 border-[#2563eb] text-[#2563eb]'
-                    : 'border-b-2 border-transparent text-muted-foreground hover:text-foreground',
+                    ? 'border-[#2563eb] bg-[#2563eb]/10 text-[#2563eb]'
+                    : 'border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground',
                 )}
               >
                 <Icon className="size-4" /> {label}
