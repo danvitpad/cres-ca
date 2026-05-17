@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
   Search, SlidersHorizontal, Check, Star, Coins, MapPin, List, Map as MapIcon,
   Loader2, Navigation, Clock, X,
@@ -22,6 +23,9 @@ import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage } from '@/components/miniapp/shells';
 import { getLocation } from '@/lib/telegram/geolocation';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
+import type { MapMarker } from '@/components/shared/map-view';
+
+const MapView = dynamic(() => import('@/components/shared/map-view'), { ssr: false });
 
 interface ApiMasterRow {
   id: string;
@@ -359,22 +363,27 @@ export default function MiniAppSearchPage() {
           <span className="mc-empty-s">{t.emptyHint}</span>
         </div>
       ) : view === 'map' ? (
-        <div className="mc-mapph">
-          {filtered.slice(0, 6).map((m, i) => {
-            const left = 15 + (i % 3) * 28;
-            const top = 18 + Math.floor(i / 3) * 32;
-            return (
-              <button
-                key={m.id}
-                className="mc-mapph-pin"
-                style={{ left: `${left}%`, top: `${top}%` }}
-                onClick={() => { haptic('light'); router.push(`/telegram/search/${m.id}`); }}
-              >
-                {m.priceFrom ? `₴${Math.round(m.priceFrom)}` : '—'}
-              </button>
-            );
-          })}
-          <div className="mc-mapph-l">Карта · скоро</div>
+        <div className="mc-mapwrap">
+          <MapView
+            markers={filtered
+              .filter((m): m is Master & { lat: number; lng: number } => m.lat != null && m.lng != null)
+              .map((m) => ({
+                lat: m.lat,
+                lng: m.lng,
+                name: m.name,
+                rating: m.rating,
+                specialization: m.specialization ?? undefined,
+                masterId: m.id,
+              } satisfies MapMarker))}
+            center={center}
+            zoom={userLocation ? 13 : 11}
+            userLocation={userLocation}
+            onMarkerClick={(masterId) => {
+              haptic('light');
+              router.push(`/telegram/search/${masterId}`);
+            }}
+            className="mc-mapview"
+          />
         </div>
       ) : (
         <div className="mc-results">

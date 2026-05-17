@@ -1053,7 +1053,19 @@
   font-size: 12px; color: var(--fg-2); margin-top: 4px;
 }
 
-/* Map placeholder */
+/* Real map (Leaflet) — для search list/map toggle */
+.od-client-mini-app .mc-mapwrap {
+  margin: 0 16px 16px;
+  height: 380px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.od-client-mini-app .mc-mapview {
+  width: 100%; height: 100%;
+}
+
+/* Legacy map placeholder — fallback если Leaflet не загрузится */
 .od-client-mini-app .mc-mapph {
   position: relative; margin: 0 16px 16px;
   height: 380px; border-radius: 16px;
