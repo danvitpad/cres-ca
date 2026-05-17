@@ -343,7 +343,7 @@ export default function MiniAppContactsPage() {
               </div>
             </div>
           ) : masters.length > 0 ? (
-            <div style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)', marginTop: 8 }}>
+            <div style={{ marginTop: 8 }}>
               {masters.map((m) => (
                 <div
                   key={m.id}

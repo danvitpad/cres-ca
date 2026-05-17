@@ -41,18 +41,15 @@ import { ClientOnboardingWizard } from '@/components/client/onboarding-wizard';
 import { InactivityLogout } from '@/components/auth/inactivity-logout';
 import { ConfirmProvider } from '@/hooks/use-confirm';
 import { WelcomeGate } from '@/components/shared/welcome-gate';
-import { LanguageSwitcher } from '@/components/shared/language-switcher';
+// LanguageSwitcher переехал в Профиль → Налаштування (2026-05-17). Не импортируем здесь.
 import { cn } from '@/lib/utils';
 
-// IG-style sidebar — hover to expand.
+// IG-style sidebar — hover to expand. 4 пункта по требованию Данила (2026-05-17).
 const sidebarNav = [
   { key: 'home', icon: Home, href: '/feed' },
-  { key: 'profile', icon: User, href: '/profile' },
   { key: 'appointments', icon: CalendarDays, href: '/appointments' },
   { key: 'myMasters', icon: UserPlus, href: '/my-masters' },
-  { key: 'family', icon: Users, href: '/family' },
-  // { key: 'wallet', icon: Wallet, href: '/wallet' }, // HIDDEN: loyalty/bonuses temporarily disabled
-  { key: 'accountSettings', icon: Settings, href: '/account-settings' },
+  { key: 'profile', icon: User, href: '/profile' },
 ] as const;
 
 const accountRoutes = [
@@ -687,8 +684,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           </AnimatePresence>
         </div>
 
-        {/* Language picker — выбор интерфейсного языка (ru/uk/en). */}
-        <LanguageSwitcher className="hidden md:block mr-1" />
+        {/* Language picker убран из header — переехал в Профіль → Налаштування (2026-05-17). */}
 
         {/* Notifications bell — dropdown with 5 latest + view-all link */}
         <Popover open={notifOpen} onOpenChange={setNotifOpen}>

@@ -87,8 +87,14 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       }
       webapp.ready();
       webapp.expand();
-      try { webapp.requestFullscreen(); } catch {}
-      try { webapp.disableVerticalSwipes(); } catch {}
+      // Detect real Telegram (non-empty initData). В обычном Chrome / DevTools
+      // mobile mode мок TG WebApp есть, но его методы 6.0+ спамят
+      // "method is not supported" в консоль — пропускаем.
+      const isRealTg = !!webapp.initData;
+      if (isRealTg) {
+        try { webapp.requestFullscreen(); } catch {}
+        try { webapp.disableVerticalSwipes(); } catch {}
+      }
       // Re-sync insets after fullscreen animation settles (~400ms)
       setTimeout(() => syncSafeArea(webapp), 400);
       try { webapp.onEvent('fullscreenChanged' as Parameters<typeof webapp.onEvent>[0], () => syncSafeArea(webapp)); } catch {}
@@ -97,14 +103,16 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       // register → m/layout). Раньше keyword 'bg_color' возвращал тон
       // Telegram-темы пользователя, который не совпадал с нашим --m-bg
       // (#141417), и было видно «горб» при переходе welcome → m/layout.
-      try {
-        // Мастерский Mini App всегда светлый — нативный chrome Telegram
-        // тоже красим белым, иначе при overscroll/MainButton видно тёмный зазор
-        // когда у пользователя Telegram в dark-mode.
-        webapp.setHeaderColor('#ffffff');
-        webapp.setBackgroundColor('#ffffff');
-        webapp.setBottomBarColor('#ffffff');
-      } catch {}
+      if (isRealTg) {
+        try {
+          // Мастерский Mini App всегда светлый — нативный chrome Telegram
+          // тоже красим белым, иначе при overscroll/MainButton видно тёмный зазор
+          // когда у пользователя Telegram в dark-mode.
+          webapp.setHeaderColor('#ffffff');
+          webapp.setBackgroundColor('#ffffff');
+          webapp.setBottomBarColor('#ffffff');
+        } catch {}
+      }
 
       syncSafeArea(webapp);
       syncTheme(webapp);

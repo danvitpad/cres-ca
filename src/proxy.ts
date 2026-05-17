@@ -18,6 +18,7 @@ const protectedPatterns = [
   // Client-only
   '/feed', '/book', '/history', '/my-calendar', '/my-masters',
   '/wallet', '/notifications', '/account-settings', '/profile',
+  '/appointments',
   // Shared
   '/map',
   // Onboarding wizard — пускаем только залогиненных, и только тех, кто
@@ -109,10 +110,13 @@ export async function proxy(request: NextRequest) {
   // настольную версию с телефона (для будущего toggle в UI).
   const ua = request.headers.get('user-agent') ?? '';
   const skipMobile = request.cookies.get('cres:no-redirect')?.value === '1';
+  // Mobile detection: UA sniff + Client Hints (sec-ch-ua-mobile=?1 — реальные мобайл-браузеры и DevTools mobile emulation).
+  // Этот combo ловит и iPhone Safari, и Android Chrome, и Chrome DevTools «iPhone 14 Pro» / «Pixel 7» preset.
+  const chMobile = request.headers.get('sec-ch-ua-mobile') === '?1';
   // Внутри Telegram WebApp пользователь УЖЕ в /telegram/* и переход к
   // чистым URL только всё ломает (welcome ужимается, register сбоит).
   // Только обычный мобильный Chrome/Safari должен получать стрип.
-  const isMobile = !skipMobile && isMobileUA(ua) && !isTelegramWebView(ua, request);
+  const isMobile = !skipMobile && (isMobileUA(ua) || chMobile) && !isTelegramWebView(ua, request);
 
   // Список первых сегментов, которые ТОЛЬКО mini-app (нет конфликта с
   // десктопным dashboard, public /m, public /s, /api, /_next и т.п.).
@@ -123,30 +127,54 @@ export async function proxy(request: NextRequest) {
     // 'profile', 'book', 'settings' — конфликтуют с dashboard, не стрипаем
   ]);
 
-  // Десктопные dashboard-роуты — мобильному пользователю их не показываем,
-  // вместо этого перекидываем на mini-app entry. Совпадает с протекторами
-  // дашборда (today, calendar, clients и т.д.), плюс мини-апповый дашборд.
-  // /m/[handle] и /s/[id] — публичные страницы, их НЕ трогаем.
+  // Десктопные dashboard-роуты МАСТЕРА — мобильному не показываем,
+  // перекидываем на mini-app entry. /m/[handle] и /s/[id] — публичные.
+  // Клиентские пути (feed, profile, appointments, my-masters, search) НЕ тут —
+  // они на мобильном делают rewrite на mini-app (URL сохраняется),
+  // см. CLIENT_TO_MINIAPP ниже.
   const DASHBOARD_ROOTS = new Set([
     'today', 'calendar', 'clients', 'services', 'finance', 'marketing',
     'inventory', 'portfolio', 'partners', 'recommend', 'referral',
-    'salon', 'stats', 'supplier-orders', 'voice-assistant', 'before-after',
+    'stats', 'supplier-orders', 'voice-assistant', 'before-after',
     'queue', 'integrations', 'help', 'dashboard', 'addons', 'network',
-    // dashboard /settings, /book, /profile тоже сюда — конфликт с mini-app
-    // решается тем что mini-app идёт через /telegram/m/settings и т.д.
-    'settings', 'book', 'profile', 'feed', 'history', 'wallet',
-    'my-calendar', 'my-masters', 'account-settings',
+    'settings',
   ]);
 
+  // Клиентский веб → mini-app rewrite (mobile): URL остаётся /feed, /appointments,
+  // /my-masters, /profile, /search — а контент рендерится из /telegram/(app)/*.
+  // Делаем именно rewrite (не redirect) чтобы юзер не видел слово "telegram" в строке.
+  const CLIENT_TO_MINIAPP: Record<string, string> = {
+    feed: 'home',
+    appointments: 'activity',
+    'my-masters': 'connections',
+    profile: 'profile',
+    search: 'search',
+    book: 'book',
+    wallet: 'bonuses',
+    notifications: 'notifications',
+  };
+
   if (isMobile) {
-    // (d) Десктопный dashboard на мобильном → /telegram (mini-app entry).
+    // (d) Десктопный dashboard МАСТЕРА на мобильном → /telegram (mini-app entry).
     // Берём ПУТЬ БЕЗ ЛОКАЛИ (strippedPath) — иначе для /uk/calendar мы бы
     // проверяли 'uk' вместо 'calendar' и редирект бы не срабатывал.
-    const dashboardSeg = (strippedPath.startsWith('/') ? strippedPath.slice(1) : strippedPath).split('/')[0] ?? '';
+    const stripped = strippedPath.startsWith('/') ? strippedPath.slice(1) : strippedPath;
+    const dashboardSeg = stripped.split('/')[0] ?? '';
     if (DASHBOARD_ROOTS.has(dashboardSeg)) {
       const u = request.nextUrl.clone();
       u.pathname = '/telegram';
       return NextResponse.redirect(u);
+    }
+
+    // (e) Клиентский веб-путь на мобильном → REWRITE на mini-app эквивалент.
+    // URL остаётся /feed, /appointments, /profile и т.д. — слово "telegram"
+    // в адресной строке не появляется.
+    const miniAppRoot = CLIENT_TO_MINIAPP[dashboardSeg];
+    if (miniAppRoot) {
+      const u = request.nextUrl.clone();
+      const tail = stripped.split('/').slice(1).join('/');
+      u.pathname = '/telegram/' + miniAppRoot + (tail ? '/' + tail : '');
+      return NextResponse.rewrite(u);
     }
 
     // (a) /telegram/<rest> → /<rest>  (кроме /telegram/m/*)

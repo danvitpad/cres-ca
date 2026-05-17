@@ -1,921 +1,511 @@
 /** --- YAML
  * name: ClientSearchPage
- * description: Unified поиск — list/map toggle, фильтры (категория, рейтинг, радиус),
- *              soft geolocation fallback, salon-aware карточки (CRES-CA-CLIENT-PATCH).
+ * description: Пошук майстрів — фільтри (чипи + popovers), сортування, list/map toggle.
+ *              Візуал — web-client/search мокап. Карта — placeholder з пинами цін на сітці.
  * created: 2026-04-19
+ * updated: 2026-05-17
  * --- */
 
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search as SearchIcon,
-  Navigation,
-  Loader2,
-  Star,
-  ChevronRight,
-  X as XIcon,
-  List,
-  Map as MapIcon,
-  SlidersHorizontal,
-  Building2,
-  MapPin,
-  UserPlus,
-  Check,
+  Star, MapPin, Clock, Coins, Check, ChevronDown, List, Map as MapIcon, Locate, Search as SearchIcon,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { createClient } from '@/lib/supabase/client';
-import { CATEGORY_TO_VERTICAL, CATEGORY_FALLBACK_TERMS, type CategoryKey } from '@/lib/search/category-vertical';
-import type { MapMarker, SalonMarker } from '@/components/shared/map-view';
-import {
-  resolveCardDisplay,
-  type MasterRef,
-  type SalonRef,
-} from '@/lib/client/display-mode';
-import { AvatarRing } from '@/components/shared/primitives/avatar-ring';
 import { cn } from '@/lib/utils';
-
-const MapView = dynamic(() => import('@/components/shared/map-view'), { ssr: false });
-
-const DEFAULT_CENTER: [number, number] = [50.4501, 30.5234]; // Kyiv
-const RADIUS_PRESETS = [
-  { key: 'any', deg: null as number | null },
-  { key: '3km', deg: 0.03 },
-  { key: '10km', deg: 0.1 },
-  { key: '30km', deg: 0.3 },
-] as const;
-
-const CATEGORY_KEYS = ['all', 'beauty', 'health', 'wellness', 'home', 'auto', 'education', 'petCare', 'fitness'] as const;
 
 interface MasterRow {
   id: string;
+  slug: string | null;
+  invite_code: string | null;
+  display_name: string | null;
   specialization: string | null;
   rating: number | null;
   city: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  display_name: string | null;
   avatar_url: string | null;
-  salon_id: string | null;
-  profiles: { full_name: string | null; avatar_url: string | null } | null;
-  salon: { id: string; name: string | null; logo_url: string | null; city: string | null; rating: number | null; slug?: string | null } | null;
-  services?: { price: number }[] | null;
-  priceFrom?: number | null;
+  reviewsCount: number;
+  minPrice: number | null;
+  fullName: string;
 }
 
-interface SalonRow {
-  id: string;
-  name: string | null;
-  logo_url: string | null;
-  city: string | null;
-  rating: number | null;
-  latitude: number | null;
-  longitude: number | null;
-  slug?: string | null;
-}
+type SortMode = 'rating' | 'distance' | 'price_asc' | 'price_desc' | 'next_slot';
+type ViewMode = 'list' | 'map';
 
-function unwrap<T>(v: T | T[] | null): T | null {
-  if (!v) return null;
-  return Array.isArray(v) ? (v[0] ?? null) : v;
-}
-
-function toMasterRef(row: MasterRow): MasterRef {
-  return {
-    id: row.id,
-    display_name: row.display_name,
-    full_name: row.profiles?.full_name ?? null,
-    specialization: row.specialization,
-    avatar_url: row.avatar_url ?? row.profiles?.avatar_url ?? null,
-    rating: row.rating,
-    salon_id: row.salon_id,
-  };
-}
-
-function toSalonRef(salon: MasterRow['salon'] | SalonRow | null): SalonRef | null {
-  if (!salon) return null;
-  return {
-    id: salon.id,
-    name: salon.name ?? '',
-    logo_url: salon.logo_url ?? null,
-    city: salon.city ?? null,
-    rating: salon.rating ?? null,
-  };
-}
+const SORT_LABELS: Record<SortMode, string> = {
+  rating: 'Рейтингом',
+  distance: 'Відстанню',
+  price_asc: 'Ціною ↑',
+  price_desc: 'Ціною ↓',
+  next_slot: 'Найближчий слот',
+};
 
 export default function SearchPage() {
-  const t = useTranslations('search');
-  const tInd = useTranslations('industries');
-  const tCard = useTranslations('cardLabels');
-  const router = useRouter();
   const sp = useSearchParams();
-
-  const initialView = sp.get('view') === 'map' ? 'map' : 'list';
-  const [view, setView] = useState<'list' | 'map'>(initialView);
-  const [query, setQuery] = useState(sp.get('q') ?? '');
-  const [category, setCategory] = useState<typeof CATEGORY_KEYS[number]>('all');
-  const [minRating, setMinRating] = useState<0 | 4 | 4.5>(0);
-  const [radius, setRadius] = useState<typeof RADIUS_PRESETS[number]['key']>('any');
-  const [maxPrice, setMaxPrice] = useState<number | null>(null);
-  const [sortBy, setSortBy] = useState<'default' | 'distance'>('default');
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [popularSpecs, setPopularSpecs] = useState<string[]>([]);
-
-  const [center, setCenter] = useState<[number, number]>(DEFAULT_CENTER);
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [geoBusy, setGeoBusy] = useState(false);
-  const [geoDenied, setGeoDenied] = useState(false);
+  const initialQ = sp?.get('q') ?? '';
+  const initialCity = sp?.get('city') ?? '';
+  const initialCat = sp?.get('cat') ?? '';
 
   const [masters, setMasters] = useState<MasterRow[]>([]);
-  const [salons, setSalons] = useState<SalonRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [selectedMasterId, setSelectedMasterId] = useState<string | null>(null);
 
-  const centerRef = useRef(center);
-  centerRef.current = center;
+  const [query, setQuery] = useState(initialQ);
+  const [city, setCity] = useState(initialCity);
+  const [todayOnly, setTodayOnly] = useState(false);
+  const [minRating, setMinRating] = useState<number>(0);
+  const [maxPrice, setMaxPrice] = useState<number>(2000);
+  const [radius, setRadius] = useState<'any' | '1km' | '3km' | '10km'>('any');
+  const [addressInput, setAddressInput] = useState('');
+  const [femaleOnly, setFemaleOnly] = useState(false);
+  const [mobileOnly, setMobileOnly] = useState(false);
+  const [sort, setSort] = useState<SortMode>('rating');
+  const [view, setView] = useState<ViewMode>('list');
 
-  // Sync query from URL (header search pushes /search?q=...)
-  useEffect(() => {
-    const q = sp.get('q');
-    if (q !== null && q !== query) setQuery(q);
-    const v = sp.get('view');
-    if (v === 'map' && view !== 'map') setView('map');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sp]);
-
-  const fetchData = useCallback(
-    async (opts: { lat: number; lng: number; q: string; cat: typeof category; rating: typeof minRating; rad: typeof radius }) => {
-      setLoading(true);
-      setHasSearched(true);
+  const fetchMasters = useCallback(async () => {
+    setLoading(true);
+    try {
       const supabase = createClient();
-      const raw = opts.q.trim();
-      const qText = raw.replace(/^[@#]/, '').replace(/([%,()])/g, '\\$1');
-      const hasQuery = qText.length >= 1;
-      const radiusDeg = RADIUS_PRESETS.find((r) => r.key === opts.rad)?.deg ?? null;
+    let q = supabase
+      .from('masters')
+      .select('id, slug, invite_code, display_name, specialization, rating, city, avatar_url, profiles:profiles!masters_profile_id_fkey(full_name)')
+      .eq('is_active', true)
+      .limit(50);
+    if (city.trim()) q = q.ilike('city', `%${city.trim()}%`);
+    if (initialCat && categoryToTerm(initialCat)) q = q.ilike('specialization', `%${categoryToTerm(initialCat)}%`);
+    if (query.trim()) q = q.or(`display_name.ilike.%${query.trim()}%,specialization.ilike.%${query.trim()}%`);
 
-      // Masters
-      let mQ = supabase
-        .from('masters')
-        .select(
-          'id, specialization, rating, city, latitude, longitude, display_name, avatar_url, salon_id, is_active, profiles:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city), services(price)',
-        )
-        .eq('is_active', true)
-        .limit(60);
+    const { data } = await q;
+    const list = (data ?? []) as Array<{
+      id: string; slug: string | null; invite_code: string | null;
+      display_name: string | null; specialization: string | null;
+      rating: number | null; city: string | null; avatar_url: string | null;
+      profiles: { full_name: string | null } | { full_name: string | null }[] | null;
+    }>;
 
-      if (radiusDeg != null) {
-        mQ = mQ
-          .gte('latitude', opts.lat - radiusDeg)
-          .lte('latitude', opts.lat + radiusDeg)
-          .gte('longitude', opts.lng - radiusDeg)
-          .lte('longitude', opts.lng + radiusDeg);
-      }
-      if (opts.rating > 0) mQ = mQ.gte('rating', opts.rating);
-      if (opts.cat !== 'all') {
-        // Точная фильтрация по `masters.vertical` (если для категории есть
-        // соответствие в онбординг-нишах) с fallback на ilike по specialization
-        // для legacy-мастеров, у которых vertical пуст. Раньше тут был только
-        // ilike по переводу одного слова — мастер «Парикмахер Светлана» не
-        // попадал в «Красоту» если в спец-поле не было слова «красота».
-        const vert = CATEGORY_TO_VERTICAL[opts.cat as CategoryKey];
-        const fallbackOr = (CATEGORY_FALLBACK_TERMS[opts.cat as CategoryKey] ?? [])
-          .map((t) => `specialization.ilike.%${t.replace(/([%,()\\])/g, '\\$1')}%`)
-          .join(',');
-        if (vert) {
-          const clause = fallbackOr ? `vertical.eq.${vert},${fallbackOr}` : `vertical.eq.${vert}`;
-          mQ = mQ.or(clause);
-        } else if (fallbackOr) {
-          mQ = mQ.or(fallbackOr);
-        }
-      }
-      // Text search is done client-side after fetch so profiles.full_name is included.
+    const masterIds = list.map((m) => m.id);
 
-      // Salons
-      let sQ = supabase
-        .from('salons')
-        .select('id, name, logo_url, city, rating, latitude, longitude, slug')
-        .limit(40);
+    // reviews count
+    const reviewsByMaster = new Map<string, number>();
+    if (masterIds.length > 0) {
+      const { data: revs } = await supabase
+        .from('reviews').select('target_id')
+        .eq('target_type', 'master').in('target_id', masterIds);
+      (revs ?? []).forEach((r) => {
+        const id = (r as { target_id: string }).target_id;
+        reviewsByMaster.set(id, (reviewsByMaster.get(id) ?? 0) + 1);
+      });
+    }
 
-      if (radiusDeg != null) {
-        sQ = sQ
-          .gte('latitude', opts.lat - radiusDeg)
-          .lte('latitude', opts.lat + radiusDeg)
-          .gte('longitude', opts.lng - radiusDeg)
-          .lte('longitude', opts.lng + radiusDeg);
-      }
-      if (opts.rating > 0) sQ = sQ.gte('rating', opts.rating);
+    // min price from services
+    const minPriceByMaster = new Map<string, number>();
+    if (masterIds.length > 0) {
+      const { data: svcs } = await supabase
+        .from('services').select('master_id, price')
+        .in('master_id', masterIds).eq('is_active', true);
+      (svcs ?? []).forEach((s) => {
+        const r = s as { master_id: string; price: number | string | null };
+        if (r.price == null) return;
+        const p = Number(r.price);
+        if (!p) return;
+        const cur = minPriceByMaster.get(r.master_id);
+        if (cur == null || p < cur) minPriceByMaster.set(r.master_id, p);
+      });
+    }
 
-      const [mRes, sRes] = await Promise.all([mQ, sQ]);
-
-      const words = hasQuery ? qText.toLowerCase().split(/\s+/).filter((w) => w.length > 0) : [];
-
-      function masterMatchesQuery(r: MasterRow) {
-        if (words.length === 0) return true;
-        const haystack = [
-          r.display_name,
-          (unwrap(r.profiles) as { full_name: string | null } | null)?.full_name,
-          r.specialization,
-          r.city,
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        return words.every((w) => haystack.includes(w));
-      }
-
-      function salonMatchesQuery(r: SalonRow) {
-        if (words.length === 0) return true;
-        const haystack = [r.name, r.city].filter(Boolean).join(' ').toLowerCase();
-        return words.every((w) => haystack.includes(w));
-      }
-
-      setMasters(
-        ((mRes.data ?? []) as unknown as MasterRow[])
-          .map((r) => {
-            const prices = (r.services ?? []).map((s) => Number(s.price)).filter((n) => n > 0);
-            const priceFrom = prices.length > 0 ? Math.min(...prices) : null;
-            return { ...r, profiles: unwrap(r.profiles), salon: unwrap(r.salon), priceFrom };
-          })
-          .filter(masterMatchesQuery),
-      );
-      setSalons(((sRes.data ?? []) as unknown as SalonRow[]).filter(salonMatchesQuery));
+    const result: MasterRow[] = list.map((m) => {
+      const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+      return {
+        id: m.id,
+        slug: m.slug,
+        invite_code: m.invite_code,
+        display_name: m.display_name,
+        specialization: m.specialization,
+        rating: m.rating,
+        city: m.city,
+        avatar_url: m.avatar_url,
+        fullName: (m.display_name ?? profile?.full_name ?? 'Майстер').toString(),
+        reviewsCount: reviewsByMaster.get(m.id) ?? 0,
+        minPrice: minPriceByMaster.get(m.id) ?? null,
+      };
+    });
+      setMasters(result);
+    } catch (e) {
+      console.warn('[search] fetchMasters err', e);
+    } finally {
       setLoading(false);
-    },
-    [tInd],
-  );
-
-  // Geolocation chain (same as old /map but no red banner)
-  useEffect(() => {
-    let cancelled = false;
-
-    function browserGeo(highAccuracy: boolean, timeoutMs: number): Promise<[number, number] | null> {
-      return new Promise((resolve) => {
-        if (!('geolocation' in navigator)) return resolve(null);
-        navigator.geolocation.getCurrentPosition(
-          (pos) => resolve([pos.coords.latitude, pos.coords.longitude]),
-          () => resolve(null),
-          { enableHighAccuracy: highAccuracy, timeout: timeoutMs, maximumAge: 60000 },
-        );
-      });
     }
+  }, [city, initialCat, query]);
 
-    async function ipGeo(): Promise<[number, number] | null> {
-      const providers = [
-        'https://ipwho.is/',
-        'https://ipapi.co/json/',
-        'https://get.geojs.io/v1/ip/geo.json',
-      ];
-      for (const url of providers) {
-        try {
-          const r = await fetch(url, { cache: 'no-store' });
-          if (!r.ok) continue;
-          const j = (await r.json()) as Record<string, unknown>;
-          const lat = typeof j.latitude === 'number' ? j.latitude : parseFloat(j.latitude as string);
-          const lng = typeof j.longitude === 'number' ? j.longitude : parseFloat(j.longitude as string);
-          if (Number.isFinite(lat) && Number.isFinite(lng)) return [lat, lng];
-        } catch {
-          /* try next */
-        }
-      }
-      return null;
+  useEffect(() => { fetchMasters(); }, [fetchMasters]);
+
+  // Apply client-side filters + sort
+  const filtered = useMemo(() => {
+    let out = masters.slice();
+    if (minRating > 0) out = out.filter((m) => (m.rating ?? 0) >= minRating);
+    if (maxPrice < 2000) out = out.filter((m) => m.minPrice != null && m.minPrice <= maxPrice);
+    switch (sort) {
+      case 'rating': out.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)); break;
+      case 'price_asc': out.sort((a, b) => (a.minPrice ?? 1e9) - (b.minPrice ?? 1e9)); break;
+      case 'price_desc': out.sort((a, b) => (b.minPrice ?? 0) - (a.minPrice ?? 0)); break;
+      default: out.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
     }
+    return out;
+  }, [masters, minRating, maxPrice, sort]);
 
-    (async () => {
-      setGeoBusy(true);
-      let coords = await browserGeo(true, 8000);
-      if (cancelled) return;
-      if (!coords) coords = await browserGeo(false, 5000);
-      if (cancelled) return;
-      if (coords) {
-        setCenter(coords);
-        setUserLocation(coords);
-        setGeoDenied(false);
-        setGeoBusy(false);
-        fetchData({ lat: coords[0], lng: coords[1], q: query, cat: category, rating: minRating, rad: radius });
-        return;
-      }
-      coords = await ipGeo();
-      if (cancelled) return;
-      if (coords) {
-        setCenter(coords);
-        setUserLocation(coords);
-        setGeoDenied(true);
-      } else {
-        setGeoDenied(true);
-      }
-      setGeoBusy(false);
-      fetchData({
-        lat: coords?.[0] ?? DEFAULT_CENTER[0],
-        lng: coords?.[1] ?? DEFAULT_CENTER[1],
-        q: query,
-        cat: category,
-        rating: minRating,
-        rad: radius,
-      });
-    })();
-
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Debounced refetch when filters / query change
-  useEffect(() => {
-    const t = setTimeout(() => {
-      fetchData({ lat: centerRef.current[0], lng: centerRef.current[1], q: query, cat: category, rating: minRating, rad: radius });
-    }, 350);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, category, minRating, radius]);
-
-  function handleLocateMe() {
-    if (!('geolocation' in navigator)) return;
-    setGeoBusy(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const c: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-        setCenter(c);
-        setUserLocation(c);
-        setGeoDenied(false);
-        setGeoBusy(false);
-        fetchData({ lat: c[0], lng: c[1], q: query, cat: category, rating: minRating, rad: radius });
-      },
-      () => { setGeoDenied(true); setGeoBusy(false); },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
-    );
+  function detectLocation() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&accept-language=uk`);
+        const j = await r.json();
+        const c = j.address?.city || j.address?.town || j.address?.village;
+        if (c) setCity(c);
+      } catch {}
+    });
   }
 
-  // Подсказки популярных специализаций для выбранной ниши.
-  useEffect(() => {
-    const v = CATEGORY_TO_VERTICAL[category as CategoryKey];
-    if (!v) {
-      setPopularSpecs([]);
-      return;
-    }
-    let cancelled = false;
-    fetch(`/api/search/popular-specs?vertical=${v}&limit=12`)
-      .then((r) => (r.ok ? r.json() : { specs: [] }))
-      .then((j: { specs?: string[] }) => {
-        if (!cancelled) setPopularSpecs(Array.isArray(j.specs) ? j.specs : []);
-      })
-      .catch(() => { if (!cancelled) setPopularSpecs([]); });
-    return () => { cancelled = true; };
-  }, [category]);
-
-  // Клиентская доводка: цена + сортировка по расстоянию.
-  // Категория/рейтинг/радиус уже применены сервером в fetchData.
-  const displayedMasters = useMemo(() => {
-    let result = masters.filter((m) => {
-      if (maxPrice != null && m.priceFrom != null && m.priceFrom > maxPrice) return false;
-      return true;
-    });
-    if (sortBy === 'distance' && userLocation) {
-      const [ulat, ulng] = userLocation;
-      result = [...result].sort((a, b) => {
-        const da = a.latitude != null && a.longitude != null
-          ? Math.hypot(a.latitude - ulat, a.longitude - ulng) : Infinity;
-        const db = b.latitude != null && b.longitude != null
-          ? Math.hypot(b.latitude - ulat, b.longitude - ulng) : Infinity;
-        return da - db;
-      });
-    }
-    return result;
-  }, [masters, maxPrice, sortBy, userLocation]);
-
-  const masterMarkers: MapMarker[] = useMemo(
-    () =>
-      displayedMasters
-        .filter((m) => m.latitude != null && m.longitude != null)
-        .map((m) => ({
-          lat: m.latitude!,
-          lng: m.longitude!,
-          name: m.display_name ?? m.profiles?.full_name ?? 'Master',
-          rating: Number(m.rating ?? 0),
-          specialization: m.specialization ?? undefined,
-          masterId: m.id,
-        })),
-    [displayedMasters],
-  );
-
-  const salonPinMarkers: SalonMarker[] = useMemo(
-    () =>
-      salons
-        .filter((s) => s.latitude != null && s.longitude != null)
-        .map((s) => ({
-          lat: s.latitude!,
-          lng: s.longitude!,
-          name: s.name ?? 'Салон',
-          salonId: s.id,
-        })),
-    [salons],
-  );
-
-  const selectedMaster = selectedMasterId ? displayedMasters.find((m) => m.id === selectedMasterId) ?? null : null;
-  const activeFilters =
-    (category !== 'all' ? 1 : 0) +
-    (minRating > 0 ? 1 : 0) +
-    (radius !== 'any' ? 1 : 0) +
-    (maxPrice != null ? 1 : 0) +
-    (sortBy !== 'default' ? 1 : 0);
-  const totalResults = displayedMasters.length + salons.length;
+  const headerTitle = `${categoryLabel(initialCat) || (query.trim() || 'Майстри')}${city ? ` у ${city}` : ''}`;
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-8rem)]">
-      {/* Search bar + toggle */}
-      <div className="sticky top-0 z-10 bg-background/85 backdrop-blur-xl border-b border-border/50 px-4 py-3 space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('placeholder')}
-              className="w-full h-11 rounded-xl bg-muted/50 border border-border/50 pl-9 pr-9 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-            />
-            {query && (
+    <div className="space-y-5 pb-12">
+      <header>
+        <h1 className="text-[28px] font-extrabold tracking-tight">{headerTitle}</h1>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          {loading ? 'Шукаємо…' : `Знайшли ${filtered.length} ${pluralMaster(filtered.length)}, готов${filtered.length === 1 ? 'ий' : 'і'} прийняти`}
+        </p>
+      </header>
+
+      {/* Filter chips */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <FilterChip active={todayOnly} onClick={() => setTodayOnly((v) => !v)} icon={<Check className="size-3.5" />}>
+          Сьогодні
+        </FilterChip>
+
+        <Popover>
+          <PopoverTrigger className={chipClass(minRating > 0)}>
+            <Star className="size-3.5" /> Рейтинг {minRating > 0 ? `${minRating}+` : ''}
+            <ChevronDown className="size-3 opacity-60" />
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-[220px] p-2">
+            <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Мінімальний рейтинг</div>
+            {[
+              [0, 'Будь-який'],
+              [4.0, '⭐ 4.0+'],
+              [4.5, '⭐ 4.5+'],
+              [4.8, '⭐ 4.8+ (топ)'],
+            ].map(([v, l]) => (
               <button
-                onClick={() => setQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="clear"
-              >
-                <XIcon className="size-4" />
-              </button>
-            )}
-          </div>
-
-          <button
-            onClick={() => setFiltersOpen((v) => !v)}
-            className={cn(
-              'relative flex size-11 items-center justify-center rounded-xl border border-border/50 bg-muted/30 transition-colors hover:bg-muted/50',
-              filtersOpen && 'bg-foreground text-background border-transparent',
-            )}
-            aria-label={t('filters')}
-          >
-            <SlidersHorizontal className="size-4" />
-            {activeFilters > 0 && (
-              <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
-                {activeFilters}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={handleLocateMe}
-            disabled={geoBusy}
-            className="flex size-11 items-center justify-center rounded-xl border border-border/50 bg-muted/30 transition-colors hover:bg-muted/50 disabled:opacity-50"
-            aria-label={t('locateMe')}
-          >
-            {geoBusy ? <Loader2 className="size-4 animate-spin" /> : <Navigation className="size-4" />}
-          </button>
-        </div>
-
-        {/* List/Map toggle */}
-        <div className="inline-flex rounded-full border border-border/50 bg-muted/30 p-0.5">
-          {(['list', 'map'] as const).map((mode) => {
-            const Icon = mode === 'list' ? List : MapIcon;
-            return (
-              <button
-                key={mode}
-                onClick={() => setView(mode)}
+                key={v as number}
+                onClick={() => setMinRating(v as number)}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-                  view === mode ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                  'flex w-full items-center gap-2 rounded-lg px-2 py-2 text-[13px] transition-colors',
+                  minRating === v ? 'bg-[#2563eb]/10 text-[#2563eb] font-semibold' : 'hover:bg-muted',
                 )}
               >
-                <Icon className="size-3.5" />
-                {t(`${mode}View`)}
+                <span className={cn(
+                  'size-3.5 shrink-0 rounded-full border-2',
+                  minRating === v ? 'border-[#2563eb] bg-[#2563eb]' : 'border-border',
+                )} />
+                {l}
               </button>
-            );
-          })}
+            ))}
+          </PopoverContent>
+        </Popover>
 
-          {!loading && (
-            <span className="ml-2 flex items-center pr-3 text-[11px] text-muted-foreground tabular-nums">
-              {totalResults}
-            </span>
-          )}
-        </div>
+        <Popover>
+          <PopoverTrigger className={chipClass(maxPrice < 2000)}>
+            <Coins className="size-3.5" /> Ціна {maxPrice < 2000 ? `до ₴${maxPrice}` : ''}
+            <ChevronDown className="size-3 opacity-60" />
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-[300px] p-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ваш бюджет</div>
+            <div className="mt-3 flex items-center justify-between text-[12px]">
+              <span className="text-muted-foreground">₴100</span>
+              <span className="font-semibold text-[#2563eb]">до ₴{maxPrice}</span>
+              <span className="text-muted-foreground">₴2000+</span>
+            </div>
+            <input
+              type="range"
+              min={100}
+              max={2000}
+              step={50}
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(Number(e.target.value))}
+              className="mt-2 w-full accent-[#2563eb]"
+            />
+            <div className="mt-1 flex justify-between text-[10px] text-muted-foreground/70">
+              <span>дешево</span>
+              <span>преміум</span>
+            </div>
+          </PopoverContent>
+        </Popover>
 
-        {/* Filters panel */}
-        <AnimatePresence initial={false}>
-          {filtersOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.18 }}
-              className="overflow-hidden"
+        <Popover>
+          <PopoverTrigger className={chipClass(radius !== 'any' || !!city)}>
+            <MapPin className="size-3.5" /> Близькість
+            <ChevronDown className="size-3 opacity-60" />
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-[320px] p-3 space-y-2.5">
+            <button
+              onClick={detectLocation}
+              className="flex w-full items-center gap-2 rounded-xl bg-[#2563eb]/10 px-3 py-2.5 text-[13px] font-semibold text-[#2563eb] hover:bg-[#2563eb]/15"
             >
-              <div className="space-y-3 pt-1">
-                {/* Category */}
-                <div>
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t('category')}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {CATEGORY_KEYS.map((key) => (
-                      <button
-                        key={key}
-                        onClick={() => setCategory(key)}
-                        className={cn(
-                          'rounded-full border px-3 py-1 text-xs transition-colors',
-                          category === key
-                            ? 'border-foreground bg-foreground text-background'
-                            : 'border-border/60 text-muted-foreground hover:border-foreground/40 hover:text-foreground',
-                        )}
-                      >
-                        {tInd(key)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Rating */}
-                <div>
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t('rating')}
-                  </p>
-                  <div className="flex gap-1.5">
-                    {([
-                      { v: 0, label: t('anyRating') },
-                      { v: 4, label: '4.0+' },
-                      { v: 4.5, label: '4.5+' },
-                    ] as const).map((opt) => (
-                      <button
-                        key={opt.v}
-                        onClick={() => setMinRating(opt.v)}
-                        className={cn(
-                          'inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs transition-colors',
-                          minRating === opt.v
-                            ? 'border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
-                            : 'border-border/60 text-muted-foreground hover:border-amber-300',
-                        )}
-                      >
-                        {opt.v > 0 && <Star className="size-3 fill-amber-400 text-amber-400" />}
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Radius */}
-                <div>
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t('distance')}
-                  </p>
-                  <div className="flex gap-1.5">
-                    {RADIUS_PRESETS.map((r) => (
-                      <button
-                        key={r.key}
-                        onClick={() => setRadius(r.key)}
-                        className={cn(
-                          'rounded-full border px-3 py-1 text-xs transition-colors',
-                          radius === r.key
-                            ? 'border-foreground bg-foreground text-background'
-                            : 'border-border/60 text-muted-foreground hover:border-foreground/40 hover:text-foreground',
-                        )}
-                      >
-                        {r.key === 'any' ? t('anyDistance') : r.key}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Price */}
-                <div>
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t('price')}
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min={0}
-                      max={3000}
-                      step={100}
-                      value={maxPrice ?? 3000}
-                      onChange={(e) => {
-                        const v = Number(e.target.value);
-                        setMaxPrice(v >= 3000 ? null : v);
-                      }}
-                      className="flex-1 accent-foreground"
-                    />
-                    <span className="min-w-[64px] text-right text-xs font-semibold tabular-nums">
-                      {maxPrice == null ? t('priceAny') : `≤ ${maxPrice}₴`}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Sort */}
-                <div>
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t('sortBy')}
-                  </p>
-                  <div className="flex gap-1.5">
-                    {(['default', 'distance'] as const).map((opt) => (
-                      <button
-                        key={opt}
-                        onClick={() => setSortBy(opt)}
-                        className={cn(
-                          'rounded-full border px-3 py-1 text-xs transition-colors',
-                          sortBy === opt
-                            ? 'border-foreground bg-foreground text-background'
-                            : 'border-border/60 text-muted-foreground hover:border-foreground/40 hover:text-foreground',
-                        )}
-                      >
-                        {opt === 'default' ? t('sortDefault') : t('sortDistance')}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Popular specializations inside selected category */}
-                {popularSpecs.length > 0 && (
-                  <div>
-                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {t('popular')}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {popularSpecs.map((spec) => (
-                        <button
-                          key={spec}
-                          onClick={() => {
-                            setQuery(spec);
-                            setFiltersOpen(false);
-                          }}
-                          className="rounded-full border border-border/60 bg-muted/30 px-3 py-1 text-xs text-foreground transition-colors hover:border-foreground/40 hover:bg-muted/60"
-                        >
-                          {spec}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+              <Locate className="size-3.5" /> Знайти за геопозицією
+            </button>
+            <div className="border-t border-border" />
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Або вкажіть адресу</div>
+            <input
+              value={addressInput}
+              onChange={(e) => setAddressInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') setCity(addressInput); }}
+              placeholder="вул. Хрещатик 12, Київ"
+              className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[13px] outline-none focus:border-[#2563eb]"
+            />
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Радіус</div>
+            {([
+              ['any', 'Будь-яка відстань'],
+              ['1km', 'До 1 км пішки'],
+              ['3km', 'До 3 км'],
+              ['10km', 'До 10 км'],
+            ] as const).map(([v, l]) => (
+              <button
+                key={v}
+                onClick={() => setRadius(v)}
+                className={cn(
+                  'flex w-full items-center gap-2 rounded-lg px-2 py-2 text-[13px] transition-colors',
+                  radius === v ? 'bg-[#2563eb]/10 text-[#2563eb] font-semibold' : 'hover:bg-muted',
                 )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              >
+                <span className={cn(
+                  'size-3.5 shrink-0 rounded-full border-2',
+                  radius === v ? 'border-[#2563eb] bg-[#2563eb]' : 'border-border',
+                )} />
+                {l}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
 
-        {geoDenied && !geoBusy && (
-          <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Navigation className="size-3" />
-            {t('enableGeoHint')}
-          </p>
-        )}
+        <FilterChip active={femaleOnly} onClick={() => setFemaleOnly((v) => !v)}>Жінка-майстер</FilterChip>
+        <FilterChip active={mobileOnly} onClick={() => setMobileOnly((v) => !v)}>Виїзд додому</FilterChip>
       </div>
 
-      {/* Results */}
-      {view === 'list' ? (
-        <div className="flex-1 px-4 py-4">
-          {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="size-6 animate-spin text-primary" />
-            </div>
-          ) : totalResults === 0 && hasSearched ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
-              <SearchIcon className="size-10 mb-3 opacity-40" />
-              <p className="text-sm font-medium">{t('nothingFound')}</p>
-              <p className="mt-1 text-xs">{t('tryDifferent')}</p>
-            </div>
-          ) : (
-            <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <AnimatePresence mode="popLayout">
-                {displayedMasters.map((m, i) => (
-                  <motion.div
-                    key={`m-${m.id}`}
-                    layout
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0, transition: { delay: Math.min(i * 0.03, 0.2) } }}
-                    exit={{ opacity: 0, scale: 0.97 }}
-                  >
-                    <ResultCard
-                      master={toMasterRef(m)}
-                      salon={toSalonRef(m.salon)}
-                      city={m.city ?? m.salon?.city ?? null}
-                      href={`/masters/${m.id}`}
-                      labels={{
-                        masterPlaceholder: tCard('masterPlaceholder'),
-                        salonPlaceholder: tCard('salonPlaceholder'),
-                        managerAssigned: tCard('managerAssigned'),
-                      }}
-                    />
-                  </motion.div>
-                ))}
+      {/* Toolbar: count + sort + view */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="text-[13px] text-muted-foreground">
+          <strong className="text-foreground">{filtered.length}</strong> {pluralMaster(filtered.length)} знайдено
+        </div>
+        <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 text-[12px] font-semibold text-foreground hover:bg-muted">
+              <span>{SORT_LABELS[sort]}</span>
+              <ChevronDown className="size-3" />
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-[200px] p-1.5">
+              {(Object.entries(SORT_LABELS) as Array<[SortMode, string]>).map(([k, l]) => (
+                <button
+                  key={k}
+                  onClick={() => setSort(k)}
+                  className={cn(
+                    'flex w-full items-center gap-2 rounded-lg px-2 py-2 text-[13px] transition-colors',
+                    sort === k ? 'bg-[#2563eb]/10 text-[#2563eb] font-semibold' : 'hover:bg-muted',
+                  )}
+                >
+                  <span className={cn(
+                    'size-3.5 shrink-0 rounded-full border-2',
+                    sort === k ? 'border-[#2563eb] bg-[#2563eb]' : 'border-border',
+                  )} />
+                  {l}
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
+          <div className="inline-flex rounded-full border border-border bg-card p-0.5">
+            <button
+              onClick={() => setView('list')}
+              className={cn(
+                'flex size-7 items-center justify-center rounded-full transition-colors',
+                view === 'list' ? 'bg-[#2563eb] text-white' : 'text-muted-foreground hover:text-foreground',
+              )}
+              aria-label="Список"
+            >
+              <List className="size-3.5" />
+            </button>
+            <button
+              onClick={() => setView('map')}
+              className={cn(
+                'flex size-7 items-center justify-center rounded-full transition-colors',
+                view === 'map' ? 'bg-[#2563eb] text-white' : 'text-muted-foreground hover:text-foreground',
+              )}
+              aria-label="Карта"
+            >
+              <MapIcon className="size-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
 
-                {salons.map((s, i) => (
-                  <motion.div
-                    key={`s-${s.id}`}
-                    layout
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0, transition: { delay: Math.min((displayedMasters.length + i) * 0.03, 0.2) } }}
-                    exit={{ opacity: 0, scale: 0.97 }}
-                  >
-                    <ResultCard
-                      master={null}
-                      salon={toSalonRef(s)}
-                      city={s.city ?? null}
-                      href={s.slug ? `/s/${s.slug}` : `/s/${s.id}`}
-                      labels={{
-                        masterPlaceholder: tCard('masterPlaceholder'),
-                        salonPlaceholder: tCard('salonPlaceholder'),
-                        managerAssigned: tCard('managerAssigned'),
-                      }}
-                    />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </motion.div>
-          )}
+      {loading ? (
+        <div className="flex flex-col gap-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-24 animate-pulse rounded-2xl bg-muted" />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-[#2563eb]/12 text-[#2563eb]">
+            <SearchIcon className="size-6" />
+          </div>
+          <p className="mt-4 text-[15px] font-semibold">Нічого не знайшли</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            Спробуй прибрати фільтри або змінити місто.
+          </p>
         </div>
       ) : (
-        <div className="relative flex-1 mx-4 mb-4 rounded-2xl overflow-hidden border border-border/50 shadow-sm min-h-[420px]">
-          {loading && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-sm">
-              <Loader2 className="size-8 animate-spin text-primary" />
-            </div>
-          )}
-          <MapView
-            markers={masterMarkers}
-            salonMarkers={salonPinMarkers}
-            center={center}
-            zoom={13}
-            className="h-full w-full"
-            onMarkerClick={(id) => setSelectedMasterId(id)}
-            onSalonClick={(id) => {
-              const s = salons.find((x) => x.id === id);
-              router.push(s?.slug ? `/s/${s.slug}` : `/s/${id}`);
-            }}
-            userLocation={userLocation}
-          />
+        <div className={cn('grid gap-4', view === 'list' ? 'lg:grid-cols-[1fr_360px]' : 'lg:grid-cols-1')}>
+          {/* Results list */}
+          <div className="flex flex-col gap-2.5">
+            {filtered.map((m) => <ResultRow key={m.id} m={m} />)}
+          </div>
 
-          {!loading && (
-            <div className="absolute top-3 left-3 z-[500] rounded-full bg-background/85 backdrop-blur-md border border-border/50 px-3 py-1.5 text-xs font-medium shadow-sm tabular-nums">
-              {masterMarkers.length} · {salonPinMarkers.length}
-            </div>
-          )}
-
-          <AnimatePresence>
-            {selectedMaster && (
-              <motion.div
-                initial={{ y: 100, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 100, opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                className="absolute bottom-4 left-4 right-4 z-[600]"
+          {/* Map column (sticky on desktop) — light grid placeholder, не агрессивный */}
+          {view === 'list' && (
+            <div className="hidden lg:block">
+              <div
+                className="sticky top-6 h-[480px] overflow-hidden rounded-2xl border border-border bg-muted/30"
+                style={{
+                  backgroundImage:
+                    'linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)',
+                  backgroundSize: '40px 40px',
+                }}
               >
-                <Link
-                  href={`/masters/${selectedMaster.id}`}
-                  className="group block rounded-2xl border border-border/50 bg-card/95 backdrop-blur-xl p-3 shadow-lg transition-all hover:shadow-xl"
-                >
-                  {(() => {
-                    const d = resolveCardDisplay(toMasterRef(selectedMaster), toSalonRef(selectedMaster.salon), {
-                      masterPlaceholder: tCard('masterPlaceholder'),
-                      salonPlaceholder: tCard('salonPlaceholder'),
-                      managerAssigned: tCard('managerAssigned'),
-                    });
-                    const Icon = d.mode === 'solo' ? MapPin : Building2;
+                <div className="relative size-full">
+                  {filtered.slice(0, 6).map((m, i) => {
+                    const left = 20 + (i % 3) * 30;
+                    const top = 20 + Math.floor(i / 3) * 30;
                     return (
-                      <div className="flex items-center gap-3">
-                        <AvatarRing src={d.avatarSrc} name={d.avatarName} size={48} />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <Icon className="size-3.5 shrink-0 text-muted-foreground" />
-                            <p className="truncate font-semibold">{d.primary}</p>
-                          </div>
-                          {d.secondary && (
-                            <p className="truncate text-xs text-muted-foreground">{d.secondary}</p>
-                          )}
-                          {d.rating != null && (
-                            <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
-                              <Star className="size-3 fill-amber-400 text-amber-400" />
-                              <span className="tabular-nums">{d.rating.toFixed(1)}</span>
-                            </div>
-                          )}
-                        </div>
-                        <ChevronRight className="size-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-                      </div>
+                      <Link
+                        key={m.id}
+                        href={`/m/${m.slug ?? m.invite_code ?? m.id}`}
+                        className="absolute flex items-center gap-1 rounded-full bg-[#2563eb] px-2.5 py-1 text-[11px] font-extrabold text-white shadow-lg ring-2 ring-[#2563eb]/20 hover:bg-[#1d4ed8]"
+                        style={{ left: `${left}%`, top: `${top}%` }}
+                      >
+                        {m.minPrice ? `₴${Math.round(m.minPrice)}` : '—'}
+                      </Link>
                     );
-                  })()}
-                </Link>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  })}
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-card/90 px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground backdrop-blur">
+                    Карта · скоро
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-interface ResultCardProps {
-  master: MasterRef | null;
-  salon: SalonRef | null;
-  city: string | null;
-  href: string;
-  labels: { masterPlaceholder: string; salonPlaceholder: string; managerAssigned: string };
+function ResultRow({ m }: { m: MasterRow }) {
+  const initials = m.fullName.split(/\s+/).slice(0, 2).map((p) => p.charAt(0).toUpperCase()).join('') || '?';
+  return (
+    <Link
+      href={`/m/${m.slug ?? m.invite_code ?? m.id}`}
+      className="flex items-center gap-3.5 rounded-2xl border border-border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-[#2563eb]/40 hover:shadow-md"
+    >
+      {m.avatar_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={m.avatar_url} alt={m.fullName} className="size-14 shrink-0 rounded-full object-cover" />
+      ) : (
+        <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[#2563eb]/12 text-[16px] font-extrabold text-[#2563eb]">
+          {initials}
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[15px] font-bold">{m.fullName}</div>
+        {m.specialization && (
+          <div className="mt-0.5 truncate text-[12px] text-muted-foreground">{m.specialization}{m.city ? ` · ${m.city}` : ''}</div>
+        )}
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <Star className="size-3 fill-amber-400 text-amber-400" />
+            <strong className="text-foreground">{m.rating ? m.rating.toFixed(1) : '—'}</strong>
+            {m.reviewsCount > 0 ? ` · ${m.reviewsCount} відг.` : ''}
+          </span>
+          {m.city && (
+            <>
+              <span>·</span>
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="size-3" /> {m.city}
+              </span>
+            </>
+          )}
+          <span>·</span>
+          <span className="inline-flex items-center gap-1">
+            <Clock className="size-3" /> графік на сторінці
+          </span>
+        </div>
+      </div>
+      <div className="shrink-0 text-right">
+        <div className="text-[13px] font-bold text-foreground">
+          {m.minPrice ? `від ₴${Math.round(m.minPrice)}` : '—'}
+        </div>
+        <span className="mt-1.5 inline-flex items-center justify-center rounded-full bg-[#2563eb] px-4 py-1.5 text-[12px] font-semibold text-white">
+          Записатись
+        </span>
+      </div>
+    </Link>
+  );
 }
 
-function ResultCard({ master, salon, city, href, labels }: ResultCardProps) {
-  const router = useRouter();
-  const d = resolveCardDisplay(master, salon, labels);
-  const Icon = d.mode === 'solo' ? MapPin : Building2;
-  const [following, setFollowing] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  async function toggleFollow(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (busy) return;
-    setBusy(true);
-    try {
-      let res: Response;
-      if (master?.id) {
-        res = await fetch('/api/follow/crm/toggle', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ masterId: master.id }),
-        });
-      } else if (salon?.id) {
-        res = await fetch(`/api/salon/${salon.id}/follow`, {
-          method: following ? 'DELETE' : 'POST',
-        });
-      } else {
-        return;
-      }
-      if (res.status === 401) {
-        router.push('/ru/login');
-        return;
-      }
-      if (!res.ok) {
-        toast.error('Не удалось обновить контакты');
-        return;
-      }
-      setFollowing(!following);
-      toast.success(!following ? 'Добавлено в контакты' : 'Удалено из контактов');
-    } finally {
-      setBusy(false);
-    }
-  }
-
+function FilterChip({
+  active, onClick, children, icon,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  icon?: React.ReactNode;
+}) {
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => router.push(href)}
-      onKeyDown={(e) => { if (e.key === 'Enter') router.push(href); }}
-      className="group relative rounded-2xl border border-border/50 bg-card/80 backdrop-blur p-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/20 cursor-pointer"
-    >
-      <div className="flex items-start gap-3">
-        <AvatarRing src={d.avatarSrc} name={d.avatarName} size={56} />
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <Icon className="size-3.5 shrink-0 text-muted-foreground" />
-            <h3 className="truncate font-semibold group-hover:text-primary transition-colors">
-              {d.primary}
-            </h3>
-          </div>
-          {d.secondary && (
-            <p className="truncate text-sm text-muted-foreground">{d.secondary}</p>
-          )}
-
-          <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
-            {d.rating != null && (
-              <span className="flex items-center gap-1">
-                <Star className="size-3.5 fill-amber-400 text-amber-400" />
-                <span className="tabular-nums">{d.rating.toFixed(1)}</span>
-              </span>
-            )}
-            {city && (
-              <span className="flex items-center gap-1">
-                <MapPin className="size-3.5" />
-                {city}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={toggleFollow}
-          disabled={busy}
-          className={cn(
-            'flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
-            following
-              ? 'border-primary/40 bg-primary/10 text-primary'
-              : 'border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary/5',
-            busy && 'opacity-50',
-          )}
-        >
-          {busy ? (
-            <Loader2 className="size-3.5 animate-spin" />
-          ) : following ? (
-            <Check className="size-3.5" />
-          ) : (
-            <UserPlus className="size-3.5" />
-          )}
-          {following ? 'В контактах' : 'В контакты'}
-        </button>
-      </div>
-    </div>
+    <button onClick={onClick} className={chipClass(active)}>
+      {icon}
+      {children}
+    </button>
   );
+}
+
+function chipClass(active: boolean) {
+  return cn(
+    'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition-colors',
+    active
+      ? 'border-[#2563eb] bg-[#2563eb] text-white'
+      : 'border-border bg-card text-muted-foreground hover:bg-muted',
+  );
+}
+
+function categoryToTerm(cat: string): string {
+  const map: Record<string, string> = {
+    hair: 'волосс', nails: 'манік', face: 'облич', massage: 'масаж',
+    brows: 'бров', laser: 'лазер', skin: 'шкір',
+  };
+  return map[cat] ?? '';
+}
+
+function categoryLabel(cat: string): string {
+  const map: Record<string, string> = {
+    hair: 'Волосся', nails: 'Манікюр', face: 'Обличчя', massage: 'Масаж',
+    brows: 'Брови', laser: 'Лазер', skin: 'Шкіра', all: 'Усі категорії',
+  };
+  return map[cat] ?? '';
+}
+
+function pluralMaster(n: number): string {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return 'майстра';
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'майстри';
+  return 'майстрів';
 }

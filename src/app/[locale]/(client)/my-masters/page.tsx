@@ -1,399 +1,410 @@
 /** --- YAML
  * name: ClientMyMastersPage
- * description: Клиентские подписки на мастеров. Salon-aware карточки (solo / salon_with_master) с User/Building2 иконкой, реальные метрики (rating, visit count, next visit, referral bonus), inline unsubscribe через /api/follow/crm/toggle.
+ * description: Мої майстри — 3 вкладки (Усі / Постійні / Останні візити) у стилі
+ *              web-client/my-masters мокапа: hero-метрики, картка з 56px аватаром,
+ *              онлайн-точкою, рейтингом, 3-колоночним блоком статистики та діями.
  * created: 2026-04-12
- * updated: 2026-04-19
+ * updated: 2026-05-17
  * --- */
 
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
-import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import {
-  UserPlus,
-  Star,
-  Calendar,
-  Search,
-  MapPin,
-  Gift,
-  User,
-  Building2,
-  UserMinus,
+  Star, MapPin, User, CalendarPlus, Heart, Zap, Search, UserPlus,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useConfirm } from '@/hooks/use-confirm';
-import { Skeleton } from '@/components/ui/skeleton';
-import { resolveCardDisplay, type SalonRef } from '@/lib/client/display-mode';
+import { cn } from '@/lib/utils';
 
 type SalonEmbed =
-  | { id: string; name: string; logo_url: string | null; city: string | null; rating: number | null }
+  | { id: string; name: string; logo_url: string | null; city: string | null }
   | null;
-
-function unwrapSalon(s: SalonEmbed | SalonEmbed[] | null | undefined): SalonRef | null {
-  if (!s) return null;
-  const obj = Array.isArray(s) ? s[0] ?? null : s;
-  if (!obj) return null;
-  return { id: obj.id, name: obj.name, logo_url: obj.logo_url, city: obj.city, rating: obj.rating };
-}
 
 interface MasterRow {
   id: string;
-  full_name: string | null;
+  slug: string | null;
+  full_name: string;
   avatar_url: string | null;
   specialization: string | null;
   rating: number | null;
+  reviewsCount: number;
   city: string | null;
-  salon_id: string | null;
-  salon: SalonRef | null;
   nextVisit: string | null;
-  lastPost: { title: string | null; image_url: string | null; created_at: string } | null;
-  bonusPoints: number;
   visitCount: number;
-  mutual: boolean;
+  minPrice: number | null;
+  lastVisitAt: string | null;
 }
 
+type Tab = 'all' | 'regular' | 'recent';
+
 export default function MyMastersPage() {
-  const t = useTranslations('clientMyMasters');
-  const tf = useTranslations('followSystem');
-  const tCard = useTranslations('cardLabels');
   const { userId } = useAuthStore();
   const confirm = useConfirm();
   const [masters, setMasters] = useState<MasterRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<Tab>('all');
   const [unsubscribing, setUnsubscribing] = useState<string | null>(null);
-
-  const cardLabels = useMemo(
-    () => ({
-      masterPlaceholder: tCard('masterPlaceholder'),
-      salonPlaceholder: tCard('salonPlaceholder'),
-      managerAssigned: tCard('managerAssigned'),
-    }),
-    [tCard],
-  );
 
   useEffect(() => {
     if (!userId) return;
-    async function load() {
+    let cancelled = false;
+    (async () => {
       const supabase = createClient();
       const { data: links } = await supabase
         .from('client_master_links')
-        .select(
-          'master_id, master_follows_back, masters:masters!client_master_links_master_id_fkey(id, specialization, rating, city, display_name, avatar_url, salon_id, profiles:profiles!masters_profile_id_fkey(id, full_name, avatar_url), salon:salons(id, name, logo_url, city))',
-        )
+        .select('master_id, masters:masters!client_master_links_master_id_fkey(id, slug, invite_code, specialization, rating, city, display_name, avatar_url, profiles:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, city))')
         .eq('profile_id', userId);
 
-      if (links && links.length > 0) {
-        const masterIds = links.map((l: { master_id: string }) => l.master_id);
+      if (cancelled) return;
+      if (!links || links.length === 0) { setMasters([]); setLoading(false); return; }
 
-        const { data: posts } = await supabase
-          .from('feed_posts')
-          .select('master_id, title, image_url, created_at')
-          .in('master_id', masterIds)
-          .order('created_at', { ascending: false });
+      const masterIds = links.map((l) => l.master_id as string);
 
-        const lastPostByMaster = new Map<string, { title: string | null; image_url: string | null; created_at: string }>();
-        posts?.forEach((p: { master_id: string; title: string | null; image_url: string | null; created_at: string }) => {
-          if (!lastPostByMaster.has(p.master_id)) {
-            lastPostByMaster.set(p.master_id, { title: p.title, image_url: p.image_url, created_at: p.created_at });
+      // clients rows for this user mapped to master_id
+      const { data: clientRows } = await supabase
+        .from('clients').select('id, master_id')
+        .eq('profile_id', userId).in('master_id', masterIds);
+      const clientIds = (clientRows ?? []).map((c) => (c as { id: string }).id);
+      const clientMasterMap = new Map<string, string>(
+        (clientRows ?? []).map((c) => [(c as { id: string }).id, (c as { master_id: string }).master_id]),
+      );
+
+      const nextByMaster = new Map<string, string>();
+      const visitsByMaster = new Map<string, number>();
+      const lastVisitByMaster = new Map<string, string>();
+      const minPriceByMaster = new Map<string, number>();
+
+      if (clientIds.length > 0) {
+        const nowIso = new Date().toISOString();
+        const { data: upcoming } = await supabase
+          .from('appointments').select('client_id, master_id, starts_at')
+          .in('client_id', clientIds).gte('starts_at', nowIso)
+          .order('starts_at', { ascending: true });
+        (upcoming ?? []).forEach((a) => {
+          const r = a as { client_id: string; master_id: string | null; starts_at: string };
+          const mId = r.master_id ?? clientMasterMap.get(r.client_id);
+          if (mId && !nextByMaster.has(mId)) nextByMaster.set(mId, r.starts_at);
+        });
+
+        const { data: past } = await supabase
+          .from('appointments').select('client_id, master_id, status, starts_at, price')
+          .in('client_id', clientIds).lt('starts_at', nowIso);
+        (past ?? []).forEach((a) => {
+          const r = a as { client_id: string; master_id: string | null; status: string; starts_at: string; price: number | string | null };
+          if (['cancelled', 'cancelled_by_client', 'cancelled_by_master', 'no_show'].includes(r.status)) return;
+          const mId = r.master_id ?? clientMasterMap.get(r.client_id);
+          if (!mId) return;
+          visitsByMaster.set(mId, (visitsByMaster.get(mId) ?? 0) + 1);
+          const prev = lastVisitByMaster.get(mId);
+          if (!prev || r.starts_at > prev) lastVisitByMaster.set(mId, r.starts_at);
+          if (r.price != null) {
+            const p = Number(r.price);
+            if (p > 0) {
+              const cur = minPriceByMaster.get(mId);
+              if (cur == null || p < cur) minPriceByMaster.set(mId, p);
+            }
           }
         });
-
-        const { data: clientRows } = await supabase
-          .from('clients')
-          .select('id, master_id')
-          .eq('profile_id', userId)
-          .in('master_id', masterIds);
-
-        const clientIds = clientRows?.map((c: { id: string }) => c.id) ?? [];
-        const clientMasterMap = new Map<string, string>(
-          clientRows?.map((c: { id: string; master_id: string }) => [c.id, c.master_id]) ?? [],
-        );
-
-        const nextByMaster = new Map<string, string>();
-        const bonusByMaster = new Map<string, number>();
-        const visitCountByMaster = new Map<string, number>();
-        if (clientIds.length > 0) {
-          const { data: upcoming } = await supabase
-            .from('appointments')
-            .select('client_id, master_id, starts_at')
-            .in('client_id', clientIds)
-            .gte('starts_at', new Date().toISOString())
-            .order('starts_at', { ascending: true });
-
-          upcoming?.forEach((a: { client_id: string; master_id: string; starts_at: string }) => {
-            const mId = a.master_id ?? clientMasterMap.get(a.client_id);
-            if (mId && !nextByMaster.has(mId)) nextByMaster.set(mId, a.starts_at);
-          });
-
-          const { data: past } = await supabase
-            .from('appointments')
-            .select('client_id, master_id, status')
-            .in('client_id', clientIds)
-            .lt('starts_at', new Date().toISOString());
-          past?.forEach((a: { client_id: string; master_id: string; status: string }) => {
-            if (a.status === 'cancelled') return;
-            const mId = a.master_id ?? clientMasterMap.get(a.client_id);
-            if (mId) visitCountByMaster.set(mId, (visitCountByMaster.get(mId) ?? 0) + 1);
-          });
-
-          const { data: refs } = await supabase
-            .from('referrals')
-            .select('referrer_client_id, bonus_points')
-            .in('referrer_client_id', clientIds);
-
-          refs?.forEach((r: { referrer_client_id: string; bonus_points: number | null }) => {
-            const mId = clientMasterMap.get(r.referrer_client_id);
-            if (!mId) return;
-            bonusByMaster.set(mId, (bonusByMaster.get(mId) ?? 0) + (r.bonus_points ?? 0));
-          });
-        }
-
-        const list: MasterRow[] = links
-          .map((row: { master_id: string; master_follows_back: boolean; masters: unknown }) => {
-            const m = row.masters as
-              | {
-                  id?: string;
-                  specialization?: string | null;
-                  rating?: number | null;
-                  city?: string | null;
-                  display_name?: string | null;
-                  avatar_url?: string | null;
-                  salon_id?: string | null;
-                  profiles?: { full_name?: string | null; avatar_url?: string | null } | null;
-                  salon?: SalonEmbed | SalonEmbed[];
-                }
-              | null;
-            if (!m?.id) return null;
-            return {
-              id: m.id,
-              full_name: m.display_name ?? m.profiles?.full_name ?? null,
-              avatar_url: m.avatar_url ?? m.profiles?.avatar_url ?? null,
-              specialization: m.specialization ?? null,
-              rating: m.rating ?? null,
-              city: m.city ?? null,
-              salon_id: m.salon_id ?? null,
-              salon: unwrapSalon(m.salon ?? null),
-              nextVisit: nextByMaster.get(row.master_id) ?? null,
-              lastPost: lastPostByMaster.get(row.master_id) ?? null,
-              bonusPoints: bonusByMaster.get(row.master_id) ?? 0,
-              visitCount: visitCountByMaster.get(row.master_id) ?? 0,
-              mutual: row.master_follows_back ?? false,
-            };
-          })
-          .filter((x): x is MasterRow => x !== null);
-        setMasters(list);
       }
+
+      // Reviews counts
+      const { data: reviewsRows } = await supabase
+        .from('reviews').select('target_id')
+        .eq('target_type', 'master').in('target_id', masterIds);
+      const reviewsByMaster = new Map<string, number>();
+      (reviewsRows ?? []).forEach((r) => {
+        const id = (r as { target_id: string }).target_id;
+        reviewsByMaster.set(id, (reviewsByMaster.get(id) ?? 0) + 1);
+      });
+
+      const list: MasterRow[] = (links.map((row) => {
+        const m = (row as { masters: unknown }).masters as {
+          id?: string;
+          slug?: string | null;
+          invite_code?: string | null;
+          specialization?: string | null;
+          rating?: number | null;
+          city?: string | null;
+          display_name?: string | null;
+          avatar_url?: string | null;
+          profiles?: { full_name?: string | null; avatar_url?: string | null } | null;
+          salon?: SalonEmbed | SalonEmbed[];
+        } | null;
+        if (!m?.id) return null;
+        const salonRaw = Array.isArray(m.salon) ? m.salon[0] : m.salon;
+        return {
+          id: m.id,
+          slug: m.slug ?? m.invite_code ?? m.id ?? null,
+          full_name: (m.display_name ?? m.profiles?.full_name ?? 'Майстер').toString(),
+          avatar_url: m.avatar_url ?? m.profiles?.avatar_url ?? null,
+          specialization: m.specialization ?? null,
+          rating: m.rating ?? null,
+          reviewsCount: reviewsByMaster.get(m.id) ?? 0,
+          city: salonRaw?.city ?? m.city ?? null,
+          nextVisit: nextByMaster.get(m.id) ?? null,
+          visitCount: visitsByMaster.get(m.id) ?? 0,
+          minPrice: minPriceByMaster.get(m.id) ?? null,
+          lastVisitAt: lastVisitByMaster.get(m.id) ?? null,
+        } satisfies MasterRow;
+      }) as Array<MasterRow | null>).filter((x): x is MasterRow => x !== null);
+
+      setMasters(list);
       setLoading(false);
-    }
-    load();
+    })();
+    return () => { cancelled = true; };
   }, [userId]);
 
-  const handleUnsubscribe = useCallback(
-    async (master: MasterRow) => {
-      const displayName = master.full_name || tCard('masterPlaceholder');
-      const ok = await confirm({
-        title: t('confirmUnsubscribeTitle'),
-        description: t('confirmUnsubscribeDesc', { name: displayName }),
-        confirmLabel: t('unsubscribe'),
-        destructive: true,
+  const handleUnsubscribe = useCallback(async (master: MasterRow) => {
+    const ok = await confirm({
+      title: 'Видалити з обраних?',
+      description: `${master.full_name} більше не буде у списку «Мої майстри».`,
+      confirmLabel: 'Видалити',
+      destructive: true,
+    });
+    if (!ok) return;
+    setUnsubscribing(master.id);
+    try {
+      const res = await fetch('/api/follow/crm/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ masterId: master.id }),
       });
-      if (!ok) return;
-
-      setUnsubscribing(master.id);
-      try {
-        const res = await fetch('/api/follow/crm/toggle', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ masterId: master.id }),
-        });
-        const json = (await res.json().catch(() => ({}))) as { following?: boolean; error?: string };
-        if (!res.ok || json.following !== false) {
-          toast.error(t('unsubscribeError'));
-          return;
-        }
-        setMasters((prev) => prev.filter((m) => m.id !== master.id));
-        toast.success(t('unsubscribeSuccess'));
-      } catch {
-        toast.error(t('unsubscribeError'));
-      } finally {
-        setUnsubscribing(null);
+      const json = (await res.json().catch(() => ({}))) as { following?: boolean };
+      if (!res.ok || json.following !== false) {
+        toast.error('Не вдалось видалити'); return;
       }
-    },
-    [confirm, t, tCard],
-  );
+      setMasters((prev) => prev.filter((m) => m.id !== master.id));
+      toast.success('Видалено з обраних');
+    } catch {
+      toast.error('Не вдалось видалити');
+    } finally { setUnsubscribing(null); }
+  }, [confirm]);
+
+  const counts = useMemo(() => {
+    const regular = masters.filter((m) => m.visitCount >= 3);
+    return { all: masters.length, regular: regular.length };
+  }, [masters]);
+
+  const displayed = useMemo(() => {
+    if (tab === 'all') return masters;
+    if (tab === 'regular') return masters.filter((m) => m.visitCount >= 3);
+    return [...masters].sort((a, b) => {
+      const at = a.lastVisitAt ? new Date(a.lastVisitAt).getTime() : 0;
+      const bt = b.lastVisitAt ? new Date(b.lastVisitAt).getTime() : 0;
+      return bt - at;
+    });
+  }, [tab, masters]);
+
+  const todayFreeCount = useMemo(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+    return masters.filter((m) => {
+      if (!m.nextVisit) return false;
+      const v = new Date(m.nextVisit);
+      return v >= today && v < tomorrow;
+    }).length;
+  }, [masters]);
 
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-10 w-60" />
+        <div className="h-10 w-60 animate-pulse rounded bg-muted" />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Skeleton className="h-36 w-full rounded-3xl" />
-          <Skeleton className="h-36 w-full rounded-3xl" />
+          <div className="h-44 animate-pulse rounded-2xl bg-muted" />
+          <div className="h-44 animate-pulse rounded-2xl bg-muted" />
         </div>
       </div>
     );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
-      className="space-y-6"
-    >
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t('desc')}</p>
+    <div className="space-y-6 pb-12">
+      {/* Hero */}
+      <header>
+        <h1 className="text-[28px] font-extrabold tracking-tight">Мої майстри</h1>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          {masters.length} в обраних
+          {todayFreeCount > 0 ? ` · ${todayFreeCount} з вільними слотами сьогодні` : ''}
+        </p>
+      </header>
+
+      {/* 3 tabs */}
+      <div className="inline-flex rounded-full bg-muted p-1">
+        {([
+          ['all', 'Усі', counts.all],
+          ['regular', 'Постійні', counts.regular],
+          ['recent', 'Останні візити', null],
+        ] as const).map(([k, label, count]) => {
+          const active = tab === k;
+          return (
+            <button
+              key={k}
+              onClick={() => setTab(k as Tab)}
+              className={cn(
+                'flex items-center gap-2 rounded-full px-5 py-2 text-[13px] font-semibold transition-colors',
+                active ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {label}
+              {count != null && (
+                <span className={cn(
+                  'rounded-full px-1.5 py-0.5 text-[10px] font-bold',
+                  active ? 'bg-[#2563eb] text-white' : 'bg-muted-foreground/30 text-muted-foreground',
+                )}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
-      {masters.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-3xl border border-border/60 bg-card p-16 text-center">
-          <div className="flex size-20 items-center justify-center rounded-full bg-[var(--ds-accent)]/10 text-[var(--ds-accent)]">
-            <UserPlus className="size-10" />
-          </div>
-          <p className="mt-6 text-xl font-semibold">{t('emptyTitle')}</p>
-          <p className="mt-2 max-w-sm text-sm text-muted-foreground">{t('emptyDesc')}</p>
-          <Link
-            href="/search"
-            className="mt-6 inline-flex items-center gap-2 rounded-[var(--radius-button)] bg-[var(--ds-accent)] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--ds-accent-hover)]"
-          >
-            <Search className="size-4" />
-            {t('findMaster')}
-          </Link>
-        </div>
+      {displayed.length === 0 ? (
+        <EmptyState />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {masters.map((m, idx) => {
-            const masterRef = {
-              id: m.id,
-              display_name: m.full_name,
-              avatar_url: m.avatar_url,
-              specialization: m.specialization,
-              rating: m.rating,
-              salon_id: m.salon_id,
-            };
-            const d = resolveCardDisplay(masterRef, m.salon, cardLabels);
-            const cover = m.lastPost?.image_url ?? null;
-            const Icon = d.mode === 'solo' ? User : Building2;
-            const isBusy = unsubscribing === m.id;
-            return (
-              <motion.div
-                key={m.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.04, duration: 0.25 }}
-                className="group/master overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[var(--shadow-card)] transition-all hover:-translate-y-1 hover:shadow-[var(--shadow-elevated)] hover:border-[var(--ds-accent)]/40"
-              >
-                {/* Cover */}
-                <Link href={`/masters/${m.id}`} className="relative block h-32 w-full overflow-hidden">
-                  {cover ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={cover} alt="" className="size-full object-cover transition-transform duration-500 group-hover/master:scale-105" />
-                  ) : (
-                    <div className="size-full bg-gradient-to-br from-blue-500 via-blue-600 to-emerald-600" />
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                  {m.bonusPoints > 0 && (
-                    <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
-                      <Gift className="size-3 text-amber-300" />
-                      {m.bonusPoints}
-                    </div>
-                  )}
-                </Link>
-
-                {/* Body */}
-                <div className="relative px-5 pb-5">
-                  {/* Avatar overlap */}
-                  <div className="-mt-10 flex justify-start">
-                    <Link href={`/masters/${m.id}`}>
-                      <div className="flex size-20 items-center justify-center overflow-hidden rounded-full bg-card text-2xl font-bold text-[var(--ds-accent)] ring-4 ring-card shadow-md">
-                        {d.avatarSrc ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={d.avatarSrc} alt={d.avatarName} className="size-full object-cover" />
-                        ) : (
-                          (d.avatarName || 'M')[0].toUpperCase()
-                        )}
-                      </div>
-                    </Link>
-                  </div>
-
-                  {/* Name + meta */}
-                  <div className="mt-2">
-                    <Link href={`/masters/${m.id}`} className="block">
-                      <div className="flex items-center gap-1.5">
-                        <Icon className="size-3.5 shrink-0 text-muted-foreground" />
-                        <p className="truncate text-base font-semibold leading-snug">{d.primary}</p>
-                        {m.mutual && (
-                          <span className="shrink-0 rounded-full bg-[var(--ds-accent)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--ds-accent)]">
-                            {tf('mutual')}
-                          </span>
-                        )}
-                      </div>
-                      {d.secondary && (
-                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{d.secondary}</p>
-                      )}
-                    </Link>
-                    <div className="mt-1.5 flex items-center gap-3 text-[11px]">
-                      {d.rating != null && (
-                        <span className="flex items-center gap-1">
-                          <Star className="size-3 fill-amber-400 stroke-amber-400" />
-                          <span className="font-medium">{d.rating.toFixed(1)}</span>
-                        </span>
-                      )}
-                      {m.city && (
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          <MapPin className="size-3" />
-                          {m.city}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Visit count + next visit */}
-                  <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl border border-border/60 bg-muted/30 p-3">
-                    <div className="text-center">
-                      <p className="text-lg font-bold tabular-nums">{m.visitCount}</p>
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('visitsWithYou')}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="truncate text-xs font-semibold tabular-nums">
-                        {m.nextVisit
-                          ? new Date(m.nextVisit).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
-                          : '—'}
-                      </p>
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('nextVisit')}</p>
-                    </div>
-                  </div>
-
-                  {/* Actions: Book + Unsubscribe */}
-                  <div className="mt-4 flex gap-2">
-                    <Link
-                      href={`/book?master_id=${m.id}`}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-[var(--radius-button)] bg-[var(--ds-accent)] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--ds-accent-hover)]"
-                    >
-                      <Calendar className="size-4" />
-                      {t('quickBook')}
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => handleUnsubscribe(m)}
-                      disabled={isBusy}
-                      aria-label={t('unsubscribe')}
-                      className="flex size-10 items-center justify-center rounded-[var(--radius-button)] border border-border/60 bg-background text-muted-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                    >
-                      <UserMinus className="size-4" />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
+          {displayed.map((m) => (
+            <MasterCard
+              key={m.id}
+              m={m}
+              busy={unsubscribing === m.id}
+              onUnfollow={() => handleUnsubscribe(m)}
+            />
+          ))}
         </div>
       )}
-    </motion.div>
+    </div>
+  );
+}
+
+function MasterCard({ m, busy, onUnfollow }: { m: MasterRow; busy: boolean; onUnfollow: () => void }) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+  const next = m.nextVisit ? new Date(m.nextVisit) : null;
+  const isOnlineToday = next && next >= today && next < tomorrow;
+  const nextTime = next ? `${next.getHours().toString().padStart(2, '0')}:${next.getMinutes().toString().padStart(2, '0')}` : null;
+
+  return (
+    <div className={cn(
+      'flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-[#2563eb]/40 hover:shadow-md',
+      busy && 'opacity-60 pointer-events-none',
+    )}>
+      {/* Head */}
+      <div className="flex items-center gap-3.5">
+        <div className="relative shrink-0">
+          {m.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={m.avatar_url}
+              alt={m.full_name}
+              className="size-14 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex size-14 items-center justify-center rounded-full bg-[#2563eb]/12 text-[18px] font-extrabold text-[#2563eb]">
+              {initials(m.full_name)}
+            </div>
+          )}
+          {isOnlineToday && (
+            <span className="absolute bottom-0.5 right-0.5 size-3.5 rounded-full border-[2.5px] border-card bg-emerald-500" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[15px] font-bold text-foreground">{m.full_name}</div>
+          {m.specialization && (
+            <div className="mt-0.5 truncate text-[12px] text-muted-foreground">{m.specialization}</div>
+          )}
+          <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground/80">
+            <span className="inline-flex items-center gap-1">
+              <Star className="size-3 fill-amber-400 text-amber-400" />
+              <strong className="text-foreground">{m.rating ? m.rating.toFixed(1) : '—'}</strong>
+              {m.reviewsCount > 0 ? ` · ${m.reviewsCount}` : ''}
+            </span>
+            {m.city && (
+              <>
+                <span>·</span>
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="size-3" /> {m.city}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={onUnfollow}
+          aria-label="Прибрати з обраних"
+          className="flex size-9 shrink-0 items-center justify-center rounded-full border border-red-400/50 bg-red-500/10 text-red-500 transition-colors hover:bg-red-500/20"
+        >
+          <Heart className="size-4 fill-current" />
+        </button>
+      </div>
+
+      {/* Free slot today */}
+      {isOnlineToday && nextTime && (
+        <div className="flex items-center gap-1.5 rounded-xl bg-[#2563eb]/12 px-3 py-2 text-[12px] font-semibold text-[#2563eb]">
+          <Zap className="size-3.5" /> Сьогодні запис о {nextTime}
+        </div>
+      )}
+
+      {/* 3-col stats */}
+      <div className="grid grid-cols-3 gap-2 border-y border-border py-3">
+        <Stat n={m.visitCount.toString()} label="Візитів" />
+        <Stat n={m.minPrice != null ? `₴${Math.round(m.minPrice)}` : '—'} label="Від" />
+        <Stat n={isOnlineToday ? 'Є' : '—'} label="Слотів" />
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-1.5">
+        <Link
+          href={`/m/${m.slug}`}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] border border-border bg-card py-2.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:bg-muted"
+        >
+          <User className="size-3.5" /> Сторінка
+        </Link>
+        <Link
+          href={`/book?master=${m.id}`}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] bg-[#2563eb] py-2.5 text-[12px] font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
+        >
+          <CalendarPlus className="size-3.5" /> Записатись
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ n, label }: { n: string; label: string }) {
+  return (
+    <div className="text-center">
+      <div className="text-[15px] font-extrabold tabular-nums text-foreground">{n}</div>
+      <div className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">{label}</div>
+    </div>
+  );
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).slice(0, 2);
+  return parts.map((p) => p.charAt(0).toUpperCase()).join('') || '?';
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center rounded-3xl border border-dashed border-border bg-card/50 p-14 text-center">
+      <div className="flex size-16 items-center justify-center rounded-full bg-[#2563eb]/12 text-[#2563eb]">
+        <UserPlus className="size-7" />
+      </div>
+      <p className="mt-5 text-[16px] font-semibold">Поки немає улюблених майстрів</p>
+      <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
+        Додавай мастерів у обрані — будеш бачити їх найближчі вікна, акції та зможеш записуватись в один клік.
+      </p>
+      <Link
+        href="/search"
+        className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-[#2563eb] px-5 py-2.5 text-[13px] font-semibold text-white hover:bg-[#1d4ed8]"
+      >
+        <Search className="size-4" /> Знайти майстра
+      </Link>
+    </div>
   );
 }

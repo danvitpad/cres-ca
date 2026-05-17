@@ -11,12 +11,18 @@ type CS = NonNullable<typeof window extends object ? { Telegram?: { WebApp?: { C
 
 function cs() {
   if (typeof window === 'undefined') return null;
-  return (window as { Telegram?: { WebApp?: { CloudStorage?: {
+  const w = window as { Telegram?: { WebApp?: { initData?: string; CloudStorage?: {
     getItem(key: string, cb: (err: string | null, val: string) => void): void;
     setItem(key: string, val: string, cb?: (err: string | null, ok: boolean) => void): void;
     removeItem(key: string, cb?: (err: string | null, ok: boolean) => void): void;
     getItems(keys: string[], cb: (err: string | null, vals: Record<string, string>) => void): void;
-  } } } }).Telegram?.WebApp?.CloudStorage ?? null;
+  } } } };
+  // Real Telegram only — mock SDK в обычном Chrome spam-логирует
+  // "CloudStorage is not supported in version 6.0", поэтому без initData
+  // используем localStorage (mobile-web вне Telegram).
+  const initData = w.Telegram?.WebApp?.initData ?? '';
+  if (!initData) return null;
+  return w.Telegram?.WebApp?.CloudStorage ?? null;
 }
 
 export function csGet(key: string): Promise<string | null> {
