@@ -1418,3 +1418,98 @@
 .od-client-mini-app .mc-free-off {
   display: inline-block; color: var(--fg-3); font-weight: 600;
 }
+
+/* ════════ PROFILE ════════ */
+
+/* Profile header */
+.od-client-mini-app .mp-hd {
+  position: relative; padding: 18px 20px 8px; text-align: center;
+}
+.od-client-mini-app .mp-edit {
+  position: absolute; top: 18px; right: 20px;
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--bg); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent); cursor: pointer; text-decoration: none;
+}
+.od-client-mini-app .mp-edit svg { width: 16px; height: 16px; }
+.od-client-mini-app .mp-av {
+  width: 96px; height: 96px; border-radius: 50%;
+  background: var(--accent-2); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 34px;
+  margin: 0 auto 12px; overflow: hidden;
+}
+.od-client-mini-app .mp-name {
+  font-size: 22px; font-weight: 800;
+  letter-spacing: -.01em; color: var(--fg);
+}
+.od-client-mini-app .mp-phone {
+  font-size: 13px; color: var(--fg-2); margin-top: 4px;
+}
+
+/* Stats card (3 cols with vertical dividers) */
+.od-client-mini-app .mp-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  align-items: center; margin: 18px 16px 12px;
+  padding: 14px 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; position: relative;
+}
+.od-client-mini-app .mp-stats > div {
+  text-align: center; position: relative;
+}
+.od-client-mini-app .mp-stats > div + div::before {
+  content: ''; position: absolute;
+  top: 18px; bottom: 18px; left: 0;
+  width: 1px; background: var(--border);
+}
+.od-client-mini-app .mp-stat-n {
+  font-size: 22px; font-weight: 800;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+.od-client-mini-app .mp-stat-l {
+  font-size: 11px; color: var(--fg-3);
+  text-transform: uppercase; letter-spacing: .04em; margin-top: 6px;
+}
+
+/* Menu list */
+.od-client-mini-app .mp-menu {
+  margin: 0 16px 12px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; overflow: hidden;
+}
+.od-client-mini-app .mp-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; text-decoration: none;
+  color: var(--fg);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  background: transparent;
+  border-left: none; border-right: none; border-top: none;
+  width: 100%; font-family: inherit;
+  font-size: 14px; text-align: left;
+}
+.od-client-mini-app .mp-row:last-child { border-bottom: none; }
+.od-client-mini-app .mp-row:hover { background: var(--bg); }
+.od-client-mini-app .mp-row:disabled { opacity: 0.5; cursor: wait; }
+.od-client-mini-app .mp-row-i {
+  width: 40px; height: 40px; border-radius: 12px;
+  background: var(--accent-2); color: var(--accent);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.od-client-mini-app .mp-row-i svg { width: 18px; height: 18px; }
+.od-client-mini-app .mp-row-l {
+  flex: 1; font-size: 14px; font-weight: 600; color: var(--fg);
+}
+.od-client-mini-app .mp-row-c {
+  font-size: 13px; color: var(--fg-3); margin-right: 4px;
+}
+.od-client-mini-app .mp-row-arr { color: var(--fg-3); display: flex; }
+.od-client-mini-app .mp-row-arr svg { width: 16px; height: 16px; }
+.od-client-mini-app .mp-row.danger { color: #ef4444; }
+.od-client-mini-app .mp-row.danger .mp-row-i {
+  background: rgba(239, 68, 68, 0.10); color: #ef4444;
+}
+.od-client-mini-app .mp-row.danger .mp-row-l { color: #ef4444; }
