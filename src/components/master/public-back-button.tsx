@@ -101,7 +101,9 @@ export function PublicBackButton({ masterProfileId }: { masterProfileId?: string
       title={isOwner ? 'Вернуться в кабинет' : 'Назад'}
       style={{
         position: 'fixed',
-        top: 'max(env(safe-area-inset-top, 0px), 12px)',
+        // Опускаем ниже TG controls (Close/Menu). На обычном вебе safe-area = 0,
+        // плюс 12px паддинг сверху. В TG WebApp safe-area + еще 56px на TG header.
+        top: 'calc(max(var(--tg-safe-top, 0px), env(safe-area-inset-top, 0px)) + 56px)',
         left: 12,
         zIndex: 50,
         width: 40,
