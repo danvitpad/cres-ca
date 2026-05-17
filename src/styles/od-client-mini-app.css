@@ -1513,3 +1513,69 @@
   background: rgba(239, 68, 68, 0.10); color: #ef4444;
 }
 .od-client-mini-app .mp-row.danger .mp-row-l { color: #ef4444; }
+
+/* ════════ PROFILE EDIT ════════ */
+
+/* Back + title + save */
+.od-client-mini-app .mpe-back {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px;
+}
+.od-client-mini-app .mpe-back-a {
+  display: inline-flex; align-items: center; gap: 10px;
+  text-decoration: none; color: var(--fg);
+  background: transparent; border: none; cursor: pointer;
+  font-family: inherit; padding: 0;
+}
+.od-client-mini-app .mpe-back-a svg { width: 20px; height: 20px; }
+.od-client-mini-app .mpe-back-t { font-size: 16px; font-weight: 700; }
+.od-client-mini-app .mpe-save {
+  padding: 8px 18px; border-radius: 9999px;
+  background: var(--accent); color: #fff; border: none;
+  font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+.od-client-mini-app .mpe-save:disabled { opacity: 0.7; cursor: wait; }
+
+/* Avatar */
+.od-client-mini-app .mpe-av-wrap { text-align: center; padding: 8px 0 18px; }
+.od-client-mini-app .mpe-av {
+  width: 104px; height: 104px; border-radius: 50%;
+  background: var(--accent-2); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 38px;
+  margin: 0 auto 10px; position: relative; overflow: visible;
+}
+.od-client-mini-app .mpe-av img { border-radius: 50%; }
+.od-client-mini-app .mpe-av-cam {
+  position: absolute; bottom: 4px; right: 4px;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  border: 3px solid var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.od-client-mini-app .mpe-av-cam:disabled { opacity: 0.7; cursor: wait; }
+.od-client-mini-app .mpe-av-cam svg { width: 14px; height: 14px; }
+
+/* Form card */
+.od-client-mini-app .mpe-card {
+  margin: 0 16px 12px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 14px 16px;
+}
+.od-client-mini-app .mpe-fld {
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.od-client-mini-app .mpe-fld:last-child { border-bottom: none; }
+.od-client-mini-app .mpe-fl {
+  font-size: 11px; font-weight: 600; color: var(--fg-2);
+  margin-bottom: 5px; display: block;
+}
+.od-client-mini-app .mpe-fi {
+  width: 100%; border: none; outline: none;
+  font-size: 14px; font-family: inherit;
+  background: transparent; color: var(--fg);
+  padding: 2px 0;
+}
+.od-client-mini-app .mpe-fi:disabled { color: var(--fg-3); cursor: not-allowed; }
