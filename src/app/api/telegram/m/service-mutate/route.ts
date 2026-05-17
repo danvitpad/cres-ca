@@ -94,18 +94,31 @@ export async function POST(request: Request) {
 
   // Helper: синхронизирует service_materials = полная замена. Возвращает error
   // строку если что-то пошло не так. Materials с qty<=0 пропускаются (deletion).
+  //
+  // service_materials.unit — NOT NULL колонка без default. Тянем unit из
+  // inventory_items per material_id, иначе INSERT валится на null-constraint.
   async function syncMaterials(serviceId: string): Promise<string | null> {
     if (!Array.isArray(body.materials)) return null;
     const { error: delErr } = await admin.from('service_materials').delete().eq('service_id', serviceId);
     if (delErr) return delErr.message;
-    const rows = body.materials
-      .filter((m) => m && m.material_id && Number(m.quantity) > 0)
-      .map((m) => ({
-        service_id: serviceId,
-        material_id: m.material_id,
-        quantity: Number(m.quantity),
-      }));
-    if (rows.length === 0) return null;
+    const filtered = body.materials.filter((m) => m && m.material_id && Number(m.quantity) > 0);
+    if (filtered.length === 0) return null;
+    // Fetch units из inventory_items для всех материалов одним запросом.
+    const ids = filtered.map((m) => m.material_id);
+    const { data: invItems } = await admin
+      .from('inventory_items')
+      .select('id, unit')
+      .in('id', ids);
+    const unitById = new Map<string, string>();
+    ((invItems ?? []) as Array<{ id: string; unit: string | null }>).forEach((r) => {
+      unitById.set(r.id, r.unit ?? 'шт');
+    });
+    const rows = filtered.map((m) => ({
+      service_id: serviceId,
+      material_id: m.material_id,
+      quantity: Number(m.quantity),
+      unit: unitById.get(m.material_id) ?? 'шт',  // fallback на «шт» если material удалён
+    }));
     const { error: insErr } = await admin.from('service_materials').insert(rows);
     return insErr?.message ?? null;
   }

@@ -152,7 +152,10 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
       >
         <main
           style={{
-            paddingTop: 'var(--tg-content-top, 0px)',
+            // Если TG не выставил --tg-content-top (compact mode без fullscreen),
+            // берём env(safe-area-inset-top) от iOS — даёт высоту notch+бара,
+            // достаточную чтобы контент не залезал под TG Close-кнопку.
+            paddingTop: 'max(var(--tg-content-top, 0px), env(safe-area-inset-top, 0px))',
             paddingBottom: isFullscreen
               ? 'max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px))'
               : 'calc(81px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',

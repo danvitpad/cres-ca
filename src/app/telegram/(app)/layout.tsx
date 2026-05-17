@@ -97,7 +97,7 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
       >
         <main
           style={{
-            paddingTop: 'var(--tg-content-top, 0px)',
+            paddingTop: 'max(var(--tg-content-top, 0px), env(safe-area-inset-top, 0px))',
             // Bottom nav — это floating pill (bottom: 12px + ~64px высота).
             // Раньше padding был 96px — последний ряд карточек залезал под
             // nav, юзер не видел нижнюю часть «Топ категории». Бампаем до
