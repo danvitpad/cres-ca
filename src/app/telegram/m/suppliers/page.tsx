@@ -419,7 +419,11 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
         style={{
           width: '100%', maxWidth: 480,
           borderRadius: `${R.lg}px ${R.lg}px 0 0`,
-          background: T.surface,
+          // В dark T.bg = #141417 = цвет страницы; T.surface = #1a1a1d на тон
+          // светлее — был виден visible step между затемнённым backdrop'ом и
+          // шторкой. Используем T.bg, чтобы фон шторки совпадал со страницей
+          // под backdrop'ом (в light оба одинаково #fff — без эффекта).
+          background: T.bg,
           padding: 0,
           paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
           boxShadow: SHADOW.elevated,
@@ -432,7 +436,7 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: `18px ${PAGE_PADDING_X}px 14px`,
           position: 'sticky', top: 0, zIndex: 1,
-          background: T.surface,
+          background: T.bg,
         }}>
           <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>
             {mode === 'create' ? t.sheetCreate : t.sheetEdit}
