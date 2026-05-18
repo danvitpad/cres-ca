@@ -8,8 +8,28 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { tg, haptic as hapticApi, getTelegramUser } from '@/lib/telegram/webapp';
+
+/** Корневые маршруты (табы) — на них кнопка «Назад» не показывается. На всех
+ *  остальных страницах появляется нативная TG BackButton в шапке Telegram. */
+const ROOT_PATHS: ReadonlySet<string> = new Set([
+  // Master tabs
+  '/telegram/m/home',
+  '/telegram/m/calendar',
+  '/telegram/m/finance',
+  '/telegram/m/more',
+  // Client tabs
+  '/telegram/home',
+  '/telegram/search',
+  '/telegram/activity',
+  '/telegram/profile',
+  // Auth / точки входа — оттуда back некуда (Close сам по себе достаточен)
+  '/telegram',
+  '/telegram/welcome',
+  '/telegram/login',
+  '/telegram/register',
+]);
 
 interface TgUser {
   id: number;
@@ -38,6 +58,7 @@ export function useTelegram() {
 
 export function TelegramProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<TgUser | null>(null);
 
@@ -140,6 +161,19 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
     webapp.BackButton.onClick(handler);
     return () => webapp.BackButton.offClick(handler);
   }, [router]);
+
+  // Показываем нативную TG BackButton везде кроме корневых табов и экранов
+  // входа. На корневых маршрутах прячем — иначе из «Главной» некуда возвращаться.
+  // TG сам рисует стрелку в своей шапке слева от Close, как у @wallet.
+  useEffect(() => {
+    const webapp = tg();
+    if (!webapp || !pathname) return;
+    const isRoot = ROOT_PATHS.has(pathname);
+    try {
+      if (isRoot) webapp.BackButton.hide();
+      else webapp.BackButton.show();
+    } catch { /* ignore — старые версии TG не поддерживают */ }
+  }, [pathname]);
 
   const haptic = useCallback<TelegramContextValue['haptic']>((type = 'light') => {
     try {
