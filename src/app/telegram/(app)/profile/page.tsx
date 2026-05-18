@@ -87,26 +87,37 @@ export default function MiniAppProfilePage() {
     if (!userId) return;
     let cancelled = false;
     (async () => {
-      const supabase = createClient();
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('full_name, first_name, last_name, phone, avatar_url')
-        .eq('id', userId)
-        .maybeSingle();
-      if (cancelled) return;
-      if (prof) {
-        const p = prof as { full_name: string | null; first_name: string | null; last_name: string | null; phone: string | null; avatar_url: string | null };
-        // Чистое склеивание first+last — если оба null, fallback на full_name.
-        const composed = [p.first_name, p.last_name].filter(Boolean).join(' ').trim();
-        const fullName = composed || p.full_name || t.user;
-        setProfile({
-          full_name: fullName,
-          phone: p.phone,
-          avatar_url: p.avatar_url,
+      // Тянем профиль через API endpoint — поддерживает Telegram initData auth,
+      // не зависит от Supabase cookie которой нет в Mini App контексте.
+      const initData: string = (() => {
+        try {
+          const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+          return w.Telegram?.WebApp?.initData ?? '';
+        } catch { return ''; }
+      })();
+      try {
+        const res = await fetch('/api/profile', {
+          headers: initData ? { 'X-TG-Init-Data': initData } : {},
         });
-      }
+        if (res.ok && !cancelled) {
+          const p = await res.json() as {
+            full_name: string | null; first_name: string | null; last_name: string | null;
+            phone: string | null; avatar_url: string | null;
+          };
+          const composed = [p.first_name, p.last_name].filter(Boolean).join(' ').trim();
+          const fullName = composed || p.full_name || t.user;
+          setProfile({
+            full_name: fullName,
+            phone: p.phone,
+            avatar_url: p.avatar_url,
+          });
+        }
+      } catch { /* offline-tolerant */ }
+      if (cancelled) return;
 
-      // Stats: completed visits + unique masters + total spent
+      // Stats: completed visits + unique masters + total spent — клиентские
+      // RLS-политики на appointments допускают чтение через client_id, ок.
+      const supabase = createClient();
       const { data: clientRows } = await supabase
         .from('clients').select('id').eq('profile_id', userId);
       const clientIds = (clientRows ?? []).map((c) => (c as { id: string }).id);

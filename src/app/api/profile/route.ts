@@ -1,12 +1,13 @@
 /** --- YAML
- * name: Profile Edit API
- * description: PATCH {fullName?, bio?, slug?, avatarUrl?, phone?, email?, password?}
- *              — обновляет профиль. Поддерживает 2 источника auth:
- *                - Supabase cookie session (web)
- *                - Telegram initData (Mini App, через resolveUserId)
- *              Email/password можно менять только cookie-сессией (требуется
- *              supabase.auth.updateUser). Для TG-юзеров email/password
- *              не доступны — отдельный flow.
+ * name: Profile API (GET + PATCH)
+ * description: GET → читает profile по userId (cookie или initData), отдаёт
+ *              full_name + first_name + last_name + phone + email + date_of_birth +
+ *              avatar_url + bio + slug.
+ *              PATCH {fullName?, firstName?, lastName?, dateOfBirth?, bio?, slug?,
+ *              avatarUrl?, phone?, email?, password?} — обновляет профиль.
+ *              Email/password можно менять только cookie-сессией.
+ *              Для Mini App клиенты передают X-TG-Init-Data header.
+ * updated: 2026-05-18 (+ GET + first_name/last_name/date_of_birth)
  * --- */
 
 import { NextResponse } from 'next/server';
@@ -24,6 +25,45 @@ function admin() {
   );
 }
 
+export async function GET(req: Request) {
+  const supabase = await createClient();
+  const { data: { user: cookieUser } } = await supabase.auth.getUser();
+  const userId = cookieUser?.id ?? await resolveUserId(req);
+  if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const { data } = await admin()
+    .from('profiles')
+    .select('full_name, first_name, last_name, phone, avatar_url, date_of_birth, bio, slug, role')
+    .eq('id', userId)
+    .maybeSingle();
+
+  const p = (data ?? null) as {
+    full_name: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    phone: string | null;
+    avatar_url: string | null;
+    date_of_birth: string | null;
+    bio: string | null;
+    slug: string | null;
+    role: string | null;
+  } | null;
+
+  return NextResponse.json({
+    id: userId,
+    email: cookieUser?.email ?? null,
+    full_name: p?.full_name ?? null,
+    first_name: p?.first_name ?? null,
+    last_name: p?.last_name ?? null,
+    phone: p?.phone ?? null,
+    avatar_url: p?.avatar_url ?? null,
+    date_of_birth: p?.date_of_birth ?? null,
+    bio: p?.bio ?? null,
+    slug: p?.slug ?? null,
+    role: p?.role ?? 'client',
+  });
+}
+
 export async function PATCH(req: Request) {
   // Сначала пробуем cookie session — она нужна для password/email update'ов
   const supabase = await createClient();
@@ -36,6 +76,9 @@ export async function PATCH(req: Request) {
   // Тело можем прочитать только один раз — resolveUserId clone'ит, мы напрямую
   const body = (await req.json().catch(() => ({}))) as {
     fullName?: string;
+    firstName?: string;
+    lastName?: string;
+    dateOfBirth?: string;
     bio?: string;
     slug?: string;
     avatarUrl?: string;
@@ -61,7 +104,13 @@ export async function PATCH(req: Request) {
   }
 
   const update: Record<string, unknown> = {};
-  if (typeof body.fullName === 'string' && body.fullName.trim()) update.full_name = body.fullName.trim();
+  if (typeof body.fullName === 'string') update.full_name = body.fullName.trim() || null;
+  if (typeof body.firstName === 'string') update.first_name = body.firstName.trim() || null;
+  if (typeof body.lastName === 'string') update.last_name = body.lastName.trim() || null;
+  if (typeof body.dateOfBirth === 'string') {
+    const d = body.dateOfBirth.trim();
+    update.date_of_birth = d ? d : null;
+  }
   if (typeof body.bio === 'string') update.bio = body.bio.slice(0, 280);
   if (typeof body.avatarUrl === 'string') update.avatar_url = body.avatarUrl;
 

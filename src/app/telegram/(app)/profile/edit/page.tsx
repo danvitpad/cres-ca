@@ -82,26 +82,35 @@ export default function MiniAppProfileEditPage() {
     if (!userId) { setLoading(false); return; }
     let cancelled = false;
     (async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('full_name, first_name, last_name, phone, avatar_url, date_of_birth')
-        .eq('id', userId)
-        .maybeSingle();
-      if (cancelled) return;
-      if (prof) {
-        const p = prof as { full_name: string | null; first_name: string | null; last_name: string | null; phone: string | null; avatar_url: string | null; date_of_birth: string | null };
-        const fn = p.first_name ?? (p.full_name ?? '').split(' ')[0] ?? '';
-        const ln = p.last_name ?? (p.full_name ?? '').split(' ').slice(1).join(' ') ?? '';
-        setFirstName(fn);
-        setLastName(ln);
-        setPhone(p.phone ?? '');
-        setDob(p.date_of_birth ?? '');
-        setAvatarUrl(p.avatar_url);
-      }
-      setEmail(user?.email ?? '');
-      setLoading(false);
+      // Через API endpoint — работает и в Mini App (initData) и в web (cookie).
+      // Раньше прямой Supabase client возвращал null когда нет cookie session.
+      const initData: string = (() => {
+        try {
+          const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+          return w.Telegram?.WebApp?.initData ?? '';
+        } catch { return ''; }
+      })();
+      try {
+        const res = await fetch('/api/profile', {
+          headers: initData ? { 'X-TG-Init-Data': initData } : {},
+        });
+        if (res.ok && !cancelled) {
+          const p = await res.json() as {
+            email: string | null;
+            full_name: string | null; first_name: string | null; last_name: string | null;
+            phone: string | null; avatar_url: string | null; date_of_birth: string | null;
+          };
+          const fn = p.first_name ?? (p.full_name ?? '').split(' ')[0] ?? '';
+          const ln = p.last_name ?? (p.full_name ?? '').split(' ').slice(1).join(' ') ?? '';
+          setFirstName(fn);
+          setLastName(ln);
+          setPhone(p.phone ?? '');
+          setDob(p.date_of_birth ?? '');
+          setAvatarUrl(p.avatar_url);
+          setEmail(p.email ?? '');
+        }
+      } catch { /* offline-tolerant */ }
+      if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [userId]);
@@ -111,19 +120,28 @@ export default function MiniAppProfileEditPage() {
     setSaving(true);
     haptic('selection');
     try {
-      const supabase = createClient();
+      const initData: string = (() => {
+        try {
+          const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+          return w.Telegram?.WebApp?.initData ?? '';
+        } catch { return ''; }
+      })();
       const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: fullName || null,
-          first_name: firstName.trim() || null,
-          last_name: lastName.trim() || null,
-          phone: phone.trim() || null,
-          date_of_birth: dob || null,
-        })
-        .eq('id', userId);
-      if (error) {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+        },
+        body: JSON.stringify({
+          fullName: fullName || '',
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          phone: phone.trim(),
+          dateOfBirth: dob || '',
+        }),
+      });
+      if (!res.ok) {
         haptic('error');
         alert(t.saveError);
         return;
