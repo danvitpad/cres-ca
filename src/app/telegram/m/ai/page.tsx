@@ -11,6 +11,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { Bot, Send, Trash2, Lightbulb, Receipt, Bell, BarChart3, Users, Clock as ClockIcon } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
@@ -104,7 +105,10 @@ export default function MasterMiniAppAI() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -299,9 +303,12 @@ export default function MasterMiniAppAI() {
           )}
         </div>
 
-        {/* Input — fixed снизу. Когда поле в фокусе (открыта клавиатура) — прижимаемся
-            к низу viewport (iOS сам приподнимет visual viewport над клавиатурой).
-            Когда не в фокусе — поднимаемся над bottom-nav (81px) с safe-area. */}
+      </motion.div>
+      {/* Input — рендерим через portal в document.body, иначе PageTransition
+          оборачивает страницу в transform-motion.div и position:fixed
+          захватывается в transformed parent (привязывается не к viewport,
+          а к границам transition-области → поле уплывает в центр экрана). */}
+      {mounted && createPortal(
         <div
           style={{
             position: 'fixed',
@@ -362,8 +369,9 @@ export default function MasterMiniAppAI() {
           >
             <Send size={16} />
           </button>
-        </div>
-      </motion.div>
+        </div>,
+        document.body
+      )}
     </MobilePage>
   );
 }
