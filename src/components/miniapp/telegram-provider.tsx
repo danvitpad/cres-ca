@@ -50,13 +50,19 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       const root = document.documentElement;
       const csa = webapp.contentSafeAreaInset ?? { top: 0, bottom: 0, left: 0, right: 0 };
       const sa = webapp.safeAreaInset ?? { top: 0, bottom: 0, left: 0, right: 0 };
-      // В fullscreen-режиме Telegram возвращает contentSafeAreaInset.top = 0
-      // (своего хедера нет), НО кнопки «Закрыть» / стрелка / меню плавают
-      // поверх контента в верхнем углу — заголовки страниц залезают под них.
-      // Резервируем safeAreaInset.top (статусбар) + 56px на плавающие кнопки.
+      // Глобальное правило мини-аппа (мастер + клиент): контент должен лежать
+      // на пару пикселей ниже плавающих нативных кнопок Telegram (Закрыть /
+      // стрелка / меню). В compact iOS Telegram эти pill-кнопки плавают
+      // поверх — contentSafeAreaInset.top их не учитывает и контент залезает
+      // прямо под них. В fullscreen своего хедера нет, но pill'ы те же.
+      // Резервируем высоту pill-кнопок (≈48px) + 8px воздуха в обоих режимах.
       const w = webapp as unknown as { isExpanded?: boolean; isFullscreen?: boolean };
       const isFullscreen = w.isFullscreen === true;
-      const topInset = isFullscreen ? sa.top + 56 : csa.top;
+      const CHROME_PILL = 48; // высота плавающих кнопок Telegram
+      const SAFE_GAP = 8;     // воздух между pill'ами и контентом
+      const topInset = isFullscreen
+        ? sa.top + CHROME_PILL + SAFE_GAP
+        : Math.max(csa.top, sa.top + CHROME_PILL) + SAFE_GAP;
       root.style.setProperty('--tg-content-top', `${topInset}px`);
       root.style.setProperty('--tg-content-bottom', `${csa.bottom}px`);
       root.style.setProperty('--tg-safe-top', `${sa.top}px`);
