@@ -14,7 +14,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, Loader2, X, Check, MessageSquare, Plus, RotateCcw,
+  Loader2, X, Check, MessageSquare, Plus, RotateCcw,
   Bell, Clock, Star, Heart, Gauge, Cake,
   CheckCircle2, CalendarClock, XCircle,
 } from 'lucide-react';
@@ -251,21 +251,6 @@ export default function MasterMiniAppTemplates() {
 
   return (
     <MobilePage className="od-master-templates">
-      <div style={{ padding: `12px ${PAGE_PADDING_X}px 0`, ...FONT_BASE }}>
-        <button
-          type="button"
-          onClick={() => { haptic('light'); router.back(); }}
-          aria-label="Назад"
-          style={{
-            width: 40, height: 40, borderRadius: 20,
-            border: `1px solid ${T.border}`, background: T.surface, color: T.text,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', boxShadow: SHADOW.card,
-          }}
-        >
-          <ArrowLeft size={18} strokeWidth={2.4} />
-        </button>
-      </div>
       <PageHeader title="Шаблоны" subtitle="Тексты автоматических сообщений клиентам" />
 
       {/* Литерально .ip-tpl-list / .ip-tpl-item / .ip-tpl-icon /

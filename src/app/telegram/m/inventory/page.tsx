@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, Plus, X, Check, Loader2, Trash2, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Package, Plus, X, Check, Loader2, Trash2, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -171,21 +171,6 @@ export default function MasterMiniAppInventory() {
 
   return (
     <MobilePage className="od-master-inventory">
-      <div style={{ padding: `12px ${PAGE_PADDING_X}px 0`, ...FONT_BASE }}>
-        <button
-          type="button"
-          onClick={() => { haptic('light'); router.back(); }}
-          aria-label={t.back}
-          style={{
-            width: 40, height: 40, borderRadius: 20,
-            border: `1px solid ${T.border}`, background: T.surface, color: T.text,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', boxShadow: SHADOW.card,
-          }}
-        >
-          <ArrowLeft size={18} strokeWidth={2.4} />
-        </button>
-      </div>
       <PageHeader title={t.title} subtitle={loading ? undefined : t.subtitle(items.length, lowCount)} />
 
       <div style={{ padding: `8px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column', gap: 8 }}>

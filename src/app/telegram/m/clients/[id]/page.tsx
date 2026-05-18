@@ -15,12 +15,13 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, Phone, Calendar, AlertTriangle, FileText,
+  Phone, Calendar, AlertTriangle, FileText,
   Loader2, Crown, BarChart3, Bot, Send, Pencil, Trash2,
   Plus, Check, X, User as UserIcon, Heart, Mic, UserMinus,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { PageHeader } from '@/components/miniapp/shells';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 
 const I18N: Record<MiniAppLang, {
@@ -299,12 +300,7 @@ export default function MasterMiniAppClientCard() {
       className="space-y-3 px-4 pt-4 pb-56"
       style={{ minHeight: '100vh', backgroundColor: 'var(--m-bg, #fff)' }}
     >
-      <button
-        onClick={() => { haptic('light'); router.back(); }}
-        className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white/5"
-      >
-        <ArrowLeft className="size-4" />
-      </button>
+      <PageHeader title={client.full_name} />
 
       {/* Hero. Health-alert треугольник раньше клипался поверх аватара —
           теперь рендерится отдельным цветным бейджем рядом с именем,

@@ -14,13 +14,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft, Loader2, Bot, Send, Pencil, Trash2, Plus,
+  Loader2, Bot, Send, Pencil, Trash2, Plus,
   Check, X, XCircle, ExternalLink,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X, TYPE } from '@/components/miniapp/design';
-import { AvatarCircle } from '@/components/miniapp/shells';
+import { AvatarCircle, PageHeader } from '@/components/miniapp/shells';
 import { MiniAppPortal } from '@/components/miniapp/portal';
 
 function getInitData(): string | null {
@@ -195,25 +195,11 @@ export default function MasterMiniAppPartnerCard() {
 
   return (
     <div style={{ ...FONT_BASE, background: T.bg, color: T.text }}>
+      <PageHeader title={partnerName} subtitle={isTeam ? 'Команда' : 'Соло мастер'} />
       <div style={{
-        padding: `16px ${PAGE_PADDING_X}px 96px`,
+        padding: `8px ${PAGE_PADDING_X}px 96px`,
         display: 'flex', flexDirection: 'column', gap: 20,
       }}>
-        {/* Back button */}
-        <button
-          type="button"
-          onClick={() => { haptic('light'); router.back(); }}
-          aria-label="Назад"
-          style={{
-            width: 40, height: 40, borderRadius: 20,
-            border: `1px solid ${T.border}`, background: T.surface, color: T.text,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', boxShadow: SHADOW.card,
-          }}
-        >
-          <ArrowLeft size={18} strokeWidth={2.4} />
-        </button>
-
         {/* Hero — avatar + name + meta. Если партнёрство на паузе — отдельный бейдж. */}
         <div style={{ ...cardStyle, padding: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
           <AvatarCircle url={partner.profile?.avatar_url} name={partnerName} size={56} />
