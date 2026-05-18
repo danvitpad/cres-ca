@@ -75,21 +75,6 @@ export default function MasterMiniAppWaitlist() {
 
   return (
     <MobilePage className="od-master-waitlist">
-      <div style={{ padding: `12px ${PAGE_PADDING_X}px 0`, ...FONT_BASE }}>
-        <button
-          type="button"
-          onClick={() => { haptic('light'); router.back(); }}
-          aria-label="Назад"
-          style={{
-            width: 40, height: 40, borderRadius: 20,
-            border: `1px solid ${T.border}`, background: T.surface, color: T.text,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', boxShadow: SHADOW.card,
-          }}
-        >
-          <ArrowLeft size={18} strokeWidth={2.4} />
-        </button>
-      </div>
       <PageHeader title="Лист очікування" subtitle="Клієнти що чекають твоє вікно" />
 
       <div style={{ padding: `8px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column', gap: 16 }}>

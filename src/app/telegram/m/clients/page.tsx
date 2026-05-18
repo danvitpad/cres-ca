@@ -13,7 +13,7 @@ import { motion } from 'framer-motion';
 import { Search, AlertTriangle, Star, Crown, Loader2, UserPlus, Check, SlidersHorizontal, X, Bell } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
-import { MobilePage, AvatarCircle, EmptyState } from '@/components/miniapp/shells';
+import { MobilePage, AvatarCircle, EmptyState, PageHeader } from '@/components/miniapp/shells';
 import { T, R, TYPE, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 import { getCached, setCached } from '@/lib/miniapp/cache';
@@ -471,19 +471,20 @@ export default function MasterMiniAppClientsPage() {
       {/* Литерально .ip-hd / .ip-hd-title / .ip-hd-actions / .ip-icon-btn
           из OD master-clients.html. Кнопка sliders-horizontal — фильтр,
           пока заглушка (toast). */}
-      <header className="ip-hd">
-        <div className="ip-hd-title">{t.pageTitle}</div>
-        <div className="ip-hd-actions">
+      <PageHeader
+        title={t.pageTitle}
+        right={(
           <button
             type="button"
             className="ip-icon-btn"
             aria-label="Фильтр"
             onClick={() => haptic('selection')}
+            style={{ marginTop: 4 }}
           >
             <SlidersHorizontal size={17} strokeWidth={2} />
           </button>
-        </div>
-      </header>
+        )}
+      />
 
       {/* Литерально .ip-search из OD. */}
       <div className="ip-search">

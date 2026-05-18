@@ -11,9 +11,29 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { usePathname, useRouter } from 'next/navigation';
 import type { CSSProperties, ReactNode } from 'react';
-import { Search, ChevronRight } from 'lucide-react';
+import { Search, ChevronRight, ArrowLeft } from 'lucide-react';
 import { T, R, TYPE, SHADOW, SPRING, HERO_GRADIENT, FONT_BASE, PAGE_PADDING_X } from './design';
+
+/** Корневые табы Mini App — на них кнопка «Назад» не нужна. Совпадает с
+ *  ROOT_PATHS в telegram-provider.tsx (где включается нативная TG BackButton).
+ *  Дублирование осознанное: shells не должен импортировать telegram-provider,
+ *  иначе циклическая зависимость провайдеров. Если меняешь — обнови оба. */
+const ROOT_PATHS: ReadonlySet<string> = new Set([
+  '/telegram/m/home',
+  '/telegram/m/calendar',
+  '/telegram/m/finance',
+  '/telegram/m/more',
+  '/telegram/home',
+  '/telegram/search',
+  '/telegram/activity',
+  '/telegram/profile',
+  '/telegram',
+  '/telegram/welcome',
+  '/telegram/login',
+  '/telegram/register',
+]);
 
 /** Контейнер страницы — задаёт padding и шрифт. */
 export function MobilePage({
@@ -47,33 +67,68 @@ export function MobilePage({
   );
 }
 
-/** Большой жирный заголовок страницы с опциональной правой кнопкой/иконкой. */
+/** Большой жирный заголовок страницы с опциональной правой кнопкой/иконкой.
+ *  Автоматически рендерит круглую кнопку «Назад» в левом верхнем углу на
+ *  всех под-страницах (всё что не из ROOT_PATHS). Чтобы отключить вручную —
+ *  передать `noBack={true}`. */
 export function PageHeader({
   title,
   subtitle,
   right,
+  noBack,
 }: {
   title: string;
   subtitle?: string;
   right?: ReactNode;
+  noBack?: boolean;
 }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const showBack = !noBack && !!pathname && !ROOT_PATHS.has(pathname);
+
   return (
-    <header
-      style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 12,
-        padding: `28px ${PAGE_PADDING_X}px 8px`,
-      }}
-    >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <h1 style={{ ...TYPE.h1, color: T.text, margin: 0 }}>{title}</h1>
-        {subtitle && (
-          <p style={{ ...TYPE.caption, marginTop: 4 }}>{subtitle}</p>
-        )}
-      </div>
-      {right && <div style={{ flexShrink: 0 }}>{right}</div>}
-    </header>
+    <>
+      {showBack && (
+        <div style={{ padding: `12px ${PAGE_PADDING_X}px 0` }}>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            aria-label="Назад"
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              border: `1px solid ${T.border}`,
+              background: T.surface,
+              color: T.text,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: SHADOW.card,
+            }}
+          >
+            <ArrowLeft size={18} strokeWidth={2.4} />
+          </button>
+        </div>
+      )}
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 12,
+          padding: `${showBack ? 16 : 28}px ${PAGE_PADDING_X}px 8px`,
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1 style={{ ...TYPE.h1, color: T.text, margin: 0 }}>{title}</h1>
+          {subtitle && (
+            <p style={{ ...TYPE.caption, marginTop: 4 }}>{subtitle}</p>
+          )}
+        </div>
+        {right && <div style={{ flexShrink: 0 }}>{right}</div>}
+      </header>
+    </>
   );
 }
 
