@@ -53,15 +53,23 @@ function verticalOrClause(v: VerticalKey): string {
 }
 
 export async function POST(request: Request) {
-  const { lat, lng, q, vertical, categoryKey, subcategoryKey } = await request.json();
+  const { lat, lng, q, terms, vertical, categoryKey, subcategoryKey } = await request.json();
 
   const hasCoords = typeof lat === 'number' && typeof lng === 'number';
   const hasQuery = typeof q === 'string' && q.trim().length >= 2;
+  // `terms` — массив синонимов категории (OR ilike по specialization).
+  // Используется когда юзер тапнул на категорию на главной (hair → ['волос',
+  // 'парикмахер', 'перукар', 'barber'...]) — без него мастер с specialization
+  // 'Парикмахер' не попадал в 'волос' / 'hair' категорию.
+  const termsArr: string[] = Array.isArray(terms)
+    ? (terms as unknown[]).filter((x): x is string => typeof x === 'string' && x.length > 0)
+    : [];
+  const hasTerms = termsArr.length > 0;
   const verticalFilter = isValidVertical(vertical) ? vertical : null;
   const catKey = typeof categoryKey === 'string' && categoryKey.length > 0 ? categoryKey : null;
   const subKey = typeof subcategoryKey === 'string' && subcategoryKey.length > 0 ? subcategoryKey : null;
 
-  if (!hasCoords && !hasQuery && !catKey && !subKey) {
+  if (!hasCoords && !hasQuery && !hasTerms && !catKey && !subKey) {
     return NextResponse.json({ error: 'invalid_params' }, { status: 400, ...NO_STORE });
   }
 
@@ -191,19 +199,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ masters, salons: salonsRes.data ?? [] }, NO_STORE);
   }
 
-  // Geo-based search — nearby masters & salons
+  // Geo-based search — nearby masters & salons.
+  // hasCoords может быть false (юзер не дал гео + категория ?cat=hair), тогда
+  // координаты пропускаем — поиск идёт только по terms через wide fallback ниже.
   let geoMasters = admin
     .from('masters')
     .select(masterSelect)
-    .eq('is_active', true)
-    .gte('latitude', lat - RADIUS_DEG)
-    .lte('latitude', lat + RADIUS_DEG)
-    .gte('longitude', lng - RADIUS_DEG)
-    .lte('longitude', lng + RADIUS_DEG);
+    .eq('is_active', true);
+  if (hasCoords) {
+    geoMasters = geoMasters
+      .gte('latitude', lat - RADIUS_DEG)
+      .lte('latitude', lat + RADIUS_DEG)
+      .gte('longitude', lng - RADIUS_DEG)
+      .lte('longitude', lng + RADIUS_DEG);
+  }
   if (allowedMasterIds) {
     geoMasters = geoMasters.in('id', allowedMasterIds);
   } else if (verticalFilter) {
     geoMasters = geoMasters.or(verticalOrClause(verticalFilter));
+  }
+  // OR-фильтр по terms — мастер попадает если specialization содержит хотя
+  // бы один из синонимов (`%парикмахер%`, `%волос%` и т.д.).
+  if (hasTerms) {
+    const orClause = termsArr.map((t) => `specialization.ilike.%${escLike(t)}%`).join(',');
+    geoMasters = geoMasters.or(orClause);
   }
 
   const [mastersRes, salonsRes] = await Promise.all([
@@ -231,6 +250,10 @@ export async function POST(request: Request) {
       wide = wide.in('id', allowedMasterIds);
     } else if (verticalFilter) {
       wide = wide.or(verticalOrClause(verticalFilter));
+    }
+    if (hasTerms) {
+      const orClause = termsArr.map((t) => `specialization.ilike.%${escLike(t)}%`).join(',');
+      wide = wide.or(orClause);
     }
     const fallback = await wide.limit(50);
     masters = fallback.data ?? [];

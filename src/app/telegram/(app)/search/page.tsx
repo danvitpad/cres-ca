@@ -21,6 +21,7 @@ import {
 import '@/styles/od-client-mini-app.css';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage } from '@/components/miniapp/shells';
+import { MiniAppPortal } from '@/components/miniapp/portal';
 import { getLocation } from '@/lib/telegram/geolocation';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 import type { MapMarker } from '@/components/shared/map-view';
@@ -65,17 +66,18 @@ type Lang = 'uk' | 'ru' | 'en';
 
 const DEFAULT_CENTER: [number, number] = [50.4501, 30.5234];
 
-// Маппинг ключей категорий с home-страницы в поисковые термины.
-// API /api/telegram/nearby делает ilike по specialization мастера.
-const CATEGORY_TO_TERM: Record<string, string> = {
-  hair: 'волос',          // ловит: парикмахер / волосся / hair / стрижка
-  nails: 'нігт',          // нігті / манікюр / nails
-  face: 'обличч',         // обличчя / лицо / косметолог / face
-  massage: 'масаж',
-  brows: 'бров',          // брови / brows / eyebrow
-  laser: 'лазер',
-  skin: 'шкір',           // шкіра / skin / косметолог
-  all: '',
+// Маппинг ключей категорий → массив синонимов для OR-поиска по specialization.
+// API делает ilike OR через все термины — мастер с specialization 'Парикмахер'
+// попадает в 'hair' через 'парикмахер'/'перукар', хотя в украинском это 'волос'.
+const CATEGORY_TO_TERMS: Record<string, string[]> = {
+  hair: ['волос', 'парикмахер', 'перукар', 'барбер', 'barber', 'hair', 'стрижк', 'стриж'],
+  nails: ['нігт', 'ногт', 'манікюр', 'маникюр', 'nail', 'педикюр', 'педикур'],
+  face: ['обличч', 'лицо', 'face', 'косметолог', 'cosmetol'],
+  massage: ['масаж', 'массаж', 'massage'],
+  brows: ['бров', 'brow', 'eyebrow', 'ламінуван'],
+  laser: ['лазер', 'laser', 'епіляц', 'эпиляц'],
+  skin: ['шкір', 'skin', 'дерматолог'],
+  all: [],
 };
 
 // Локализованные заголовки страницы по категории (без знача — общий «Пошук»).
@@ -217,6 +219,8 @@ export default function MiniAppSearchPage() {
   const [fRating, setFRating] = useState(false);
   const [fPrice, setFPrice] = useState(false);
   const [fDistance, setFDistance] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [userCity, setUserCity] = useState<string | null>(null);
 
   const [center, setCenter] = useState<[number, number]>(DEFAULT_CENTER);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
@@ -249,16 +253,39 @@ export default function MiniAppSearchPage() {
     return () => { cancelled = true; };
   }, []);
 
+  // Reverse-geocode userLocation → city name для динамического placeholder'а.
+  // Nominatim бесплатный, без auth. Делаем 1 раз когда есть координаты.
+  useEffect(() => {
+    if (!userLocation) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [lat, lng] = userLocation;
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=${lang}&zoom=10`,
+          { headers: { 'Accept': 'application/json' } },
+        );
+        if (!res.ok || cancelled) return;
+        const j = await res.json() as { address?: { city?: string; town?: string; village?: string; municipality?: string } };
+        const city = j.address?.city ?? j.address?.town ?? j.address?.village ?? j.address?.municipality ?? null;
+        if (city && !cancelled) setUserCity(city);
+      } catch { /* offline-tolerant */ }
+    })();
+    return () => { cancelled = true; };
+  }, [userLocation, lang]);
+
   const fetchData = useCallback(async (q: string, c: [number, number]) => {
     setLoading(true);
     try {
-      // Если задана категория ?cat= — превращаем в text-query для API
-      // (API делает ilike по specialization), иначе шлём q или geo.
-      const catTerm = cat ? CATEGORY_TO_TERM[cat] ?? null : null;
-      const effectiveQuery = q.trim() || catTerm || '';
-      const body: Record<string, unknown> = effectiveQuery
-        ? { q: effectiveQuery }
-        : { lat: c[0], lng: c[1] };
+      // Категория ?cat=hair → шлём массив синонимов в `terms`. API OR'ит их
+      // через ilike. Если юзер ввёл текст руками — обычный `q` (single term).
+      const catTerms = cat ? CATEGORY_TO_TERMS[cat] ?? null : null;
+      const typedQuery = q.trim();
+      const body: Record<string, unknown> = typedQuery
+        ? { q: typedQuery }
+        : catTerms && catTerms.length > 0
+          ? { terms: catTerms, lat: c[0], lng: c[1] }
+          : { lat: c[0], lng: c[1] };
       const r = await fetch('/api/telegram/nearby', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -333,12 +360,7 @@ export default function MiniAppSearchPage() {
         </div>
         <button
           className="mc-icbtn"
-          onClick={() => {
-            haptic('light');
-            // Скролл к chips — пока расширенный фильтр sheet не реализован
-            const chips = document.querySelector('.mc-fchips') as HTMLElement | null;
-            if (chips) chips.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }}
+          onClick={() => { haptic('light'); setFilterSheetOpen(true); }}
           aria-label="Фільтри"
         >
           <SlidersHorizontal size={16} />
@@ -352,7 +374,13 @@ export default function MiniAppSearchPage() {
           className="mc-search-input"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={t.searchHint}
+          placeholder={
+            userCity
+              ? (lang === 'uk' ? `Манікюр у ${userCity} сьогодні`
+                 : lang === 'ru' ? `Маникюр в ${userCity} сегодня`
+                 : `Nails in ${userCity} today`)
+              : t.searchHint
+          }
           enterKeyHint="search"
         />
         {query && (
@@ -500,6 +528,78 @@ export default function MiniAppSearchPage() {
       )}
 
       <div style={{ height: 16 }} />
+
+      {/* Filter sheet — portal через MiniAppPortal чтобы position:fixed
+          работал относительно viewport (вне PageTransition transform). */}
+      {filterSheetOpen && (
+        <MiniAppPortal>
+          <div
+            onClick={() => setFilterSheetOpen(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 90,
+              display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+              background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '100%', maxWidth: 480,
+                borderRadius: '20px 20px 0 0',
+                background: 'var(--surface)',
+                padding: '20px 20px calc(20px + env(safe-area-inset-bottom, 0px))',
+                display: 'flex', flexDirection: 'column', gap: 12,
+              }}
+            >
+              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>
+                {lang === 'uk' ? 'Фільтри' : lang === 'ru' ? 'Фильтры' : 'Filters'}
+              </div>
+              {[
+                { val: fToday, set: setFToday, label: t.today },
+                { val: fRating, set: setFRating, label: t.rating },
+                { val: fPrice, set: setFPrice, label: t.budget },
+                { val: fDistance, set: setFDistance, label: t.distance },
+              ].map((f, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => { haptic('light'); f.set(!f.val); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '14px 16px', borderRadius: 12,
+                    border: '1px solid var(--border)',
+                    background: f.val ? 'var(--accent-soft, #e0e7ff)' : 'transparent',
+                    color: 'var(--fg)',
+                    fontSize: 15, fontWeight: 500,
+                    fontFamily: 'inherit', cursor: 'pointer',
+                  }}
+                >
+                  <span>{f.label}</span>
+                  <span style={{
+                    width: 22, height: 22, borderRadius: '50%',
+                    border: `2px solid ${f.val ? 'var(--accent, #2563eb)' : 'var(--border)'}`,
+                    background: f.val ? 'var(--accent, #2563eb)' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {f.val && <Check size={12} color="#fff" strokeWidth={3} />}
+                  </span>
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => { haptic('light'); setFilterSheetOpen(false); }}
+                style={{
+                  marginTop: 8, padding: '14px 16px', borderRadius: 12,
+                  border: 'none', background: 'var(--accent, #2563eb)', color: '#fff',
+                  fontSize: 15, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                }}
+              >
+                {lang === 'uk' ? 'Готово' : lang === 'ru' ? 'Готово' : 'Done'}
+              </button>
+            </div>
+          </div>
+        </MiniAppPortal>
+      )}
     </MobilePage>
   );
 }
