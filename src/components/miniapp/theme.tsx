@@ -92,9 +92,20 @@ export function MiniAppThemeProvider({ children, style, className }: Props) {
     } catch { /* ignore */ }
     setOverrideState(t);
     // Persist в БД — null override = 'auto' (следовать Telegram).
+    // X-TG-Init-Data нужен потому что в Mini App контексте часто нет
+    // Supabase cookie session; endpoint поддерживает оба способа auth.
+    const initData: string = (() => {
+      try {
+        const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+        return w.Telegram?.WebApp?.initData ?? '';
+      } catch { return ''; }
+    })();
     fetch('/api/me/ui-prefs', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+      },
       body: JSON.stringify({ ui_theme: t ?? 'auto' }),
     }).catch(() => { /* offline-tolerant */ });
   }, []);

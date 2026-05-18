@@ -69,10 +69,21 @@ export function setMiniAppLocale(code: MiniAppLang): void {
 
   window.dispatchEvent(new CustomEvent<MiniAppLang>(LOCALE_CHANGED_EVENT, { detail: code }));
 
-  // Persist в БД — без await, ошибки игнорируем (offline / unauth).
+  // Persist в БД — без await, ошибки игнорируем (offline).
+  // X-TG-Init-Data нужен потому что в Mini App контексте часто нет
+  // Supabase cookie session; endpoint поддерживает оба способа auth.
+  const initData: string = (() => {
+    try {
+      const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+      return w.Telegram?.WebApp?.initData ?? '';
+    } catch { return ''; }
+  })();
   fetch('/api/me/ui-prefs', {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+    },
     body: JSON.stringify({ ui_language: code }),
   }).catch(() => { /* tolerant */ });
 }

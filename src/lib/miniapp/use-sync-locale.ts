@@ -32,7 +32,17 @@ export function useSyncLocaleFromDb(): void {
     // Без auth fetch вернёт 401 — даже не пробуем.
     if (!userId) return;
     let cancelled = false;
-    fetch('/api/me/ui-prefs')
+    // X-TG-Init-Data fallback — в Mini App контексте cookie session
+    // часто нет, endpoint поддерживает оба способа auth.
+    const initData: string = (() => {
+      try {
+        const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+        return w.Telegram?.WebApp?.initData ?? '';
+      } catch { return ''; }
+    })();
+    fetch('/api/me/ui-prefs', {
+      headers: initData ? { 'X-TG-Init-Data': initData } : {},
+    })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: UiPrefs | null) => {
         if (cancelled || !data) return;

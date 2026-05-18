@@ -2,31 +2,36 @@
  * name: User UI Preferences (sync web ↔ Mini App)
  * description: GET → читает profiles.ui_theme + ui_language + public_language.
  *              PATCH → обновляет любое из полей.
- *              ui_language — язык интерфейса и личных уведомлений (письма
- *              себе, TG-уведомления, сброс пароля и т.п.).
- *              public_language — язык исходящих коммуникаций мастера/команды
- *              (рассылки клиентам, заказы поставщикам). По умолчанию = ui_language.
- *              При смене ui_language через language-switcher поле сохраняется
- *              в БД и становится постоянным выбором пользователя.
+ *              Аутентификация: cookie session (веб) ИЛИ Telegram initData
+ *              (Mini App, header X-TG-Init-Data). Без initData-fallback'a
+ *              Mini App без cookie молча получал 401 и язык не сохранялся.
  * created: 2026-04-26
- * updated: 2026-04-30 (+ public_language)
+ * updated: 2026-05-18 (+ initData auth + admin client write)
  * --- */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { resolveUserId } from '@/lib/auth/resolve-user';
 
 const VALID_THEME = new Set(['auto', 'light', 'dark']);
 const VALID_LANG = new Set(['ru', 'uk', 'en']);
 
-export async function GET() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+function admin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+}
 
-  const { data } = await supabase
+export async function GET(req: Request) {
+  const userId = await resolveUserId(req);
+  if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const { data } = await admin()
     .from('profiles')
     .select('ui_theme, ui_language, public_language, haptic_enabled')
-    .eq('id', user.id)
+    .eq('id', userId)
     .maybeSingle();
 
   const profile = data as {
@@ -46,9 +51,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const userId = await resolveUserId(req);
+  if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const body = await req.json().catch(() => null) as {
     ui_theme?: string;
@@ -67,13 +71,14 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'no_valid_fields' }, { status: 400 });
   }
 
+  const adm = admin();
   // Если меняется ui_language и public_language ещё не выставлен пользователем
   // отдельно — синхронизируем его автоматически (поведение по умолчанию).
   if (update.ui_language && !update.public_language) {
-    const { data: cur } = await supabase
+    const { data: cur } = await adm
       .from('profiles')
       .select('public_language')
-      .eq('id', user.id)
+      .eq('id', userId)
       .maybeSingle();
     const currentPublic = (cur as { public_language?: string } | null)?.public_language ?? null;
     if (!currentPublic) {
@@ -81,7 +86,7 @@ export async function PATCH(req: Request) {
     }
   }
 
-  const { error } = await supabase.from('profiles').update(update).eq('id', user.id);
+  const { error } = await adm.from('profiles').update(update).eq('id', userId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ ok: true, ...update });
