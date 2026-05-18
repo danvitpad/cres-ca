@@ -50,19 +50,12 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       const root = document.documentElement;
       const csa = webapp.contentSafeAreaInset ?? { top: 0, bottom: 0, left: 0, right: 0 };
       const sa = webapp.safeAreaInset ?? { top: 0, bottom: 0, left: 0, right: 0 };
-      // Глобальное правило мини-аппа (мастер + клиент): контент должен лежать
-      // на пару пикселей ниже плавающих нативных кнопок Telegram (Закрыть /
-      // стрелка / меню). В compact iOS Telegram эти pill-кнопки плавают
-      // поверх — contentSafeAreaInset.top их не учитывает и контент залезает
-      // прямо под них. В fullscreen своего хедера нет, но pill'ы те же.
-      // Резервируем высоту pill-кнопок (≈48px) + 8px воздуха в обоих режимах.
-      const w = webapp as unknown as { isExpanded?: boolean; isFullscreen?: boolean };
-      const isFullscreen = w.isFullscreen === true;
-      const CHROME_PILL = 48; // высота плавающих кнопок Telegram
-      const SAFE_GAP = 8;     // воздух между pill'ами и контентом
-      const topInset = isFullscreen
-        ? sa.top + CHROME_PILL + SAFE_GAP
-        : Math.max(csa.top, sa.top + CHROME_PILL) + SAFE_GAP;
+      // Compact-режим (как у @wallet): мини-апп НЕ на весь экран, у Telegram
+      // свой стандартный хедер с кнопками «Закрыть» / меню. contentSafeAreaInset.top
+      // от TG в compact уже учитывает высоту своего хедера. Добавляем +8px
+      // воздуха, чтобы контент не лип к нижней границе TG-хедера.
+      const SAFE_GAP = 8;
+      const topInset = csa.top + SAFE_GAP;
       root.style.setProperty('--tg-content-top', `${topInset}px`);
       root.style.setProperty('--tg-content-bottom', `${csa.bottom}px`);
       root.style.setProperty('--tg-safe-top', `${sa.top}px`);
@@ -98,12 +91,14 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       // "method is not supported" в консоль — пропускаем.
       const isRealTg = !!webapp.initData;
       if (isRealTg) {
-        try { webapp.requestFullscreen(); } catch {}
+        // НЕ requestFullscreen — оставляем compact-режим как у @wallet:
+        // мини-апп не на весь экран, у Telegram свой стандартный хедер
+        // с кнопками «Закрыть» / меню сверху. Так чище визуально, плавающих
+        // pill-кнопок поверх контента нет.
         try { webapp.disableVerticalSwipes(); } catch {}
       }
-      // Re-sync insets after fullscreen animation settles (~400ms)
+      // Re-sync insets после того как viewport устаканится (~400ms)
       setTimeout(() => syncSafeArea(webapp), 400);
-      try { webapp.onEvent('fullscreenChanged' as Parameters<typeof webapp.onEvent>[0], () => syncSafeArea(webapp)); } catch {}
       // Initial chrome paint — hex, точно совпадает с --m-bg в globals.css.
       // Один цвет во всех точках входа Mini App (telegram/page → welcome →
       // register → m/layout). Раньше keyword 'bg_color' возвращал тон
