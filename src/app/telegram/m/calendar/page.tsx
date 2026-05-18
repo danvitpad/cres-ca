@@ -27,9 +27,11 @@ import {
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
+import { MiniAppPortal } from '@/components/miniapp/portal';
 import { TapButton } from '@/components/miniapp/tap-press';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 import { HomeScreenBanner } from '@/components/miniapp/home-screen-banner';
 import { getCached, setCached, isFresh, invalidateCache } from '@/lib/miniapp/cache';
 import { BlockTimeSheet } from '@/components/miniapp/block-time-sheet';
@@ -301,6 +303,7 @@ export default function MasterMiniAppCalendar() {
   }, [focusId, rows]);
 
   const active = useMemo(() => rows.find((r) => r.id === activeId) ?? null, [rows, activeId]);
+  useTrackSheetOpen(!!active);
 
   const [clientRisk, setClientRisk] = useState<'low' | 'medium' | 'high' | null>(null);
   useEffect(() => {
@@ -499,7 +502,7 @@ export default function MasterMiniAppCalendar() {
         {/* Drawer */}
         <AnimatePresence>
           {active && (
-            <>
+            <MiniAppPortal>
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -725,13 +728,14 @@ export default function MasterMiniAppCalendar() {
                   </div>
                 </div>
               </motion.div>
-            </>
+            </MiniAppPortal>
           )}
         </AnimatePresence>
       </div>
 
       {/* Floating «Заблокировать» — мини-FAB над основным «+».
           Один тап открывает sheet для блокировки времени на текущий день. */}
+      <MiniAppPortal>
       <button
         type="button"
         onClick={() => { haptic('selection'); setBlockOpen(true); }}
@@ -758,11 +762,13 @@ export default function MasterMiniAppCalendar() {
       >
         <CalendarOff size={20} strokeWidth={2} />
       </button>
+      </MiniAppPortal>
 
       {/* Floating «+» — раньше жил в PageHeader.right, но кружок аватара (fixed
           top-right на каждом табе) перекрывал его. Перенесён в правый-нижний
           угол, всегда виден, не конкурирует с bottom-nav (nav висит снизу
           по центру). */}
+      <MiniAppPortal>
       <Link
         href="/telegram/m/slot/new"
         onClick={() => haptic('selection')}
@@ -786,6 +792,7 @@ export default function MasterMiniAppCalendar() {
       >
         <Plus size={24} strokeWidth={2.4} />
       </Link>
+      </MiniAppPortal>
 
       <BlockTimeSheet
         open={blockOpen}

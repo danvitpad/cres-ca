@@ -17,8 +17,10 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { createClient } from '@/lib/supabase/client';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
+import { MiniAppPortal } from '@/components/miniapp/portal';
 import { T, R, TYPE, PAGE_PADDING_X, SPRING, SHADOW } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 
 interface Broadcast {
   id: string;
@@ -167,6 +169,7 @@ export default function BroadcastsPage() {
       </div>
 
       {/* FAB */}
+      <MiniAppPortal>
       <button
         type="button"
         onClick={() => { haptic('selection'); setSheetOpen(true); }}
@@ -186,6 +189,7 @@ export default function BroadcastsPage() {
       >
         <Plus size={22} strokeWidth={2.4} />
       </button>
+      </MiniAppPortal>
 
       <AnimatePresence>
         {sheetOpen && (
@@ -211,6 +215,8 @@ function BroadcastCreateSheet({ t, onClose, onSaved }: {
   const [audience, setAudience] = useState<Audience>('subscribers');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  useTrackSheetOpen(true);
 
   async function send() {
     if (busy) return;
@@ -254,6 +260,7 @@ function BroadcastCreateSheet({ t, onClose, onSaved }: {
   ];
 
   return (
+    <MiniAppPortal>
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -376,6 +383,7 @@ function BroadcastCreateSheet({ t, onClose, onSaved }: {
         </div>
       </motion.div>
     </motion.div>
+    </MiniAppPortal>
   );
 }
 

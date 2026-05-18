@@ -40,10 +40,12 @@ import { useAuthStore } from '@/stores/auth-store';
 import { mapError } from '@/lib/errors';
 import { getInitData, showConfirm } from '@/lib/telegram/webapp';
 import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X, TYPE, SPRING } from '@/components/miniapp/design';
+import { MiniAppPortal } from '@/components/miniapp/portal';
 import { useMiniAppTheme } from '@/components/miniapp/theme';
 import { useHapticPrefs } from '@/components/miniapp/haptic-provider';
 import { Briefcase } from 'lucide-react';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 
 const I18N: Record<MiniAppLang, {
   back: string;
@@ -599,6 +601,7 @@ export default function MasterMiniAppSettings() {
       {/* Contact edit bottom sheet */}
       <AnimatePresence>
         {contactOpen && (
+          <MiniAppPortal>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -713,12 +716,14 @@ export default function MasterMiniAppSettings() {
               </div>
             </motion.div>
           </motion.div>
+          </MiniAppPortal>
         )}
       </AnimatePresence>
 
       {/* Password change bottom sheet */}
       <AnimatePresence>
         {pwOpen && (
+          <MiniAppPortal>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -831,6 +836,7 @@ export default function MasterMiniAppSettings() {
               </div>
             </motion.div>
           </motion.div>
+          </MiniAppPortal>
         )}
       </AnimatePresence>
 
@@ -910,6 +916,7 @@ function SpecPickerSheet({ open, lang, initial, saving, onClose, onSave }: {
   onClose: () => void;
   onSave: (v: string) => Promise<void>;
 }) {
+  useTrackSheetOpen(open);
   const [query, setQuery] = useState('');
   const directions = DIRECTIONS[lang];
   const q = query.trim().toLowerCase();
@@ -937,7 +944,7 @@ function SpecPickerSheet({ open, lang, initial, saving, onClose, onSave }: {
   return (
     <AnimatePresence>
       {open && (
-        <>
+        <MiniAppPortal>
           <motion.div
             key="overlay"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -1026,7 +1033,7 @@ function SpecPickerSheet({ open, lang, initial, saving, onClose, onSave }: {
               )}
             </div>
           </motion.div>
-        </>
+        </MiniAppPortal>
       )}
     </AnimatePresence>
   );

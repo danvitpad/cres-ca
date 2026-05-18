@@ -21,6 +21,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X, TYPE } from '@/components/miniapp/design';
 import { AvatarCircle } from '@/components/miniapp/shells';
+import { MiniAppPortal } from '@/components/miniapp/portal';
 
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
@@ -678,6 +679,7 @@ function PartnerAiChat({
   }
 
   return (
+    <MiniAppPortal>
     <div
       style={{
         position: 'fixed',
@@ -737,5 +739,6 @@ function PartnerAiChat({
         {busy ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
       </button>
     </div>
+    </MiniAppPortal>
   );
 }

@@ -23,12 +23,14 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { getInitData } from '@/lib/telegram/webapp';
 import { MobilePage, AvatarCircle } from '@/components/miniapp/shells';
+import { MiniAppPortal } from '@/components/miniapp/portal';
 import '@/styles/od-master-public-page.css';
 import { MiniAppEditTextSheet } from '@/components/miniapp/edit-text-sheet';
 import { AddressPickerSheet } from '@/components/miniapp/address-picker-sheet';
 import { MiniAppAvatarCropSheet } from '@/components/miniapp/avatar-crop-sheet';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, SPRING } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 
 interface MasterData {
   id: string;
@@ -1069,7 +1071,9 @@ function CoverActionSheet({
   onClose: () => void;
 }) {
   const [confirm, setConfirm] = useState(false);
+  useTrackSheetOpen(true);
   return (
+    <MiniAppPortal>
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -1153,6 +1157,7 @@ function CoverActionSheet({
         </div>
       </motion.div>
     </motion.div>
+    </MiniAppPortal>
   );
 }
 
@@ -1287,6 +1292,8 @@ function InterestsEditSheet({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  useTrackSheetOpen(true);
+
   function add() {
     const v = input.trim().slice(0, 32);
     if (!v) return;
@@ -1311,6 +1318,7 @@ function InterestsEditSheet({
   }
 
   return (
+    <MiniAppPortal>
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -1457,6 +1465,7 @@ function InterestsEditSheet({
         </button>
       </motion.div>
     </motion.div>
+    </MiniAppPortal>
   );
 }
 
@@ -1477,6 +1486,8 @@ function NameEditSheet({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  useTrackSheetOpen(true);
+
   async function submit() {
     if (busy) return;
     setBusy(true);
@@ -1492,6 +1503,7 @@ function NameEditSheet({
   }
 
   return (
+    <MiniAppPortal>
     <div
       onClick={() => !busy && onClose()}
       style={{
@@ -1565,6 +1577,7 @@ function NameEditSheet({
         </button>
       </div>
     </div>
+    </MiniAppPortal>
   );
 }
 
@@ -1578,7 +1591,9 @@ function PortfolioLightbox({
 }) {
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
+  useTrackSheetOpen(true);
   return (
+    <MiniAppPortal>
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -1658,6 +1673,7 @@ function PortfolioLightbox({
         </div>
       </div>
     </motion.div>
+    </MiniAppPortal>
   );
 }
 
@@ -1680,6 +1696,8 @@ function HoursSheet({
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  useTrackSheetOpen(true);
 
   function update(key: string, patch: Partial<{ open: string; close: string; closed: boolean }>) {
     setDays((prev) => {
@@ -1709,6 +1727,7 @@ function HoursSheet({
   }
 
   return (
+    <MiniAppPortal>
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -1841,5 +1860,6 @@ function HoursSheet({
         </button>
       </motion.div>
     </motion.div>
+    </MiniAppPortal>
   );
 }

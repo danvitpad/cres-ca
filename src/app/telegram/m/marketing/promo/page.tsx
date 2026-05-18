@@ -19,8 +19,10 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { createClient } from '@/lib/supabase/client';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
+import { MiniAppPortal } from '@/components/miniapp/portal';
 import { T, R, TYPE, PAGE_PADDING_X, SPRING, SHADOW } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 
 interface Promo {
   id: string;
@@ -208,6 +210,7 @@ export default function PromoPage() {
 
       {/* FAB — поднят над bottom-nav. Поднимается выше safe-area. */}
       {masterId && (
+        <MiniAppPortal>
         <button
           type="button"
           onClick={() => { haptic('selection'); setSheetOpen(true); }}
@@ -227,6 +230,7 @@ export default function PromoPage() {
         >
           <Plus size={22} strokeWidth={2.4} />
         </button>
+        </MiniAppPortal>
       )}
 
       <AnimatePresence>
@@ -257,6 +261,8 @@ function PromoCreateSheet({ masterId, t, onClose, onSaved }: {
   const [maxUses, setMaxUses] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  useTrackSheetOpen(true);
 
   async function save() {
     if (busy) return;
@@ -294,6 +300,7 @@ function PromoCreateSheet({ masterId, t, onClose, onSaved }: {
   }
 
   return (
+    <MiniAppPortal>
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -445,6 +452,7 @@ function PromoCreateSheet({ masterId, t, onClose, onSaved }: {
         </div>
       </motion.div>
     </motion.div>
+    </MiniAppPortal>
   );
 }
 

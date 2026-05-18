@@ -31,6 +31,7 @@ import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { formatMoney } from '@/lib/format/money';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 import { MobilePage } from '@/components/miniapp/shells';
+import { MiniAppPortal } from '@/components/miniapp/portal';
 import '@/styles/od-client-mini-app.css';
 
 interface DetailRow {
@@ -525,6 +526,7 @@ export default function MiniAppAppointmentDetail() {
       {/* Cancel sheet */}
       <AnimatePresence>
         {cancelOpen && (
+          <MiniAppPortal>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -582,12 +584,14 @@ export default function MiniAppAppointmentDetail() {
               </div>
             </motion.div>
           </motion.div>
+          </MiniAppPortal>
         )}
       </AnimatePresence>
 
       {/* Rating sheet */}
       <AnimatePresence>
         {ratingOpen && (
+          <MiniAppPortal>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -642,12 +646,14 @@ export default function MiniAppAppointmentDetail() {
               </button>
             </motion.div>
           </motion.div>
+          </MiniAppPortal>
         )}
       </AnimatePresence>
 
       {/* Toast */}
       <AnimatePresence>
         {toastMsg && (
+          <MiniAppPortal>
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -656,6 +662,7 @@ export default function MiniAppAppointmentDetail() {
           >
             {toastMsg}
           </motion.div>
+          </MiniAppPortal>
         )}
       </AnimatePresence>
     </MobilePage>

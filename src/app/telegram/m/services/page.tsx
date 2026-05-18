@@ -22,8 +22,10 @@ import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { getInitData } from '@/lib/telegram/webapp';
 import { createClient } from '@/lib/supabase/client';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
+import { MiniAppPortal } from '@/components/miniapp/portal';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, SPRING } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 import { getServiceName } from '@/lib/i18n/get-service-name';
 
 interface Service {
@@ -478,6 +480,8 @@ function ServiceSheet({ mode, service, t, categories, onCategoriesChange, onClos
   const [inventory, setInventory] = useState<Array<{ id: string; name: string; unit: string; quantity: number }>>([]);
   const [recipeMap, setRecipeMap] = useState<Record<string, number>>({});
 
+  useTrackSheetOpen(true);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -666,6 +670,7 @@ function ServiceSheet({ mode, service, t, categories, onCategoriesChange, onClos
   }
 
   return (
+    <MiniAppPortal>
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -1165,6 +1170,7 @@ function ServiceSheet({ mode, service, t, categories, onCategoriesChange, onClos
         </div>
       </motion.div>
     </motion.div>
+    </MiniAppPortal>
   );
 }
 
