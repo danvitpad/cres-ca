@@ -1,11 +1,17 @@
 /** --- YAML
  * name: MiniAppTheme
- * description: Тема Mini App. Приоритеты: (1) localStorage 'cres:theme-override' (ручной
- *              переключатель в настройках), (2) Telegram.WebApp.colorScheme, (3) prefers-color-scheme.
+ * description: Тема Mini App. Приоритеты:
+ *              (1) localStorage 'cres:theme-override' (= ui_theme из БД, синкается
+ *                  через useSyncLocaleFromDb после auth, и через ручной toggle),
+ *              (2) Telegram.WebApp.colorScheme (когда override = 'auto'/null),
+ *              (3) prefers-color-scheme.
  *              Ставит data-theme=dark на корневой div — CSS var(--m-*) переключаются автоматически.
  *              Экспортирует useMiniAppTheme() для чтения/записи override из настроек.
+ *              setOverride пишет одновременно в localStorage и в БД через
+ *              PATCH /api/me/ui-prefs — между устройствами синхронизируется
+ *              автоматически.
  * created: 2026-04-26
- * updated: 2026-05-07
+ * updated: 2026-05-18 (+ DB persistence)
  * --- */
 
 'use client';
@@ -68,9 +74,14 @@ export function MiniAppThemeProvider({ children, style, className }: Props) {
     type TG = { WebApp?: { onEvent?: (e: string, cb: () => void) => void; offEvent?: (e: string, cb: () => void) => void } };
     const tg = (window as { Telegram?: TG }).Telegram?.WebApp;
     tg?.onEvent?.('themeChanged', onChange);
+    // useSyncLocaleFromDb пишет ui_theme в localStorage после auth — мы
+    // слушаем custom-event и подхватываем сразу, без перезагрузки.
+    const onOverrideChanged = () => setOverrideState(readStoredOverride());
+    window.addEventListener('cres:theme-override-changed', onOverrideChanged);
     return () => {
       mql.removeEventListener('change', onChange);
       tg?.offEvent?.('themeChanged', onChange);
+      window.removeEventListener('cres:theme-override-changed', onOverrideChanged);
     };
   }, []);
 
@@ -80,6 +91,12 @@ export function MiniAppThemeProvider({ children, style, className }: Props) {
       else localStorage.removeItem(STORAGE_KEY);
     } catch { /* ignore */ }
     setOverrideState(t);
+    // Persist в БД — null override = 'auto' (следовать Telegram).
+    fetch('/api/me/ui-prefs', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ui_theme: t ?? 'auto' }),
+    }).catch(() => { /* offline-tolerant */ });
   }, []);
 
   const theme = override ?? systemTheme;
