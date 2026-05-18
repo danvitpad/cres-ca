@@ -28,6 +28,7 @@ import { T, FONT_BASE } from '@/components/miniapp/design';
 import { useAuthStore } from '@/stores/auth-store';
 import { createClient } from '@/lib/supabase/client';
 import { useSyncLocaleFromDb } from '@/lib/miniapp/use-sync-locale';
+import { useSheetOpen } from '@/lib/miniapp/use-sheet-open';
 
 export default function MasterMiniAppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -40,6 +41,10 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
   // чтобы спиннер не моргал на frame перед рендером скелетов и контента.
   const [checking, setChecking] = useState(() => !useAuthStore.getState().userId);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  // Глобальный счётчик открытых шторок — прячем bottom-nav и кружок-аватара
+  // на время. Иначе они вылазят поверх sheet'ов (z-index ломается через
+  // PageTransition's transformed motion.div).
+  const sheetOpen = useSheetOpen();
 
   const isSalonContext = pathname.startsWith('/telegram/m/salon/');
 
@@ -163,8 +168,8 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
         >
           <PageTransition>{children}</PageTransition>
         </main>
-        {!isFullscreen && !keyboardOpen && <MiniAppHeaderAvatar />}
-        {!isFullscreen && !keyboardOpen && <MiniAppBottomNav tabs={tabs} />}
+        {!isFullscreen && !keyboardOpen && !sheetOpen && <MiniAppHeaderAvatar />}
+        {!isFullscreen && !keyboardOpen && !sheetOpen && <MiniAppBottomNav tabs={tabs} />}
       </MiniAppThemeProvider>
     </TelegramProvider>
   );

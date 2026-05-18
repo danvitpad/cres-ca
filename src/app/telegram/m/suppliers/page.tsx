@@ -10,6 +10,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Truck, Plus, X, Check, Loader2, Trash2, ArrowLeft, Archive, RotateCcw, Phone, Mail, Send } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -19,6 +20,7 @@ import { getInitData } from '@/lib/telegram/webapp';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, SPRING, FONT_BASE } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 import '@/styles/od-master-suppliers.css';
 
 interface Supplier {
@@ -300,6 +302,16 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Регистрируем sheet в глобальном счётчике — мастерский layout прячет
+  // bottom-nav и кружок-аватар, пока счётчик > 0. Иначе они вылазят поверх
+  // sheet'а (PageTransition оборачивает контент в transform-motion.div,
+  // что ломает position:fixed — sheet остаётся в transformed parent,
+  // backdrop не достаёт до верха viewport).
+  useTrackSheetOpen(true);
+
+  useEffect(() => { setMounted(true); }, []);
 
   async function callMutate(payload: Record<string, unknown>) {
     const initData = getInitData();
@@ -380,7 +392,13 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
     }
   }
 
-  return (
+  if (!mounted) return null;
+
+  // Рендерим через portal в document.body — иначе sheet захватывается в
+  // transform-motion.div PageTransition'а и position:fixed перестаёт быть
+  // относительно viewport. Без portal'а: backdrop не достаёт до верха,
+  // header avatar (z:30) вылазит поверх sheet'а (z:80).
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -408,10 +426,13 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
           maxHeight: 'calc(var(--tg-viewport-height, 100dvh) - max(var(--tg-content-top, 0px), 80px))', overflowY: 'auto',
         }}
       >
-        {/* Header */}
+        {/* Header — sticky чтобы при скролле формы оставался виден и
+            прикрывал контент от наезда на TG-кнопки сверху. */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: `18px ${PAGE_PADDING_X}px 14px`,
+          position: 'sticky', top: 0, zIndex: 1,
+          background: T.surface,
         }}>
           <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>
             {mode === 'create' ? t.sheetCreate : t.sheetEdit}
@@ -585,7 +606,8 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
           )}
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }
 
