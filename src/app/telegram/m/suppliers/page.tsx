@@ -10,7 +10,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Truck, Plus, X, Check, Loader2, Trash2, ArrowLeft, Archive, RotateCcw, Phone, Mail, Send } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -18,6 +17,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { getInitData } from '@/lib/telegram/webapp';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
+import { MiniAppPortal } from '@/components/miniapp/portal';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, SPRING, FONT_BASE } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
@@ -302,16 +302,10 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   // Регистрируем sheet в глобальном счётчике — мастерский layout прячет
-  // bottom-nav и кружок-аватар, пока счётчик > 0. Иначе они вылазят поверх
-  // sheet'а (PageTransition оборачивает контент в transform-motion.div,
-  // что ломает position:fixed — sheet остаётся в transformed parent,
-  // backdrop не достаёт до верха viewport).
+  // bottom-nav и кружок-аватар, пока счётчик > 0.
   useTrackSheetOpen(true);
-
-  useEffect(() => { setMounted(true); }, []);
 
   async function callMutate(payload: Record<string, unknown>) {
     const initData = getInitData();
@@ -392,13 +386,10 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
     }
   }
 
-  if (!mounted) return null;
-
-  // Рендерим через portal в document.body — иначе sheet захватывается в
-  // transform-motion.div PageTransition'а и position:fixed перестаёт быть
-  // относительно viewport. Без portal'а: backdrop не достаёт до верха,
-  // header avatar (z:30) вылазит поверх sheet'а (z:80).
-  return createPortal(
+  // Через MiniAppPortal — иначе sheet захватывается в transform-motion.div
+  // PageTransition'а и position:fixed перестаёт быть относительно viewport.
+  return (
+    <MiniAppPortal>
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -610,8 +601,8 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
           )}
         </div>
       </motion.div>
-    </motion.div>,
-    document.body
+    </motion.div>
+    </MiniAppPortal>
   );
 }
 

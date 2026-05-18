@@ -23,6 +23,8 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { getInitData } from '@/lib/telegram/webapp';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
+import { MiniAppPortal } from '@/components/miniapp/portal';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 import '@/styles/od-master-templates.css';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, SPRING, FONT_BASE } from '@/components/miniapp/design';
 
@@ -331,6 +333,8 @@ function TemplateSheet({ spec, saved, onClose, onSaved }: {
   const [activeField, setActiveField] = useState<'subject' | 'content'>('content');
   const [busy, setBusy] = useState(false);
   const [resetting, setResetting] = useState(false);
+
+  useTrackSheetOpen(true);
   const subjectRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const hasCustom = !!saved?.content;
@@ -419,6 +423,7 @@ function TemplateSheet({ spec, saved, onClose, onSaved }: {
   }
 
   return (
+    <MiniAppPortal>
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -581,6 +586,7 @@ function TemplateSheet({ spec, saved, onClose, onSaved }: {
         </div>
       </motion.div>
     </motion.div>
+    </MiniAppPortal>
   );
 }
 

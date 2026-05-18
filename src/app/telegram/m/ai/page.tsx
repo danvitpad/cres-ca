@@ -11,12 +11,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { Bot, Send, Trash2, Lightbulb, Receipt, Bell, BarChart3, Users, Clock as ClockIcon } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
+import { MiniAppPortal } from '@/components/miniapp/portal';
 import { T, R, PAGE_PADDING_X, SHADOW, TYPE } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 import '@/styles/od-master-ai.css';
@@ -105,10 +105,7 @@ export default function MasterMiniAppAI() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [focused, setFocused] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -304,11 +301,9 @@ export default function MasterMiniAppAI() {
         </div>
 
       </motion.div>
-      {/* Input — рендерим через portal в document.body, иначе PageTransition
-          оборачивает страницу в transform-motion.div и position:fixed
-          захватывается в transformed parent (привязывается не к viewport,
-          а к границам transition-области → поле уплывает в центр экрана). */}
-      {mounted && createPortal(
+      {/* Input — через MiniAppPortal, иначе PageTransition transform ломает
+          position:fixed (поле уплывает в центр экрана). */}
+      <MiniAppPortal>
         <div
           style={{
             position: 'fixed',
@@ -369,9 +364,8 @@ export default function MasterMiniAppAI() {
           >
             <Send size={16} />
           </button>
-        </div>,
-        document.body
-      )}
+        </div>
+      </MiniAppPortal>
     </MobilePage>
   );
 }

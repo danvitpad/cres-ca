@@ -18,8 +18,10 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { getInitData } from '@/lib/telegram/webapp';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
+import { MiniAppPortal } from '@/components/miniapp/portal';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, SPRING, FONT_BASE } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 import '@/styles/od-master-inventory.css';
 
 interface Item {
@@ -318,6 +320,8 @@ function ItemSheet({ mode, item, t, suppliers, onClose, onSaved }: {
   const [err, setErr] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  useTrackSheetOpen(true);
+
   async function callMutate(payload: Record<string, unknown>) {
     const initData = getInitData();
     const res = await fetch('/api/telegram/m/inventory-mutate', {
@@ -385,6 +389,7 @@ function ItemSheet({ mode, item, t, suppliers, onClose, onSaved }: {
   }
 
   return (
+    <MiniAppPortal>
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -567,6 +572,7 @@ function ItemSheet({ mode, item, t, suppliers, onClose, onSaved }: {
         </div>
       </motion.div>
     </motion.div>
+    </MiniAppPortal>
   );
 }
 
