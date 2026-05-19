@@ -347,18 +347,30 @@ export default function MasterMiniAppServicesTab() {
         ) : null}
       </div>
 
-      {/* FAB — литерально .fab из OD master-services.html. Стили в
-          /styles/od-master-services.css (position:fixed + bottom над
-          bottom-nav + safe-area). */}
+      {/* По запросу 2026-05-19: вместо плавающего FAB — inline-кнопка
+          в конце списка. Скроллится вместе с контентом и не закрывает
+          функционал. Прежний position:fixed FAB (.fab CSS) удалён. */}
       {!loading && tab === 'active' && (
-        <button
-          type="button"
-          className="fab"
-          onClick={() => { haptic('selection'); setSheet({ mode: 'create' }); }}
-          aria-label={t.add}
-        >
-          <Plus strokeWidth={2.4} />
-        </button>
+        <div style={{ padding: `12px ${PAGE_PADDING_X}px 20px` }}>
+          <button
+            type="button"
+            onClick={() => { haptic('selection'); setSheet({ mode: 'create' }); }}
+            aria-label={t.add}
+            style={{
+              width: '100%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '14px 16px',
+              borderRadius: R.md,
+              border: `1px solid ${T.accent}`,
+              background: T.accentSoft,
+              color: T.accent,
+              ...TYPE.bodyStrong,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            <Plus size={16} strokeWidth={2.4} /> {t.add}
+          </button>
+        </div>
       )}
 
       <AnimatePresence>

@@ -568,50 +568,36 @@ export default function MasterMiniAppClientsPage() {
                   const avClass = AV_COLORS[i % AV_COLORS.length];
                   const initial = (initials(p.name) || '—').slice(0, 2).toUpperCase();
                   const busy = busyPending === p.profileId;
+                  // По запросу 2026-05-19: вертикальный layout, иначе имя
+                  // обрезается до 'Tais...' и кнопка 'Подписаться в ответ'
+                  // налазит на аватар. Avatar + info row сверху, кнопка
+                  // ниже на всю ширину.
                   return (
-                    <div key={p.profileId} className="client-row" style={{ alignItems: 'center' }}>
-                      <div className={`c-av ${avClass}`}>
-                        {p.avatar ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.avatar} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                        ) : initial}
-                      </div>
-                      <div className="c-body">
-                        <p className="c-name">{p.name}</p>
-                        <p className="c-sub">{t.pendingDesc}{p.phone ? ` · ${p.phone}` : ''}</p>
-                      </div>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => followBackClient(p.profileId)}
-                          disabled={busy}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            background: 'var(--m-accent)',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: 999,
-                            padding: '6px 12px',
-                            fontSize: 12,
-                            fontWeight: 700,
-                            cursor: busy ? 'default' : 'pointer',
-                            opacity: busy ? 0.5 : 1,
-                            fontFamily: 'inherit',
-                          }}
-                        >
-                          {busy ? <Loader2 size={12} className="animate-spin" /> : <UserPlus size={12} />}
-                          {t.followBack}
-                        </button>
+                    <div
+                      key={p.profileId}
+                      className="client-row"
+                      style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div className={`c-av ${avClass}`} style={{ flexShrink: 0 }}>
+                          {p.avatar ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={p.avatar} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                          ) : initial}
+                        </div>
+                        <div className="c-body" style={{ flex: 1, minWidth: 0 }}>
+                          <p className="c-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</p>
+                          <p className="c-sub" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {t.pendingDesc}{p.phone ? ` · ${p.phone}` : ''}
+                          </p>
+                        </div>
                         <button
                           type="button"
                           onClick={() => dismissPendingClient(p.profileId)}
                           disabled={busy}
                           aria-label={t.dismissAria}
                           style={{
-                            width: 32,
-                            height: 32,
+                            width: 32, height: 32, flexShrink: 0,
                             background: 'transparent',
                             border: 'none',
                             borderRadius: 16,
@@ -625,6 +611,33 @@ export default function MasterMiniAppClientsPage() {
                           }}
                         >
                           <X size={16} />
+                        </button>
+                      </div>
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => followBackClient(p.profileId)}
+                          disabled={busy}
+                          style={{
+                            width: '100%',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                            background: 'var(--m-accent)',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: 999,
+                            padding: '10px 14px',
+                            fontSize: 13,
+                            fontWeight: 700,
+                            cursor: busy ? 'default' : 'pointer',
+                            opacity: busy ? 0.5 : 1,
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          {busy ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
+                          {t.followBack}
                         </button>
                       </div>
                     </div>
@@ -875,18 +888,29 @@ export default function MasterMiniAppClientsPage() {
         )}
       </div>
 
-      {/* Литерально .fab из OD master-clients.html. Стили в
-          /styles/od-master-clients.css (адаптирован под наш floating
-          bottom-nav: bottom 88px + safe-area). */}
+      {/* По запросу 2026-05-19: вместо плавающего FAB — inline-кнопка
+          в конце списка. Скроллится с контентом, не закрывает поле/контакты. */}
       {ready && masterId && (
-        <button
-          type="button"
-          className="fab"
-          onClick={() => { haptic('selection'); setShowManual(true); setQuery(''); }}
-          aria-label={t.manualHint}
-        >
-          <UserPlus size={22} strokeWidth={2} />
-        </button>
+        <div style={{ padding: `12px ${PAGE_PADDING_X}px 20px` }}>
+          <button
+            type="button"
+            onClick={() => { haptic('selection'); setShowManual(true); setQuery(''); }}
+            aria-label={t.manualHint}
+            style={{
+              width: '100%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '14px 16px',
+              borderRadius: 16,
+              border: `1px solid var(--m-accent)`,
+              background: 'var(--m-accent-soft)',
+              color: 'var(--m-accent)',
+              fontSize: 15, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            <UserPlus size={16} strokeWidth={2.4} /> {t.addBtn}
+          </button>
+        </div>
       )}
     </MobilePage>
   );
