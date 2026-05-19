@@ -312,20 +312,11 @@ export default function MiniAppHomePage() {
     })();
   }, [userId, cacheKey]);
 
-  // Динамическая дата для top bar — «сьогодні · 17 травня» (или эквивалент).
-  const todayLabel = useMemo(() => {
-    const d = new Date();
-    const dayMonth = d.toLocaleDateString(LOCALE_MAP[lang], { day: 'numeric', month: 'long' });
-    return `${capitalize(t.today)} · ${dayMonth}`;
-  }, [lang, t.today]);
-
   return (
     <MobilePage className="od-client-mini-app">
-      {/* Top bar: дата + bell */}
-      <div className="mc-top">
-        <div>
-          <div className="mc-top-sub">{todayLabel}</div>
-        </div>
+      {/* Top bar: только bell в правом углу. По запросу 2026-05-19 убран
+          «Сегодня · 19 мая Привет, Дмитрий 👋» — дата и приветствие не нужны. */}
+      <div className="mc-top" style={{ justifyContent: 'flex-end' }}>
         <Link
           href="/telegram/notifications"
           onClick={() => haptic('light')}
@@ -341,12 +332,6 @@ export default function MiniAppHomePage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28 }}
       >
-        {/* Greeting */}
-        <div className="mc-greet">
-          {t.greeting},
-          <b>{firstName || '👋'} {firstName ? '👋' : ''}</b>
-        </div>
-
         {/* Search pill → /telegram/search */}
         <Link
           href="/telegram/search"
@@ -471,7 +456,7 @@ export default function MiniAppHomePage() {
               {featured.map((m) => (
                 <Link
                   key={m.id}
-                  href={`/m/${m.slug}`}
+                  href={`/telegram/search/${m.id}`}
                   onClick={() => haptic('light')}
                   className="mc-rec"
                 >

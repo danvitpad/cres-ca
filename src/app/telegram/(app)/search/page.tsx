@@ -22,6 +22,7 @@ import '@/styles/od-client-mini-app.css';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage } from '@/components/miniapp/shells';
 import { MiniAppPortal } from '@/components/miniapp/portal';
+import { T, R, SHADOW, TYPE } from '@/components/miniapp/design';
 import { getLocation } from '@/lib/telegram/geolocation';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 import type { MapMarker } from '@/components/shared/map-view';
@@ -103,7 +104,7 @@ const T_LABELS: Record<Lang, {
 }> = {
   uk: {
     title: 'Пошук',
-    searchHint: 'Манікюр у Києві сьогодні',
+    searchHint: 'Манікюр сьогодні',
     count: (n) => `${n} ${plural(n, 'uk')}`,
     list: 'Список', map: 'Карта',
     today: 'Сьогодні', rating: '4.5+', budget: 'до ₴500', distance: '3 км',
@@ -115,7 +116,7 @@ const T_LABELS: Record<Lang, {
   },
   ru: {
     title: 'Поиск',
-    searchHint: 'Маникюр в Киеве сегодня',
+    searchHint: 'Маникюр сегодня',
     count: (n) => `${n} ${plural(n, 'ru')}`,
     list: 'Список', map: 'Карта',
     today: 'Сегодня', rating: '4.5+', budget: 'до ₴500', distance: '3 км',
@@ -127,7 +128,7 @@ const T_LABELS: Record<Lang, {
   },
   en: {
     title: 'Search',
-    searchHint: 'Nails in Kyiv today',
+    searchHint: 'Nails today',
     count: (n) => `${n} ${plural(n, 'en')}`,
     list: 'List', map: 'Map',
     today: 'Today', rating: '4.5+', budget: 'under ₴500', distance: '3 km',
@@ -530,7 +531,8 @@ export default function MiniAppSearchPage() {
       <div style={{ height: 16 }} />
 
       {/* Filter sheet — portal через MiniAppPortal чтобы position:fixed
-          работал относительно viewport (вне PageTransition transform). */}
+          работал относительно viewport. Используем T-токены из design.ts
+          (они через --m-* на :root, работают вне .od-client-mini-app scope'а). */}
       {filterSheetOpen && (
         <MiniAppPortal>
           <div
@@ -545,13 +547,14 @@ export default function MiniAppSearchPage() {
               onClick={(e) => e.stopPropagation()}
               style={{
                 width: '100%', maxWidth: 480,
-                borderRadius: '20px 20px 0 0',
-                background: 'var(--surface)',
-                padding: '20px 20px calc(20px + env(safe-area-inset-bottom, 0px))',
-                display: 'flex', flexDirection: 'column', gap: 12,
+                borderRadius: `${R.lg}px ${R.lg}px 0 0`,
+                background: T.bg,
+                padding: `20px 20px calc(20px + env(safe-area-inset-bottom, 0px))`,
+                display: 'flex', flexDirection: 'column', gap: 10,
+                boxShadow: SHADOW.elevated,
               }}
             >
-              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>
+              <div style={{ ...TYPE.h3, color: T.text, marginBottom: 4 }}>
                 {lang === 'uk' ? 'Фільтри' : lang === 'ru' ? 'Фильтры' : 'Filters'}
               </div>
               {[
@@ -566,20 +569,21 @@ export default function MiniAppSearchPage() {
                   onClick={() => { haptic('light'); f.set(!f.val); }}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '14px 16px', borderRadius: 12,
-                    border: '1px solid var(--border)',
-                    background: f.val ? 'var(--accent-soft, #e0e7ff)' : 'transparent',
-                    color: 'var(--fg)',
-                    fontSize: 15, fontWeight: 500,
+                    padding: '14px 16px', borderRadius: R.md,
+                    border: `1px solid ${f.val ? T.accent : T.borderSubtle}`,
+                    background: f.val ? T.accentSoft : T.surface,
+                    color: T.text,
+                    ...TYPE.bodyStrong,
                     fontFamily: 'inherit', cursor: 'pointer',
                   }}
                 >
                   <span>{f.label}</span>
                   <span style={{
                     width: 22, height: 22, borderRadius: '50%',
-                    border: `2px solid ${f.val ? 'var(--accent, #2563eb)' : 'var(--border)'}`,
-                    background: f.val ? 'var(--accent, #2563eb)' : 'transparent',
+                    border: `2px solid ${f.val ? T.accent : T.border}`,
+                    background: f.val ? T.accent : 'transparent',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
                   }}>
                     {f.val && <Check size={12} color="#fff" strokeWidth={3} />}
                   </span>
@@ -589,9 +593,9 @@ export default function MiniAppSearchPage() {
                 type="button"
                 onClick={() => { haptic('light'); setFilterSheetOpen(false); }}
                 style={{
-                  marginTop: 8, padding: '14px 16px', borderRadius: 12,
-                  border: 'none', background: 'var(--accent, #2563eb)', color: '#fff',
-                  fontSize: 15, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                  marginTop: 8, padding: '15px 16px', borderRadius: R.md,
+                  border: 'none', background: T.accent, color: '#fff',
+                  ...TYPE.bodyStrong, fontFamily: 'inherit', cursor: 'pointer',
                 }}
               >
                 {lang === 'uk' ? 'Готово' : lang === 'ru' ? 'Готово' : 'Done'}
