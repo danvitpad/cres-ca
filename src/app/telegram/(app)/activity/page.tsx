@@ -338,10 +338,10 @@ function ApptCard({
           )}
         </div>
 
-        {/* Status chip */}
-        {canRate ? (
-          <span className="mc-ap-st review"><Star />{t.chipReview}</span>
-        ) : isCompleted ? (
+        {/* Status chip — для completed без отзыва показываем «Выполнено»,
+            а CTA-кнопка «Оценить» отдельно в actions. Раньше тут был
+            кликабельный chip «Залиш відгук» — дубль с button «Оцінити». */}
+        {isCompleted ? (
           <span className="mc-ap-st done">{t.chipDone}</span>
         ) : isCancelled ? (
           <span className="mc-ap-st cancel"><X />{t.chipCancelled}</span>

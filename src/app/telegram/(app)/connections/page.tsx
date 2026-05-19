@@ -413,15 +413,12 @@ function MasterCard({
         </div>
       )}
 
-      {/* 3-col stats */}
-      <div className="mc-mm-stats">
+      {/* 2-col stats. По запросу 2026-05-19 убран средний столбец «от ₴X» —
+          не имеет смысла на preview (цена видна на странице мастера). */}
+      <div className="mc-mm-stats mc-mm-stats-2">
         <div>
           <div className="mc-mm-sn">{m.visitCount}</div>
           <div className="mc-mm-sl">{t.stat_visits}</div>
-        </div>
-        <div>
-          <div className="mc-mm-sn">{m.minPrice != null ? `₴${Math.round(m.minPrice)}` : '—'}</div>
-          <div className="mc-mm-sl">{t.stat_from}</div>
         </div>
         <div>
           <div className="mc-mm-sn">

@@ -12,9 +12,38 @@ import { motion } from 'framer-motion';
 import { ChevronLeft, Bell, Cake } from 'lucide-react';
 import { NotificationPreferencesEditor } from '@/components/notifications/notification-preferences-editor';
 import { haptic } from '@/lib/telegram/webapp';
+import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+
+const I18N: Record<MiniAppLang, {
+  title: string;
+  subtitle: string;
+  friendBdayTitle: string;
+  friendBdayHint: string;
+}> = {
+  uk: {
+    title: 'Сповіщення',
+    subtitle: 'Коли і про що отримувати сповіщення у Telegram',
+    friendBdayTitle: 'Дні народження друзів',
+    friendBdayHint: 'Ранковий пуш, коли у вашого друга (взаємна підписка) день народження',
+  },
+  ru: {
+    title: 'Уведомления',
+    subtitle: 'Когда и о чём получать уведомления в Telegram',
+    friendBdayTitle: 'Дни рождения друзей',
+    friendBdayHint: 'Утренний пуш, когда у вашего друга (взаимная подписка) день рождения',
+  },
+  en: {
+    title: 'Notifications',
+    subtitle: 'When and about what to get notifications in Telegram',
+    friendBdayTitle: 'Friend birthdays',
+    friendBdayHint: 'Morning push when your friend (mutual follow) has a birthday',
+  },
+};
 
 export default function MiniAppNotificationsPage() {
   const router = useRouter();
+  const lang = useMiniAppLocale();
+  const t = I18N[lang];
   const [friendBday, setFriendBday] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -62,10 +91,10 @@ export default function MiniAppNotificationsPage() {
         <div>
           <h1 className="flex items-center gap-2 text-[22px] font-bold">
             <Bell className="size-5 text-blue-500" />
-            Сповіщення
+            {t.title}
           </h1>
           <p className="text-[12px] text-neutral-500">
-            Коли і про що отримувати сповіщення у Telegram
+            {t.subtitle}
           </p>
         </div>
       </div>
@@ -80,9 +109,9 @@ export default function MiniAppNotificationsPage() {
               <Cake className="size-4" />
             </span>
             <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-semibold text-neutral-900">Дні народження друзів</p>
+              <p className="text-[14px] font-semibold text-neutral-900">{t.friendBdayTitle}</p>
               <p className="text-[11px] text-neutral-500 mt-0.5">
-                Ранковий пуш, коли у вашого друга (взаємна підписка) день народження
+                {t.friendBdayHint}
               </p>
             </div>
             <button
