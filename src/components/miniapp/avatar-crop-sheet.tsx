@@ -13,6 +13,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import Cropper, { type Area } from 'react-easy-crop';
 import { X, Check, Loader2 } from 'lucide-react';
+import { MiniAppPortal } from './portal';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 
 interface Props {
   /** ObjectURL картинки или null. !!src управляет видимостью. */
@@ -36,6 +38,8 @@ export function MiniAppAvatarCropSheet({
   const [zoom, setZoom] = useState(1);
   const [area, setArea] = useState<Area | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useTrackSheetOpen(!!src);
 
   // Сброс при смене картинки
   useEffect(() => {
@@ -66,6 +70,7 @@ export function MiniAppAvatarCropSheet({
   if (!src) return null;
 
   return (
+    <MiniAppPortal>
     <div
       style={{
         position: 'fixed',
@@ -154,6 +159,7 @@ export function MiniAppAvatarCropSheet({
         />
       </div>
     </div>
+    </MiniAppPortal>
   );
 }
 

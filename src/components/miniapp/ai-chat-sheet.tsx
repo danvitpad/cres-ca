@@ -16,6 +16,8 @@ import { Send, Bot, X, Star, Calendar, Mic } from 'lucide-react';
 import { useTelegram } from './telegram-provider';
 import { AvatarCircle } from './shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE } from './design';
+import { MiniAppPortal } from './portal';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatMoney } from '@/lib/format/money';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
@@ -117,6 +119,7 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
   const { userId } = useAuthStore();
   const lang = useMiniAppLocale();
   const t = I18N[lang];
+  useTrackSheetOpen(open);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -293,7 +296,7 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
   return (
     <AnimatePresence>
       {open && (
-        <>
+        <MiniAppPortal>
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -540,7 +543,7 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
               )}
             </form>
           </motion.div>
-        </>
+        </MiniAppPortal>
       )}
     </AnimatePresence>
   );

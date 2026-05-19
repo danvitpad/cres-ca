@@ -14,6 +14,8 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Loader2 } from 'lucide-react';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, SPRING } from './design';
+import { MiniAppPortal } from './portal';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 
 interface Props {
   open: boolean;
@@ -40,6 +42,8 @@ export function MiniAppEditTextSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useTrackSheetOpen(open);
+
   useEffect(() => {
     if (open) {
       setValue(initialValue);
@@ -65,6 +69,7 @@ export function MiniAppEditTextSheet({
   return (
     <AnimatePresence>
       {open && (
+        <MiniAppPortal>
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -165,6 +170,7 @@ export function MiniAppEditTextSheet({
             </button>
           </motion.div>
         </motion.div>
+        </MiniAppPortal>
       )}
     </AnimatePresence>
   );

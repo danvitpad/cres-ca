@@ -10,6 +10,8 @@
 import { useEffect } from 'react';
 import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { MiniAppPortal } from './portal';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 
 export function MiniBottomSheet({
   open,
@@ -33,6 +35,10 @@ export function MiniBottomSheet({
     };
   }, [open]);
 
+  // Регистрируем sheet в глобальном счётчике — мастерский/клиентский layout
+  // спрячет bottom-nav и header avatar пока sheet открыт.
+  useTrackSheetOpen(open);
+
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (info.offset.y > 120 || info.velocity.y > 400) onClose();
   };
@@ -40,7 +46,7 @@ export function MiniBottomSheet({
   return (
     <AnimatePresence>
       {open && (
-        <>
+        <MiniAppPortal>
           <motion.div
             className="fixed inset-0 z-50 bg-neutral-900/60"
             initial={{ opacity: 0 }}
@@ -79,7 +85,7 @@ export function MiniBottomSheet({
             )}
             <div className="flex-1 overflow-y-auto px-5 pb-5">{children}</div>
           </motion.div>
-        </>
+        </MiniAppPortal>
       )}
     </AnimatePresence>
   );

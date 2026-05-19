@@ -16,6 +16,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X as XIcon, Loader2, MapPin, Check } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { T as THEME, R, SHADOW } from '@/components/miniapp/design';
+import { MiniAppPortal } from '@/components/miniapp/portal';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 
 // Reuse onboarding map — нет смысла дублировать leaflet-инициализацию
 const AddressMap = dynamic(() => import('@/app/telegram/m/onboarding/map'), { ssr: false });
@@ -55,6 +57,8 @@ export function AddressPickerSheet({
   onClose,
   onSave,
 }: Props) {
+  useTrackSheetOpen(open);
+
   const [address, setAddress] = useState(initial?.address ?? '');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     initial?.latitude != null && initial?.longitude != null
@@ -153,7 +157,7 @@ export function AddressPickerSheet({
   return (
     <AnimatePresence>
       {open && (
-        <>
+        <MiniAppPortal>
           {/* Overlay */}
           <motion.div
             key="overlay"
@@ -413,7 +417,7 @@ export function AddressPickerSheet({
               </button>
             </div>
           </motion.div>
-        </>
+        </MiniAppPortal>
       )}
     </AnimatePresence>
   );

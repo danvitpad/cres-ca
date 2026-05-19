@@ -21,6 +21,8 @@ import {
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { MiniAppPortal } from '@/components/miniapp/portal';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 import { haptic } from '@/lib/telegram/webapp';
 import { createClient } from '@/lib/supabase/client';
 import { SalonCatalogTab } from '@/components/salon/admin/catalog-tab';
@@ -688,6 +690,7 @@ function InviteSearchSheet({
   onClose: () => void;
   onInvited: () => void;
 }) {
+  useTrackSheetOpen(true);
   const [q, setQ] = useState('');
   const [results, setResults] = useState<MasterCandidate[]>([]);
   const [searching, setSearching] = useState(false);
@@ -742,6 +745,7 @@ function InviteSearchSheet({
   }
 
   return (
+    <MiniAppPortal>
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={onClose}>
       <div
         className="w-full max-w-md rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl"
@@ -840,6 +844,7 @@ function InviteSearchSheet({
         )}
       </div>
     </div>
+    </MiniAppPortal>
   );
 }
 

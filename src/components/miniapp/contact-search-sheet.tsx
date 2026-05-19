@@ -13,6 +13,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Search, X, Loader2, UserPlus, Check, Phone } from 'lucide-react';
 import { T, R, TYPE, SHADOW } from './design';
 import { useTelegram } from './telegram-provider';
+import { MiniAppPortal } from './portal';
+import { useTrackSheetOpen } from '@/lib/miniapp/use-sheet-open';
 
 export interface SearchCard {
   id: string;
@@ -61,6 +63,7 @@ export function ContactSearchSheet({
   onAdded,
 }: Props) {
   const { haptic } = useTelegram();
+  useTrackSheetOpen(true);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchCard[]>([]);
   const [loading, setLoading] = useState(false);
@@ -157,6 +160,7 @@ export function ContactSearchSheet({
   }
 
   return (
+    <MiniAppPortal>
     <div
       onClick={onClose}
       style={{
@@ -475,5 +479,6 @@ export function ContactSearchSheet({
         )}
       </div>
     </div>
+    </MiniAppPortal>
   );
 }
