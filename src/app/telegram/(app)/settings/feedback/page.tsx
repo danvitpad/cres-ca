@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Heart, Send } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { MobilePage } from '@/components/miniapp/shells';
 
 const MAX = 2000;
 
@@ -45,6 +46,7 @@ export default function ClientMiniAppFeedbackPage() {
 
   if (sent) {
     return (
+      <MobilePage className="od-client-mini-app">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -72,10 +74,12 @@ export default function ClientMiniAppFeedbackPage() {
           </button>
         </div>
       </motion.div>
+      </MobilePage>
     );
   }
 
   return (
+    <MobilePage className="od-client-mini-app">
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -125,5 +129,6 @@ export default function ClientMiniAppFeedbackPage() {
         </p>
       </div>
     </motion.div>
+    </MobilePage>
   );
 }

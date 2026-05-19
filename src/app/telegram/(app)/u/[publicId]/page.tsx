@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { useFavorites } from '@/lib/miniapp/use-favorites';
+import { MobilePage } from '@/components/miniapp/shells';
 
 interface PublicProfile {
   id: string;
@@ -94,24 +95,28 @@ export default function MiniAppPublicProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[70dvh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-neutral-400" />
-      </div>
+      <MobilePage className="od-client-mini-app">
+        <div className="flex min-h-[70dvh] items-center justify-center">
+          <Loader2 className="size-6 animate-spin text-neutral-400" />
+        </div>
+      </MobilePage>
     );
   }
 
   if (!profile) {
     return (
-      <div className="flex min-h-[70dvh] flex-col items-center justify-center gap-3 px-6 text-center">
-        <p className="text-sm text-neutral-600">Профиль не найден</p>
-        <button
-          onClick={() => { haptic('selection'); router.back(); }}
-          className="rounded-full border border-neutral-200 bg-white/5 px-4 py-2 text-xs font-semibold"
-          style={{ minHeight: 44 }}
-        >
-          Назад
-        </button>
-      </div>
+      <MobilePage className="od-client-mini-app">
+        <div className="flex min-h-[70dvh] flex-col items-center justify-center gap-3 px-6 text-center">
+          <p className="text-sm text-neutral-600">Профиль не найден</p>
+          <button
+            onClick={() => { haptic('selection'); router.back(); }}
+            className="rounded-full border border-neutral-200 bg-white/5 px-4 py-2 text-xs font-semibold"
+            style={{ minHeight: 44 }}
+          >
+            Назад
+          </button>
+        </div>
+      </MobilePage>
     );
   }
 
@@ -120,6 +125,7 @@ export default function MiniAppPublicProfilePage() {
   const avatarChar = displayName[0] ?? 'U';
 
   return (
+    <MobilePage className="od-client-mini-app">
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
@@ -246,6 +252,7 @@ export default function MiniAppPublicProfilePage() {
         )}
       </div>
     </motion.div>
+    </MobilePage>
   );
 }
 

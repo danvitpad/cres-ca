@@ -26,6 +26,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import '@/styles/od-client-notifications.css';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T, TYPE, FONT_BASE, PAGE_PADDING_X } from '@/components/miniapp/design';
+import { MobilePage } from '@/components/miniapp/shells';
 
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
@@ -242,9 +243,11 @@ export default function ClientMiniAppNotifications() {
 
   if (!ready) {
     return (
-      <div style={{ display: 'flex', minHeight: '60vh', alignItems: 'center', justifyContent: 'center' }}>
-        <Loader2 className="animate-spin" size={24} color={T.textTertiary} />
-      </div>
+      <MobilePage className="od-client-mini-app">
+        <div style={{ display: 'flex', minHeight: '60vh', alignItems: 'center', justifyContent: 'center' }}>
+          <Loader2 className="animate-spin" size={24} color={T.textTertiary} />
+        </div>
+      </MobilePage>
     );
   }
 
@@ -280,6 +283,7 @@ export default function ClientMiniAppNotifications() {
   ];
 
   return (
+    <MobilePage className="od-client-mini-app">
     <motion.div
       className="od-client-notifications"
       initial={{ opacity: 0, y: 8 }}
@@ -548,5 +552,6 @@ export default function ClientMiniAppNotifications() {
         </ul>
       )}
     </motion.div>
+    </MobilePage>
   );
 }

@@ -13,6 +13,7 @@ import { motion } from 'framer-motion';
 import { MapPin, Phone, Loader2, Users, Heart, HeartOff } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { MobilePage } from '@/components/miniapp/shells';
 
 interface SalonRow {
   id: string;
@@ -120,17 +121,24 @@ export default function MiniAppSalonDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-neutral-400" />
-      </div>
+      <MobilePage className="od-client-mini-app">
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <Loader2 className="size-6 animate-spin text-neutral-400" />
+        </div>
+      </MobilePage>
     );
   }
 
   if (!salon) {
-    return <div className="px-5 pt-10 text-center"><p className="text-sm text-neutral-600">Салон не найден</p></div>;
+    return (
+      <MobilePage className="od-client-mini-app">
+        <div className="px-5 pt-10 text-center"><p className="text-sm text-neutral-600">Салон не найден</p></div>
+      </MobilePage>
+    );
   }
 
   return (
+    <MobilePage className="od-client-mini-app">
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -244,5 +252,6 @@ export default function MiniAppSalonDetailPage() {
         </div>
       )}
     </motion.div>
+    </MobilePage>
   );
 }
