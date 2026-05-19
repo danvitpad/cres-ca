@@ -30,10 +30,19 @@ export function MiniAppPortal({ children }: { children: ReactNode }) {
   const { theme } = useMiniAppTheme();
   useEffect(() => { setMounted(true); }, []);
   if (!mounted) return null;
+  // Оба класса: `.miniapp-scope` несёт мастерские overrides Tailwind-цветов
+  // и общие токены, `.od-client-mini-app` несёт scoped CSS-переменные
+  // клиентского мини-аппа (`--surface`, `--accent`, `--accent-2`, `--a-600`,
+  // `--fg`/`--fg-2`/`--fg-3`, `--border`). Без второго класса все sheet'ы
+  // клиента, идущие через portal в document.body, ломались — переменные
+  // были undefined → баннеры/иконки/рейтинг-sheet рендерились без цветов.
+  // Мастеру второй класс не мешает: его страницы своих overrides не имеют
+  // через `.od-client-mini-app`, а мастерские scope'ы (`.od-master-*`)
+  // навешиваются на саму страницу, не нужны в portal-обёртке.
   return createPortal(
     <div
       data-theme={theme}
-      className="miniapp-scope"
+      className="miniapp-scope od-client-mini-app"
       style={{ ...FONT_BASE }}
     >
       {children}
