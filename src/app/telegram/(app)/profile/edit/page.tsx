@@ -138,6 +138,7 @@ export default function MiniAppProfileEditPage() {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           phone: phone.trim(),
+          email: email.trim(),
           dateOfBirth: dob || '',
         }),
       });
@@ -235,12 +236,14 @@ export default function MiniAppProfileEditPage() {
         <div style={{ fontSize: 12, color: 'var(--fg-2)' }}>{t.changePhotoHint}</div>
       </div>
 
-      {/* Form card */}
+      {/* Form card. Email теперь редактируемый (по запросу 2026-05-19) —
+          PATCH /api/profile через admin auth.admin.updateUserById обновляет
+          email независимо от cookie session. DOB через type="date". */}
       <div className="mpe-card">
         <Field label={t.firstName} value={firstName} onChange={setFirstName} />
         <Field label={t.lastName} value={lastName} onChange={setLastName} />
         <Field label={t.phone} value={phone} onChange={setPhone} type="tel" />
-        <Field label={t.email} value={email} onChange={() => {}} type="email" disabled />
+        <Field label={t.email} value={email} onChange={setEmail} type="email" />
         <Field label={t.dob} value={dob} onChange={setDob} type="date" />
       </div>
 

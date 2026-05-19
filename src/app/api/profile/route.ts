@@ -127,19 +127,28 @@ export async function PATCH(req: Request) {
     }
   }
 
-  // Email change — только cookie-сессия (требует подтверждение через email)
+  // Email change — поддерживаем оба auth-режима (cookie + initData).
+  // Cookie-сессия: supabase.auth.updateUser({ email }) — отправит подтверждение
+  // на новый email. Mini App без cookie: admin.auth.admin.updateUserById,
+  // обновляет email без подтверждения (доверяем initData как auth-источнику).
   if (typeof body.email === 'string') {
     const email = body.email.trim().toLowerCase();
     if (email && !/^[\w.+-]+@[\w-]+\.[\w.-]+$/.test(email)) {
       return NextResponse.json({ error: 'invalid_email' }, { status: 400 });
     }
     if (email && email !== cookieUser?.email) {
-      if (!cookieUser) {
-        return NextResponse.json({ error: 'email_change_requires_login' }, { status: 401 });
-      }
-      const { error: authErr } = await supabase.auth.updateUser({ email });
-      if (authErr) {
-        return NextResponse.json({ error: 'email_update_failed', detail: authErr.message }, { status: 400 });
+      if (cookieUser) {
+        const { error: authErr } = await supabase.auth.updateUser({ email });
+        if (authErr) {
+          return NextResponse.json({ error: 'email_update_failed', detail: authErr.message }, { status: 400 });
+        }
+      } else {
+        // Mini App initData auth — admin update без email-confirmation
+        const adm = admin();
+        const { error: adminErr } = await adm.auth.admin.updateUserById(userId, { email });
+        if (adminErr) {
+          return NextResponse.json({ error: 'email_update_failed', detail: adminErr.message }, { status: 400 });
+        }
       }
       update.email = email;
     }

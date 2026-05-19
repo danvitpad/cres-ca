@@ -88,10 +88,14 @@ const T_LABELS: Record<Lang, {
   },
 };
 
-type ToggleKey = 'reminder' | 'confirm' | 'promo' | 'review' | 'allergy' | 'analytics';
+// По запросу 2026-05-19 убраны 4 toggle'а Email-уведомлений — они писали
+// только в localStorage и НЕ влияли на реальную отправку email (Resend cron
+// шлёт независимо от этих переключателей). Чтобы не вводить пользователя в
+// заблуждение, удалена вся секция «Email-уведомления». Если когда-нибудь
+// добавим настоящую гейтинг-логику в /api/cron/notifications — вернуть.
+type ToggleKey = 'allergy' | 'analytics';
 const STORAGE_KEY = 'cres:client-settings-v1';
 const DEFAULT_TOGGLES: Record<ToggleKey, boolean> = {
-  reminder: true, confirm: true, promo: false, review: true,
   allergy: true, analytics: true,
 };
 
@@ -200,15 +204,6 @@ export default function MiniAppSettingsPage() {
           </div>
           <div className="mp-row-arr"><ChevronRight size={16} /></div>
         </Link>
-      </div>
-
-      {/* Email notifications */}
-      <div className="mps-section-t">{t.sectionNotif}</div>
-      <div className="mps-card">
-        <ToggleRow title={t.notifReminder} sub={t.notifReminderSub} checked={toggles.reminder} onChange={(v) => setToggle('reminder', v)} />
-        <ToggleRow title={t.notifConfirm} sub={t.notifConfirmSub} checked={toggles.confirm} onChange={(v) => setToggle('confirm', v)} />
-        <ToggleRow title={t.notifPromo} sub={t.notifPromoSub} checked={toggles.promo} onChange={(v) => setToggle('promo', v)} />
-        <ToggleRow title={t.notifReview} sub={t.notifReviewSub} checked={toggles.review} onChange={(v) => setToggle('review', v)} />
       </div>
 
       {/* Privacy */}
