@@ -7,15 +7,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Heart, Send } from 'lucide-react';
+import { Heart, Send } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 
 const MAX = 2000;
 
 export default function ClientMiniAppFeedbackPage() {
-  const router = useRouter();
   const { haptic } = useTelegram();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -53,16 +51,7 @@ export default function ClientMiniAppFeedbackPage() {
         transition={{ duration: 0.3 }}
         className="space-y-5 px-5 pt-4 pb-20"
       >
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.back()}
-            className="flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white active:bg-neutral-50 transition-colors"
-            aria-label="Назад"
-          >
-            <ChevronLeft className="size-5" />
-          </button>
-          <h1 className="text-[22px] font-bold">Обратная связь</h1>
-        </div>
+        <h1 className="text-[22px] font-bold">Обратная связь</h1>
 
         <div className="flex flex-col items-center rounded-2xl border border-emerald-200 bg-emerald-50 px-6 py-10 text-center">
           <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
@@ -93,18 +82,9 @@ export default function ClientMiniAppFeedbackPage() {
       transition={{ duration: 0.3 }}
       className="space-y-5 px-5 pt-4 pb-20"
     >
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => router.back()}
-          className="flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white active:bg-neutral-50 transition-colors"
-          aria-label="Назад"
-        >
-          <ChevronLeft className="size-5" />
-        </button>
-        <div>
-          <h1 className="text-[22px] font-bold">Обратная связь</h1>
-          <p className="text-[12px] text-neutral-500">Напишите что улучшить, что не работает, какая фича нужна</p>
-        </div>
+      <div>
+        <h1 className="text-[22px] font-bold">Обратная связь</h1>
+        <p className="text-[12px] text-neutral-500">Напишите что улучшить, что не работает, какая фича нужна</p>
       </div>
 
       <div>

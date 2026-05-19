@@ -22,6 +22,7 @@ import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage } from '@/components/miniapp/shells';
 import { createClient } from '@/lib/supabase/client';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
+import { showConfirm } from '@/lib/telegram/webapp';
 
 type Lang = 'uk' | 'ru' | 'en';
 type Tab = 'all' | 'regular' | 'recent';
@@ -257,7 +258,10 @@ export default function MiniAppConnectionsPage() {
 
   const unfollow = useCallback(async (id: string, name: string) => {
     if (removing) return;
-    const ok = window.confirm(t.confirmRemove(name));
+    // showConfirm = TG-нативный диалог (попап в стиле Telegram). window.confirm
+    // на iOS Mini App может не появиться вовсе. Если TG-провайдера нет
+    // (открыли в браузере) — fallback на window.confirm.
+    const ok = await showConfirm(t.confirmRemove(name));
     if (!ok) return;
     setRemoving(id);
     haptic('warning');

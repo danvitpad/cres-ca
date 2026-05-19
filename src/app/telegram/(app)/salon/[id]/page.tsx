@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, MapPin, Phone, Loader2, Users, Heart, HeartOff } from 'lucide-react';
+import { MapPin, Phone, Loader2, Users, Heart, HeartOff } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 
@@ -137,13 +137,6 @@ export default function MiniAppSalonDetailPage() {
       transition={{ duration: 0.3 }}
       className="space-y-6 px-5 pt-6 pb-10"
     >
-      <button
-        onClick={() => { haptic('light'); router.back(); }}
-        className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white active:bg-neutral-50 transition-colors"
-      >
-        <ArrowLeft className="size-4" />
-      </button>
-
       <div className="flex items-start gap-4">
         <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50 text-2xl font-bold text-neutral-900">
           {salon.logo_url ? (

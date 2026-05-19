@@ -22,7 +22,6 @@ import {
   Moon,
   LogOut,
   ChevronRight,
-  ArrowLeft,
   Loader2,
   Mail,
   Phone as PhoneIcon,
@@ -406,32 +405,6 @@ export default function MasterMiniAppSettings() {
       }}
     >
       <div style={{ padding: `16px ${PAGE_PADDING_X}px 32px`, display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {/* Back button — явный переход на /more, не router.back().
-            Раньше browser-back уходил в history → если зашёл с /more →
-            /settings → /language → back → /settings, то router.back()
-            на /settings возвращал не на /more а обратно на /language.
-            Исправлено: всегда идём на /more напрямую. */}
-        <button
-          type="button"
-          onClick={() => { haptic('light'); router.push('/telegram/m/more'); }}
-          aria-label={t.back}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            border: `1px solid ${T.border}`,
-            background: T.surface,
-            color: T.text,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: SHADOW.card,
-          }}
-        >
-          <ArrowLeft size={18} strokeWidth={2.4} />
-        </button>
-
         {/* ─── ПРОФИЛЬ — личные данные мастера ─── */}
         <div>
           <p className="settings-section-label" style={{ margin: '4px 4px 8px' }}>{t.sectionProfile}</p>

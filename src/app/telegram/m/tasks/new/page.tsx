@@ -12,7 +12,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Bell, Loader2 } from 'lucide-react';
+import { Bell, Loader2 } from 'lucide-react';
 import { T, R, TYPE, SPRING, FONT_BASE } from '@/components/miniapp/design';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 
@@ -95,26 +95,6 @@ export default function NewTaskPage() {
       transition={SPRING.soft}
       style={{ ...FONT_BASE, padding: '12px 16px 120px' }}
     >
-      <button
-        type="button"
-        onClick={() => { haptic('light'); router.back(); }}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 4,
-          padding: '8px 0',
-          marginBottom: 8,
-          background: 'transparent',
-          border: 'none',
-          color: T.textSecondary,
-          fontSize: 14,
-          cursor: 'pointer',
-        }}
-      >
-        <ChevronLeft size={20} />
-        Назад
-      </button>
-
       <h1 style={{ ...TYPE.h1, color: T.text, margin: '0 0 20px' }}>Новая задача</h1>
 
       {/* Title */}

@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Heart, IdCard, UserPlus, UserCheck, Grid3x3, Loader2, MapPin } from 'lucide-react';
+import { Heart, IdCard, UserPlus, UserCheck, Grid3x3, Loader2, MapPin } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -127,16 +127,11 @@ export default function MiniAppPublicProfilePage() {
       className="space-y-5 pb-8"
     >
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 pt-5">
-        <button
-          onClick={() => { haptic('selection'); router.back(); }}
-          className="flex size-9 items-center justify-center rounded-xl bg-white/5 border border-neutral-200 active:scale-95 transition-transform"
-          aria-label="Назад"
-        >
-          <ArrowLeft className="size-4" />
-        </button>
-        {profile.slug && <p className="text-sm font-semibold text-neutral-700">@{profile.slug}</p>}
-      </div>
+      {profile.slug && (
+        <div className="flex items-center gap-3 px-5 pt-5">
+          <p className="text-sm font-semibold text-neutral-700">@{profile.slug}</p>
+        </div>
+      )}
 
       {/* Avatar + counters */}
       <div className="flex items-start gap-6 px-5">
