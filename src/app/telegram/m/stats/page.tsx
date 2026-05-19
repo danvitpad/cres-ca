@@ -9,7 +9,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Calendar, Target, Loader2, Award, XCircle, Plus, Minus } from 'lucide-react';
+import { Target, Loader2, Award, XCircle, Plus, Minus } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MiniBottomSheet } from '@/components/miniapp/bottom-sheet';
@@ -320,15 +320,18 @@ export default function MasterMiniAppStats() {
         </div>
 
         {loading ? (
-          <div className="space-y-3">
+          <div className="space-y-3" style={{ marginTop: 12 }}>
             <div className="h-24 animate-pulse rounded-2xl bg-white border-neutral-200" />
             <div className="h-24 animate-pulse rounded-2xl bg-white border-neutral-200" />
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3">
-              <StatCard icon={TrendingUp} label={t.kpiRevenue} value={`${kpi.revenue.toFixed(0)}₴`} accent="emerald" />
-              <StatCard icon={Calendar} label={t.kpiBookings} value={kpi.total.toString()} accent="violet" />
+            {/* По запросу 2026-05-19: убраны дубль KPI «Выручка» (тот же
+                kpi.revenue что и summary-half выше) и «Записей» (равно
+                kpi.total = знаменатель в Выполнено X/Y). Оставлены только
+                Средний чек + Выполнено — действительно новые метрики.
+                marginTop сверху — зазор от блока кнопок «+ Доход / - Расход». */}
+            <div className="grid grid-cols-2 gap-3" style={{ marginTop: 12 }}>
               <StatCard icon={Target} label={t.kpiAvgCheck} value={`${kpi.avg.toFixed(0)}₴`} accent="amber" />
               <StatCard
                 icon={Award}

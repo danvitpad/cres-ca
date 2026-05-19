@@ -182,7 +182,10 @@ function formatDayHeader(d: Date, t: typeof I18N['ru']) {
   if (isSameDay(d, today)) return t.today;
   if (isSameDay(d, addDays(today, 1))) return t.tomorrow;
   if (isSameDay(d, addDays(today, -1))) return t.yesterday;
-  return d.toLocaleDateString(t.dateLocale, { weekday: 'long', day: 'numeric', month: 'long' });
+  // По запросу 2026-05-19: короткий формат «Пн, 19 мая» вместо
+  // «понедельник, 19 мая» — иначе h1 ломается на 2 строки на широких
+  // weekday-словах и DateStrip ниже дёргается по вертикали при смене дня.
+  return d.toLocaleDateString(t.dateLocale, { weekday: 'short', day: 'numeric', month: 'long' });
 }
 
 const STATUS_META_STYLES: Record<Status, { stripBg: string; chipBg: string; chipColor: string }> = {
@@ -397,10 +400,15 @@ export default function MasterMiniAppCalendar() {
         {/* Кнопка «Новая запись» переехала в floating FAB снизу справа —
             раньше она жила в PageHeader.right и перекрывалась кружком аватара
             (тот теперь fixed top-right на каждом табе). */}
-        <PageHeader
-          title={formatDayHeader(day, t)}
-          subtitle={t.bookingsCount(totals.count, totals.revenue.toFixed(0))}
-        />
+        {/* min-height гарантирует постоянную высоту заголовка независимо от
+            длины day-label и subtitle — DateStrip ниже больше не дёргается
+            при смене дня. */}
+        <div style={{ minHeight: 86 }}>
+          <PageHeader
+            title={formatDayHeader(day, t)}
+            subtitle={t.bookingsCount(totals.count, totals.revenue.toFixed(0))}
+          />
+        </div>
 
         <div style={{ paddingLeft: PAGE_PADDING_X, paddingRight: PAGE_PADDING_X }}>
           <HomeScreenBanner />

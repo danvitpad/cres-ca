@@ -14,6 +14,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
 import { Loader2, X, CalendarOff } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { MiniAppPortal } from '@/components/miniapp/portal';
 import { T, R, FONT_BASE, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 
@@ -241,7 +242,7 @@ export function BlockTimeSheet({ open, onClose, date, defaultTime, onSaved }: Pr
   return (
     <AnimatePresence>
       {open && (
-        <>
+        <MiniAppPortal>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -478,7 +479,7 @@ export function BlockTimeSheet({ open, onClose, date, defaultTime, onSaved }: Pr
               </button>
             </div>
           </motion.div>
-        </>
+        </MiniAppPortal>
       )}
     </AnimatePresence>
   );

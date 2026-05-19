@@ -188,10 +188,9 @@ export default function MasterMiniAppMore() {
   // на кружок аватара справа сверху). Sign out — в Настройках.
   const links: MoreLinkRaw[] = [
     { key: 'clients', href: '/telegram/m/clients', icon: UsersIcon, labelKey: 'clients', hintKey: 'clientsHint', iconColor: 'neutral' },
-    // Лист ожидания поднят сразу после Клиентов 2026-05-13 — раньше был
-    // на 7-й позиции и его не замечали. Концептуально это «клиенты,
-    // которые ждут окошко» — логически рядом с базой клиентов.
-    { key: 'waitlist', href: '/telegram/m/waitlist', icon: Hourglass, labelKey: 'waitlist', hintKey: 'waitlistHint', iconColor: 'neutral' },
+    // По запросу 2026-05-19: «Лист очікування» скрыт из меню — пока не нужен.
+    // Файлы /telegram/m/waitlist/* НЕ удалены, только убрана ссылка из навигации.
+    // { key: 'waitlist', href: '/telegram/m/waitlist', icon: Hourglass, labelKey: 'waitlist', hintKey: 'waitlistHint', iconColor: 'neutral' },
     { key: 'services', href: '/telegram/m/services', icon: Scissors, labelKey: 'services', hintKey: 'servicesHint', iconColor: 'neutral' },
     { key: 'marketing', href: '/telegram/m/marketing', icon: Megaphone, labelKey: 'marketing', hintKey: 'marketingHint', iconColor: 'neutral' },
     { key: 'templates', href: '/telegram/m/templates', icon: MessageSquare, labelKey: 'templates', hintKey: 'templatesHint', iconColor: 'neutral' },
