@@ -138,22 +138,22 @@ export default function MiniAppSalonCalendar() {
   if (loading && !data) {
     return (
       <div className="p-4 space-y-3">
-        <div className="h-10 bg-muted rounded-lg animate-pulse" />
-        <div className="h-24 bg-muted rounded-xl animate-pulse" />
+        <div className="h-10 bg-neutral-100 rounded-lg animate-pulse" />
+        <div className="h-24 bg-neutral-100 rounded-xl animate-pulse" />
       </div>
     );
   }
 
   if (error === '403' || error === 'forbidden') {
     return (
-      <div className="p-6 text-center text-sm text-muted-foreground">
+      <div className="p-6 text-center text-sm text-neutral-500">
         Доступ только для владельца или ресепшн
       </div>
     );
   }
 
   if (!data) {
-    return <div className="p-6 text-center text-sm text-muted-foreground">Не удалось загрузить</div>;
+    return <div className="p-6 text-center text-sm text-neutral-500">Не удалось загрузить</div>;
   }
 
   return (
@@ -167,7 +167,7 @@ export default function MiniAppSalonCalendar() {
           <Building2 className="size-5" />
         </div>
         <div className="min-w-0">
-          <div className="text-[10px] uppercase text-muted-foreground tracking-wider">Общий календарь</div>
+          <div className="text-[10px] uppercase text-neutral-500 tracking-wider">Общий календарь</div>
           <h1 className="text-lg font-bold truncate">{data.salon.name}</h1>
         </div>
       </motion.div>
@@ -177,7 +177,7 @@ export default function MiniAppSalonCalendar() {
           type="button"
           onClick={() => shiftDay(-1)}
           aria-label="Prev"
-          className="size-9 rounded-lg border border-border flex items-center justify-center"
+          className="size-9 rounded-lg border border-neutral-200 flex items-center justify-center"
         >
           <ChevronLeft className="size-4" />
         </button>
@@ -185,24 +185,24 @@ export default function MiniAppSalonCalendar() {
           type="date"
           value={day}
           onChange={(e) => setDay(e.target.value)}
-          className="flex-1 h-9 px-2 border border-border rounded-lg bg-background text-sm"
+          className="flex-1 h-9 px-2 border border-neutral-200 rounded-lg bg-white text-sm"
         />
         <button
           type="button"
           onClick={() => shiftDay(1)}
           aria-label="Next"
-          className="size-9 rounded-lg border border-border flex items-center justify-center"
+          className="size-9 rounded-lg border border-neutral-200 flex items-center justify-center"
         >
           <ChevronRight className="size-4" />
         </button>
       </div>
 
       <div>
-        <label className="text-[10px] uppercase text-muted-foreground tracking-wider">Мастер</label>
+        <label className="text-[10px] uppercase text-neutral-500 tracking-wider">Мастер</label>
         <select
           value={masterFilter}
           onChange={(e) => setMasterFilter(e.target.value)}
-          className="mt-1 w-full h-9 rounded-lg border border-border bg-background px-2 text-sm"
+          className="mt-1 w-full h-9 rounded-lg border border-neutral-200 bg-white px-2 text-sm"
         >
           <option value="all">Все мастера</option>
           {data.masters.map((m) => (
@@ -212,8 +212,8 @@ export default function MiniAppSalonCalendar() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center text-xs text-muted-foreground">
-          <Users className="size-8 mx-auto mb-2 text-muted-foreground/60" />
+        <div className="rounded-xl border border-dashed border-neutral-200 p-8 text-center text-xs text-neutral-500">
+          <Users className="size-8 mx-auto mb-2 text-neutral-500/60" />
           На эту дату записей нет
         </div>
       ) : (
@@ -224,15 +224,15 @@ export default function MiniAppSalonCalendar() {
             return (
               <div
                 key={a.id}
-                className="rounded-xl border border-border bg-card p-3 flex gap-3"
+                className="rounded-xl border border-neutral-200 bg-white p-3 flex gap-3"
               >
                 <div className="flex flex-col items-center shrink-0 text-center min-w-[52px]">
                   <div className="text-sm font-bold">{formatTime(a.starts_at)}</div>
-                  <div className="text-[10px] text-muted-foreground">{formatTime(a.ends_at)}</div>
+                  <div className="text-[10px] text-neutral-500">{formatTime(a.ends_at)}</div>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{a.client_name ?? 'Клиент'}</div>
-                  <div className="text-xs text-muted-foreground truncate">{a.service_name ?? '—'}</div>
+                  <div className="text-xs text-neutral-500 truncate">{a.service_name ?? '—'}</div>
                   <div className="mt-1 flex items-center gap-1 flex-wrap">
                     {master && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary truncate max-w-[120px]">
@@ -240,7 +240,7 @@ export default function MiniAppSalonCalendar() {
                       </span>
                     )}
                     {chip && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500">
                         {chip}
                       </span>
                     )}
