@@ -891,7 +891,7 @@ export default function MasterMiniAppClientsPage() {
       {/* По запросу 2026-05-19: вместо плавающего FAB — inline-кнопка
           в конце списка. Скроллится с контентом, не закрывает поле/контакты. */}
       {ready && masterId && (
-        <div style={{ padding: `12px ${PAGE_PADDING_X}px 20px` }}>
+        <div style={{ padding: `12px ${PAGE_PADDING_X}px 8px` }}>
           <button
             type="button"
             onClick={() => { haptic('selection'); setShowManual(true); setQuery(''); }}

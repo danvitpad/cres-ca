@@ -351,7 +351,7 @@ export default function MasterMiniAppServicesTab() {
           в конце списка. Скроллится вместе с контентом и не закрывает
           функционал. Прежний position:fixed FAB (.fab CSS) удалён. */}
       {!loading && tab === 'active' && (
-        <div style={{ padding: `12px ${PAGE_PADDING_X}px 20px` }}>
+        <div style={{ padding: `12px ${PAGE_PADDING_X}px 8px` }}>
           <button
             type="button"
             onClick={() => { haptic('selection'); setSheet({ mode: 'create' }); }}
