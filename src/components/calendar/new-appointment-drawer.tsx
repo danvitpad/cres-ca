@@ -14,6 +14,7 @@ import { Search, Check, X, Calendar, Clock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { usePageTheme, FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
 import { useEnterSubmit } from '@/hooks/use-keyboard-shortcuts';
+import { formatMoney } from '@/lib/format/money';
 
 interface ClientOption {
   id: string;
@@ -444,7 +445,7 @@ export function NewAppointmentDrawer({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 500, color: C.text }}>{s.name}</div>
                     <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 2 }}>
-                      {s.duration_minutes} мин · {s.price} {s.currency}
+                      {s.duration_minutes} мин · {formatMoney(s.price, s.currency)}
                     </div>
                   </div>
                   {isSelected && <Check size={16} style={{ color: C.accent }} />}

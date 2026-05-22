@@ -253,6 +253,19 @@ export default function AuthPage() {
   }, [sub]);
 
   async function routeAfterAuth(actualRole: string) {
+    // Перед переходом на защищённую страницу ждём, пока сервер реально увидит
+    // сессию (cookie долетел). Браузерный клиент Supabase пишет auth-cookie
+    // асинхронно — если редиректнуть сразу, middleware на первом заходе cookie
+    // не находит и выкидывает обратно на /login (приходилось логиниться дважды).
+    // Поллим auth-gated endpoint, пока не вернёт 200. Максимум ~3с, потом всё
+    // равно переходим (чисто аддитивно — залочить вход не может).
+    for (let i = 0; i < 20; i++) {
+      try {
+        const res = await fetch('/api/me/ui-prefs', { cache: 'no-store' });
+        if (res.ok) break;
+      } catch {}
+      await new Promise((r) => setTimeout(r, 150));
+    }
     // Используем window.location вместо router.push для всех редиректов после
     // signInWithPassword — гарантирует что middleware на защищённых страницах
     // получит свежие auth-cookies без race condition.

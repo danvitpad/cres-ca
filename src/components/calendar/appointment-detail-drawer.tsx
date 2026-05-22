@@ -32,6 +32,7 @@ import type { AppointmentData } from '@/hooks/use-appointments';
 import type { AppointmentStatus } from '@/types';
 import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
 import { humanizeError } from '@/lib/format/error';
+import { formatMoney } from '@/lib/format/money';
 
 type AppointmentDetailDrawerProps = {
   appointment: AppointmentData | null;
@@ -578,7 +579,7 @@ export function AppointmentDetailDrawer({
                   </div>
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>
-                  {appointment.price} {appointment.currency}
+                  {formatMoney(appointment.price, appointment.currency)}
                 </div>
               </div>
 
@@ -625,7 +626,7 @@ export function AppointmentDetailDrawer({
                 Всего к оплате
               </span>
               <span style={{ fontSize: 18, fontWeight: 700, color: C.text }}>
-                {appointment.price} {appointment.currency}
+                {formatMoney(appointment.price, appointment.currency)}
               </span>
             </div>
 
