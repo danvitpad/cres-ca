@@ -45,12 +45,122 @@ interface FamilyMember {
 
 type Pane = 'data' | 'family' | 'docs' | 'settings';
 
-const RELATIONSHIPS = [
-  { v: 'spouse', l: 'Чоловік / Дружина' },
-  { v: 'child', l: 'Син / Донька' },
-  { v: 'parent', l: 'Батько / Мама' },
-  { v: 'other', l: 'Інше' },
-];
+type ProfileLang = 'uk' | 'ru' | 'en';
+const PROFILE_LABELS: Record<ProfileLang, {
+  saved: string; fileTooLarge: string; avatarUpdated: string; added: string;
+  removeMemberTitle: string; removeMemberConfirm: string; removed: string;
+  linkCopied: string;
+  user: string;
+  avatarAria: string;
+  statVisits: string; statMasters: string; statBonuses: string;
+  paneData: string; paneFamily: string; paneDocs: string; paneSettings: string;
+  firstName: string; lastName: string; phone: string; email: string;
+  birthDate: string; gender: string; genderNotSet: string; genderMale: string; genderFemale: string; genderOther: string;
+  allergies: string; allergiesPlaceholder: string;
+  savingNow: string; save: string;
+  removeAria: string;
+  famNameLabel: string; famNamePlaceholder: string; famRelLabel: string;
+  rel: { spouse: string; child: string; parent: string; other: string };
+  uiLanguage: string;
+  theme: string; themeLight: string; themeDark: string; themeSystem: string;
+  notifications: string;
+  notifVisitTitle: string; notifVisitSub: string;
+  notifConfirmTitle: string; notifConfirmSub: string;
+  notifMarketingTitle: string; notifMarketingSub: string;
+  notifReviewTitle: string; notifReviewSub: string;
+  deleteAccountTitle: string; deleteAccountDesc: string;
+  deleteAccountConfirm: string; deleteAccountSupportToast: string;
+}> = {
+  uk: {
+    saved: 'Збережено', fileTooLarge: 'Файл занадто великий (макс 5 МБ)',
+    avatarUpdated: 'Аватар оновлено', added: 'Додано',
+    removeMemberTitle: 'Видалити члена сім\'ї?', removeMemberConfirm: 'Видалити', removed: 'Видалено',
+    linkCopied: 'Посилання скопійовано',
+    user: 'Користувач',
+    avatarAria: 'Змінити аватар',
+    statVisits: 'Візити', statMasters: 'Майстри', statBonuses: 'Бонуси',
+    paneData: 'Дані', paneFamily: 'Сім\'я', paneDocs: 'Документи', paneSettings: 'Налаштування',
+    firstName: 'Ім\'я', lastName: 'Прізвище', phone: 'Телефон', email: 'Email',
+    birthDate: 'Дата народження', gender: 'Стать',
+    genderNotSet: 'Не вказано', genderMale: 'Чоловік', genderFemale: 'Жінка', genderOther: 'Інше',
+    allergies: 'Алергії, протипоказання (опціонально)',
+    allergiesPlaceholder: 'Наприклад: алергія на латекс',
+    savingNow: 'Зберігаю…', save: 'Зберегти',
+    removeAria: 'Видалити',
+    famNameLabel: 'Ім\'я', famNamePlaceholder: 'Артем', famRelLabel: 'Хто це',
+    rel: { spouse: 'Чоловік / Дружина', child: 'Син / Донька', parent: 'Батько / Мама', other: 'Інше' },
+    uiLanguage: 'Мова інтерфейсу',
+    theme: 'Тема', themeLight: 'Світла', themeDark: 'Темна', themeSystem: 'Як у системі',
+    notifications: 'Сповіщення',
+    notifVisitTitle: 'Нагадування про візит', notifVisitSub: 'За 24 години до запису',
+    notifConfirmTitle: 'Підтвердження запису', notifConfirmSub: 'Одразу після створення',
+    notifMarketingTitle: 'Акції та новини', notifMarketingSub: 'Раз на тиждень, не частіше',
+    notifReviewTitle: 'Запит відгуку після візиту', notifReviewSub: 'Через 2 години після закінчення',
+    deleteAccountTitle: 'Видалити акаунт?', deleteAccountDesc: 'Цю дію не можна скасувати. Всі ваші дані будуть видалені.',
+    deleteAccountConfirm: 'Видалити',
+    deleteAccountSupportToast: 'Зв\'яжіться з підтримкою для видалення акаунту.',
+  },
+  ru: {
+    saved: 'Сохранено', fileTooLarge: 'Файл слишком большой (макс 5 МБ)',
+    avatarUpdated: 'Аватар обновлён', added: 'Добавлено',
+    removeMemberTitle: 'Удалить члена семьи?', removeMemberConfirm: 'Удалить', removed: 'Удалено',
+    linkCopied: 'Ссылка скопирована',
+    user: 'Пользователь',
+    avatarAria: 'Изменить аватар',
+    statVisits: 'Визиты', statMasters: 'Мастера', statBonuses: 'Бонусы',
+    paneData: 'Данные', paneFamily: 'Семья', paneDocs: 'Документы', paneSettings: 'Настройки',
+    firstName: 'Имя', lastName: 'Фамилия', phone: 'Телефон', email: 'Email',
+    birthDate: 'Дата рождения', gender: 'Пол',
+    genderNotSet: 'Не указано', genderMale: 'Мужчина', genderFemale: 'Женщина', genderOther: 'Другое',
+    allergies: 'Аллергии, противопоказания (необязательно)',
+    allergiesPlaceholder: 'Например: аллергия на латекс',
+    savingNow: 'Сохраняю…', save: 'Сохранить',
+    removeAria: 'Удалить',
+    famNameLabel: 'Имя', famNamePlaceholder: 'Артём', famRelLabel: 'Кто это',
+    rel: { spouse: 'Муж / Жена', child: 'Сын / Дочь', parent: 'Отец / Мама', other: 'Другое' },
+    uiLanguage: 'Язык интерфейса',
+    theme: 'Тема', themeLight: 'Светлая', themeDark: 'Тёмная', themeSystem: 'Как в системе',
+    notifications: 'Уведомления',
+    notifVisitTitle: 'Напоминание о визите', notifVisitSub: 'За 24 часа до записи',
+    notifConfirmTitle: 'Подтверждение записи', notifConfirmSub: 'Сразу после создания',
+    notifMarketingTitle: 'Акции и новости', notifMarketingSub: 'Раз в неделю, не чаще',
+    notifReviewTitle: 'Запрос отзыва после визита', notifReviewSub: 'Через 2 часа после окончания',
+    deleteAccountTitle: 'Удалить аккаунт?',
+    deleteAccountDesc: 'Это действие необратимо. Все ваши данные будут удалены.',
+    deleteAccountConfirm: 'Удалить',
+    deleteAccountSupportToast: 'Свяжитесь с поддержкой для удаления аккаунта.',
+  },
+  en: {
+    saved: 'Saved', fileTooLarge: 'File too big (max 5 MB)',
+    avatarUpdated: 'Avatar updated', added: 'Added',
+    removeMemberTitle: 'Remove family member?', removeMemberConfirm: 'Remove', removed: 'Removed',
+    linkCopied: 'Link copied',
+    user: 'User',
+    avatarAria: 'Change avatar',
+    statVisits: 'Visits', statMasters: 'Masters', statBonuses: 'Bonuses',
+    paneData: 'Profile', paneFamily: 'Family', paneDocs: 'Documents', paneSettings: 'Settings',
+    firstName: 'First name', lastName: 'Last name', phone: 'Phone', email: 'Email',
+    birthDate: 'Date of birth', gender: 'Gender',
+    genderNotSet: 'Not set', genderMale: 'Male', genderFemale: 'Female', genderOther: 'Other',
+    allergies: 'Allergies, contraindications (optional)',
+    allergiesPlaceholder: 'e.g. latex allergy',
+    savingNow: 'Saving…', save: 'Save',
+    removeAria: 'Remove',
+    famNameLabel: 'Name', famNamePlaceholder: 'Alex', famRelLabel: 'Relation',
+    rel: { spouse: 'Spouse', child: 'Child', parent: 'Parent', other: 'Other' },
+    uiLanguage: 'Interface language',
+    theme: 'Theme', themeLight: 'Light', themeDark: 'Dark', themeSystem: 'System',
+    notifications: 'Notifications',
+    notifVisitTitle: 'Visit reminder', notifVisitSub: '24 hours before',
+    notifConfirmTitle: 'Booking confirmation', notifConfirmSub: 'Right after creation',
+    notifMarketingTitle: 'Promotions and news', notifMarketingSub: 'Once a week, no more',
+    notifReviewTitle: 'Review request after visit', notifReviewSub: '2 hours after end',
+    deleteAccountTitle: 'Delete account?',
+    deleteAccountDesc: 'This is irreversible. All your data will be deleted.',
+    deleteAccountConfirm: 'Delete',
+    deleteAccountSupportToast: 'Contact support to delete your account.',
+  },
+};
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -58,6 +168,14 @@ export default function ProfilePage() {
   const confirm = useConfirm();
   const { theme, setTheme } = useTheme();
   const locale = useLocale();
+  const profileLang: ProfileLang = (['uk', 'ru', 'en'].includes(locale) ? locale : 'uk') as ProfileLang;
+  const L = PROFILE_LABELS[profileLang];
+  const RELATIONSHIPS = [
+    { v: 'spouse', l: L.rel.spouse },
+    { v: 'child', l: L.rel.child },
+    { v: 'parent', l: L.rel.parent },
+    { v: 'other', l: L.rel.other },
+  ];
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [stats, setStats] = useState({ visits: 0, masters: 0 });
@@ -155,13 +273,13 @@ export default function ProfilePage() {
     setSaving(false);
     if (error) { toast.error(humanizeError(error)); return; }
     setProfile((p) => p ? { ...p, full_name: fullName, first_name: firstName, last_name: lastName, phone, date_of_birth: dob || null } : p);
-    toast.success('Збережено');
+    toast.success(L.saved);
   }
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !userId) return;
-    if (file.size > 5 * 1024 * 1024) { toast.error('Файл занадто великий (макс 5 МБ)'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error(L.fileTooLarge); return; }
     setAvatarBusy(true);
     const supabase = createClient();
     const ext = file.name.split('.').pop() || 'jpg';
@@ -174,7 +292,7 @@ export default function ProfilePage() {
     setAvatarBusy(false);
     if (updErr) { toast.error(humanizeError(updErr)); return; }
     setProfile((p) => p ? { ...p, avatar_url: newUrl } : p);
-    toast.success('Аватар оновлено');
+    toast.success(L.avatarUpdated);
   }
 
   async function addFamilyMember() {
@@ -188,17 +306,17 @@ export default function ProfilePage() {
     if (error) { toast.error(humanizeError(error)); return; }
     if (data) setFamily((prev) => [...prev, data as FamilyMember]);
     setFamName(''); setFamRel('child'); setShowAddFam(false);
-    toast.success('Додано');
+    toast.success(L.added);
   }
 
   const removeFamilyMember = useCallback(async (member: FamilyMember) => {
-    const ok = await confirm({ title: 'Видалити члена сім\'ї?', description: member.member_name, confirmLabel: 'Видалити', destructive: true });
+    const ok = await confirm({ title: L.removeMemberTitle, description: member.member_name, confirmLabel: L.removeMemberConfirm, destructive: true });
     if (!ok) return;
     const supabase = createClient();
     const { error } = await supabase.from('family_links').delete().eq('id', member.id);
     if (error) { toast.error(humanizeError(error)); return; }
     setFamily((prev) => prev.filter((m) => m.id !== member.id));
-    toast.success('Видалено');
+    toast.success(L.removed);
   }, [confirm]);
 
   function changeLocale(next: 'uk' | 'ru' | 'en') {
@@ -222,12 +340,12 @@ export default function ProfilePage() {
         await navigator.share({ title: 'CRES-CA', url: window.location.origin });
       } else {
         await navigator.clipboard.writeText(window.location.origin);
-        toast.success('Посилання скопійовано');
+        toast.success(L.linkCopied);
       }
     } catch {}
   }
 
-  const fullName = useMemo(() => `${firstName} ${lastName}`.trim() || 'Користувач', [firstName, lastName]);
+  const fullName = useMemo(() => `${firstName} ${lastName}`.trim() || L.user, [firstName, lastName, L.user]);
   const initials = useMemo(() => `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'U', [firstName, lastName]);
 
   if (loading) {
@@ -260,7 +378,7 @@ export default function ProfilePage() {
             onClick={() => fileInputRef.current?.click()}
             disabled={avatarBusy}
             className="absolute -bottom-1 -right-1 flex size-9 items-center justify-center rounded-full bg-foreground text-background shadow-md transition-transform hover:scale-110 disabled:opacity-50"
-            aria-label="Змінити аватар"
+            aria-label={L.avatarAria}
           >
             <Camera className="size-4" />
           </button>
@@ -270,8 +388,8 @@ export default function ProfilePage() {
           {phone && <div className="mt-0.5 text-[13px] text-muted-foreground">{phone}</div>}
         </div>
         <div className="grid grid-cols-2 gap-2 border-y border-border py-4">
-          <SidebarStat n={stats.visits} label="Візити" />
-          <SidebarStat n={stats.masters} label="Майстри" />
+          <SidebarStat n={stats.visits} label={L.statVisits} />
+          <SidebarStat n={stats.masters} label={L.statMasters} />
           {/* Бонуси — закомментировано (2026-05-17), повернемо при запуску лояльності.
           <SidebarStat n={stats.bonuses} label="Бонуси" /> */}
         </div>
@@ -293,10 +411,10 @@ export default function ProfilePage() {
       <div>
         <div className="mb-5 flex flex-wrap gap-2">
           {([
-            ['data', 'Дані', UserIcon],
-            ['family', 'Сім\'я', Users],
-            ['docs', 'Документи', FileText],
-            ['settings', 'Налаштування', Settings],
+            ['data', L.paneData, UserIcon],
+            ['family', L.paneFamily, Users],
+            ['docs', L.paneDocs, FileText],
+            ['settings', L.paneSettings, Settings],
           ] as const).map(([k, label, Icon]) => {
             const active = pane === k;
             return (
@@ -321,21 +439,21 @@ export default function ProfilePage() {
             <SectionTitle icon={<UserIcon className="size-4" />}>Особисті дані</SectionTitle>
             <div className="grid gap-4 sm:grid-cols-2">
               <FieldText label="Ім'я" value={firstName} onChange={setFirstName} />
-              <FieldText label="Прізвище" value={lastName} onChange={setLastName} />
-              <FieldText label="Телефон" value={phone} onChange={setPhone} placeholder="+380..." />
+              <FieldText label={L.lastName} value={lastName} onChange={setLastName} />
+              <FieldText label={L.phone} value={phone} onChange={setPhone} placeholder="+380..." />
               <FieldText label="Email" value={email} onChange={() => {}} disabled />
-              <FieldText label="Дата народження" type="date" value={dob} onChange={setDob} />
-              <FieldSelect label="Стать" value={gender} onChange={setGender} options={[
-                { v: '', l: 'Не вказано' },
-                { v: 'male', l: 'Чоловік' },
-                { v: 'female', l: 'Жінка' },
+              <FieldText label={L.birthDate} type="date" value={dob} onChange={setDob} />
+              <FieldSelect label={L.gender} value={gender} onChange={setGender} options={[
+                { v: '', l: L.genderNotSet },
+                { v: 'male', l: L.genderMale },
+                { v: 'female', l: L.genderFemale },
               ]} />
               <div className="sm:col-span-2">
                 <FieldText
-                  label="Алергії, протипоказання (опціонально)"
+                  label={L.allergies}
                   value={allergies}
                   onChange={setAllergies}
-                  placeholder="Наприклад: алергія на латекс"
+                  placeholder={L.allergiesPlaceholder}
                 />
               </div>
             </div>
@@ -345,7 +463,7 @@ export default function ProfilePage() {
                 disabled={saving}
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#2563eb] px-5 py-2.5 text-[13px] font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-50"
               >
-                <Check className="size-3.5" /> {saving ? 'Зберігаю…' : 'Зберегти'}
+                <Check className="size-3.5" /> {saving ? L.savingNow : L.save}
               </button>
             </div>
           </div>
@@ -370,7 +488,7 @@ export default function ProfilePage() {
                   <button
                     onClick={() => removeFamilyMember(m)}
                     className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-red-500/10 hover:text-red-500"
-                    aria-label="Видалити"
+                    aria-label={L.removeAria}
                   >
                     <Trash2 className="size-3.5" />
                   </button>
@@ -388,9 +506,9 @@ export default function ProfilePage() {
             {showAddFam && (
               <div className="mt-5 rounded-2xl border border-border bg-muted/30 p-4">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <FieldText label="Ім'я" value={famName} onChange={setFamName} placeholder="Артем" />
+                  <FieldText label={L.famNameLabel} value={famName} onChange={setFamName} placeholder={L.famNamePlaceholder} />
                   <FieldSelect
-                    label="Хто це"
+                    label={L.famRelLabel}
                     value={famRel}
                     onChange={setFamRel}
                     options={RELATIONSHIPS.map((r) => ({ v: r.v, l: r.l }))}
@@ -437,7 +555,7 @@ export default function ProfilePage() {
         {pane === 'settings' && (
           <div className="space-y-5">
             <div className="rounded-3xl border border-border bg-card p-6">
-              <SectionTitle icon={<Globe className="size-4" />}>Мова інтерфейсу</SectionTitle>
+              <SectionTitle icon={<Globe className="size-4" />}>{L.uiLanguage}</SectionTitle>
               <div className="grid grid-cols-3 gap-2">
                 {([
                   ['uk', '🇺🇦', 'Українська'],
@@ -464,12 +582,12 @@ export default function ProfilePage() {
             </div>
 
             <div className="rounded-3xl border border-border bg-card p-6">
-              <SectionTitle icon={<Palette className="size-4" />}>Тема оформлення</SectionTitle>
+              <SectionTitle icon={<Palette className="size-4" />}>{L.theme}</SectionTitle>
               <div className="grid grid-cols-3 gap-2">
                 {([
-                  ['light', Sun, 'Світла'],
-                  ['dark', Moon, 'Темна'],
-                  ['system', Monitor, 'Як у системі'],
+                  ['light', Sun, L.themeLight],
+                  ['dark', Moon, L.themeDark],
+                  ['system', Monitor, L.themeSystem],
                 ] as const).map(([k, Icon, label]) => {
                   const active = theme === k;
                   return (
@@ -495,26 +613,26 @@ export default function ProfilePage() {
               <SectionTitle icon={<Mail className="size-4" />}>Email-сповіщення</SectionTitle>
               <div className="divide-y divide-border">
                 <Toggle
-                  title="Нагадування про візит"
-                  sub="За 24 години до запису"
+                  title={L.notifVisitTitle}
+                  sub={L.notifVisitSub}
                   checked={emailReminders}
                   onChange={setEmailReminders}
                 />
                 <Toggle
-                  title="Підтвердження запису"
-                  sub="Одразу після створення"
+                  title={L.notifConfirmTitle}
+                  sub={L.notifConfirmSub}
                   checked={emailConfirms}
                   onChange={setEmailConfirms}
                 />
                 <Toggle
-                  title="Акції та новини"
-                  sub="Раз на тиждень, не частіше"
+                  title={L.notifMarketingTitle}
+                  sub={L.notifMarketingSub}
                   checked={emailMarketing}
                   onChange={setEmailMarketing}
                 />
                 <Toggle
-                  title="Запит відгуку після візиту"
-                  sub="Через 2 години після закінчення"
+                  title={L.notifReviewTitle}
+                  sub={L.notifReviewSub}
                   checked={emailReviewAsk}
                   onChange={setEmailReviewAsk}
                 />
@@ -528,13 +646,13 @@ export default function ProfilePage() {
               <button
                 onClick={async () => {
                   const ok = await confirm({
-                    title: 'Видалити акаунт?',
-                    description: 'Цю дію не можна скасувати. Всі ваші дані будуть видалені.',
-                    confirmLabel: 'Видалити',
+                    title: L.deleteAccountTitle,
+                    description: L.deleteAccountDesc,
+                    confirmLabel: L.deleteAccountConfirm,
                     destructive: true,
                   });
                   if (!ok) return;
-                  toast.error('Зв\'яжіться з підтримкою для видалення акаунту.');
+                  toast.error(L.deleteAccountSupportToast);
                 }}
                 className="inline-flex items-center gap-1.5 rounded-full border border-red-500/40 bg-red-500/5 px-4 py-2.5 text-[13px] font-semibold text-red-500 hover:bg-red-500/10"
               >
