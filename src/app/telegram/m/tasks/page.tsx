@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Check, Trash2, Bell, Clock3, ListTodo, CheckCircle2 } from 'lucide-react';
 import { T, R, TYPE, SPRING, FONT_BASE } from '@/components/miniapp/design';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 
 interface Task {
   id: string;
@@ -28,31 +29,115 @@ interface Task {
 
 type Tab = 'active' | 'history';
 
+type TasksLang = 'uk' | 'ru' | 'en';
+const TASKS_LABELS: Record<TasksLang, {
+  title: string;
+  newBtn: string;
+  tabActive: string;
+  tabHistory: string;
+  loading: string;
+  markDoneAria: string;
+  fired: string;
+  removeAria: string;
+  emptyActiveTitle: string;
+  emptyHistoryTitle: string;
+  emptyActiveDesc: string;
+  emptyHistoryDesc: string;
+  createCta: string;
+  hAgo: (n: number) => string;
+  mAgo: (n: number) => string;
+  now: string;
+  inMin: (n: number) => string;
+  inHour: (n: number) => string;
+  prepIn: string;
+  locale: string;
+}> = {
+  uk: {
+    title: 'Задачі', newBtn: 'Нова', tabActive: 'Активні', tabHistory: 'Історія',
+    loading: 'Завантажую…',
+    markDoneAria: 'Позначити виконаною',
+    fired: 'Нагадування надіслано',
+    removeAria: 'Видалити',
+    emptyActiveTitle: 'Немає активних задач',
+    emptyHistoryTitle: 'Історія пуста',
+    emptyActiveDesc: 'Створи першу задачу — нагадаємо точно в потрібний момент у Telegram.',
+    emptyHistoryDesc: 'Тут зʼявляться виконані та відправлені нагадування.',
+    createCta: 'Створити задачу',
+    hAgo: (n) => `${n} год тому`,
+    mAgo: (n) => `${n} хв тому`,
+    now: 'зараз',
+    inMin: (n) => `через ${n} хв`,
+    inHour: (n) => `через ${n} год`,
+    prepIn: 'о',
+    locale: 'uk-UA',
+  },
+  ru: {
+    title: 'Задачи', newBtn: 'Новая', tabActive: 'Активные', tabHistory: 'История',
+    loading: 'Загружаю…',
+    markDoneAria: 'Отметить выполненной',
+    fired: 'Напоминание отправлено',
+    removeAria: 'Удалить',
+    emptyActiveTitle: 'Нет активных задач',
+    emptyHistoryTitle: 'История пуста',
+    emptyActiveDesc: 'Создай первую задачу — напомним точно в нужный момент в Telegram.',
+    emptyHistoryDesc: 'Здесь появятся выполненные и отправленные напоминания.',
+    createCta: 'Создать задачу',
+    hAgo: (n) => `${n} ч назад`,
+    mAgo: (n) => `${n} мин назад`,
+    now: 'сейчас',
+    inMin: (n) => `через ${n} мин`,
+    inHour: (n) => `через ${n} ч`,
+    prepIn: 'в',
+    locale: 'ru-RU',
+  },
+  en: {
+    title: 'Tasks', newBtn: 'New', tabActive: 'Active', tabHistory: 'History',
+    loading: 'Loading…',
+    markDoneAria: 'Mark as done',
+    fired: 'Reminder sent',
+    removeAria: 'Remove',
+    emptyActiveTitle: 'No active tasks',
+    emptyHistoryTitle: 'History is empty',
+    emptyActiveDesc: 'Create your first task — we will ping you in Telegram on time.',
+    emptyHistoryDesc: 'Completed and sent reminders will show up here.',
+    createCta: 'Create task',
+    hAgo: (n) => `${n}h ago`,
+    mAgo: (n) => `${n}m ago`,
+    now: 'now',
+    inMin: (n) => `in ${n}m`,
+    inHour: (n) => `in ${n}h`,
+    prepIn: 'at',
+    locale: 'en-US',
+  },
+};
+
 // Все абсолютные времена показываем в киевском часовом поясе — у нас украинский
 // продукт, мастер всегда думает по Киеву. Даже если телефон у мастера в роуминге.
 const KYIV_TZ = 'Europe/Kyiv';
 
-function formatRemindAt(iso: string): string {
+function formatRemindAt(iso: string, L: typeof TASKS_LABELS[TasksLang]): string {
   const d = new Date(iso);
   const now = new Date();
   const diffMs = d.getTime() - now.getTime();
   const diffMin = Math.round(diffMs / 60000);
   if (diffMin < -60 * 24) {
-    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', timeZone: KYIV_TZ });
+    return d.toLocaleDateString(L.locale, { day: 'numeric', month: 'short', timeZone: KYIV_TZ });
   }
-  if (diffMin < -60) return `${Math.abs(Math.round(diffMin / 60))} ч назад`;
-  if (diffMin < 0) return `${Math.abs(diffMin)} мин назад`;
-  if (diffMin === 0) return 'сейчас';
-  if (diffMin < 60) return `через ${diffMin} мин`;
-  if (diffMin < 60 * 24) return `через ${Math.round(diffMin / 60)} ч`;
+  if (diffMin < -60) return L.hAgo(Math.abs(Math.round(diffMin / 60)));
+  if (diffMin < 0) return L.mAgo(Math.abs(diffMin));
+  if (diffMin === 0) return L.now;
+  if (diffMin < 60) return L.inMin(diffMin);
+  if (diffMin < 60 * 24) return L.inHour(Math.round(diffMin / 60));
   // Same week — show weekday and time (Kyiv)
-  const day = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: KYIV_TZ });
-  const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: KYIV_TZ });
-  return `${day} в ${time}`;
+  const day = d.toLocaleDateString(L.locale, { weekday: 'short', day: 'numeric', month: 'short', timeZone: KYIV_TZ });
+  const time = d.toLocaleTimeString(L.locale, { hour: '2-digit', minute: '2-digit', timeZone: KYIV_TZ });
+  return `${day} ${L.prepIn} ${time}`;
 }
 
 export default function MasterTasksPage() {
   const { haptic } = useTelegram();
+  const lang = useMiniAppLocale();
+  const L = TASKS_LABELS[lang];
   const [tab, setTab] = useState<Tab>('active');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,7 +178,7 @@ export default function MasterTasksPage() {
   return (
     <div style={{ ...FONT_BASE, padding: '20px 16px 100px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <h1 style={{ ...TYPE.h1, color: T.text, margin: 0 }}>Задачи</h1>
+        <h1 style={{ ...TYPE.h1, color: T.text, margin: 0 }}>{L.title}</h1>
         <Link
           href="/telegram/m/tasks/new"
           onClick={() => haptic('light')}
@@ -111,7 +196,7 @@ export default function MasterTasksPage() {
           }}
         >
           <Plus size={16} />
-          Новая
+          {L.newBtn}
         </Link>
       </div>
 
@@ -136,17 +221,17 @@ export default function MasterTasksPage() {
               transition: 'all 0.15s ease',
             }}
           >
-            {k === 'active' ? 'Активные' : 'История'}
+            {k === 'active' ? L.tabActive : L.tabHistory}
           </button>
         ))}
       </div>
 
       {loading ? (
         <div style={{ ...TYPE.caption, color: T.textTertiary, textAlign: 'center', paddingTop: 60 }}>
-          Загружаю…
+          {L.loading}
         </div>
       ) : tasks.length === 0 ? (
-        <EmptyState tab={tab} />
+        <EmptyState tab={tab} L={L} />
       ) : (
         <ul style={{ display: 'flex', flexDirection: 'column', gap: 10, listStyle: 'none', margin: 0, padding: 0 }}>
           <AnimatePresence mode="popLayout">
@@ -172,7 +257,7 @@ export default function MasterTasksPage() {
                   type="button"
                   onClick={() => markDone(t.id)}
                   disabled={t.status !== 'pending' && t.status !== 'fired'}
-                  aria-label="Отметить выполненной"
+                  aria-label={L.markDoneAria}
                   style={{
                     flexShrink: 0,
                     width: 24,
@@ -215,7 +300,7 @@ export default function MasterTasksPage() {
                       <Clock3 size={11} style={{ color: T.textTertiary }} />
                     )}
                     <span style={{ ...TYPE.micro, color: t.status === 'pending' ? T.accent : T.textTertiary }}>
-                      {t.status === 'fired' ? 'Напоминание отправлено' : formatRemindAt(t.remind_at)}
+                      {t.status === 'fired' ? L.fired : formatRemindAt(t.remind_at, L)}
                     </span>
                   </div>
                 </div>
@@ -233,7 +318,7 @@ export default function MasterTasksPage() {
                     padding: 4,
                   }}
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={16} aria-label={L.removeAria} />
                 </button>
               </motion.li>
             ))}
@@ -244,7 +329,7 @@ export default function MasterTasksPage() {
   );
 }
 
-function EmptyState({ tab }: { tab: Tab }) {
+function EmptyState({ tab, L }: { tab: Tab; L: typeof TASKS_LABELS[TasksLang] }) {
   return (
     <div style={{ paddingTop: 60, textAlign: 'center' }}>
       <div style={{
@@ -260,12 +345,10 @@ function EmptyState({ tab }: { tab: Tab }) {
         <ListTodo size={28} style={{ color: T.accent }} />
       </div>
       <p style={{ ...TYPE.h3, color: T.text, margin: 0 }}>
-        {tab === 'active' ? 'Нет активных задач' : 'История пуста'}
+        {tab === 'active' ? L.emptyActiveTitle : L.emptyHistoryTitle}
       </p>
       <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '8px auto 0', maxWidth: 280 }}>
-        {tab === 'active'
-          ? 'Создай первую задачу — напомним точно в нужный момент в Telegram.'
-          : 'Здесь появятся выполненные и отправленные напоминания.'}
+        {tab === 'active' ? L.emptyActiveDesc : L.emptyHistoryDesc}
       </p>
       {tab === 'active' && (
         <Link
@@ -285,7 +368,7 @@ function EmptyState({ tab }: { tab: Tab }) {
           }}
         >
           <Plus size={16} />
-          Создать задачу
+          {L.createCta}
         </Link>
       )}
     </div>
