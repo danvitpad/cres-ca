@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Clock, Sun, Moon, Sunset, Users } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 import { getInitData } from '@/lib/telegram/webapp';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE } from '@/components/miniapp/design';
@@ -33,18 +34,90 @@ interface WaitlistEntry {
   created_at: string;
 }
 
-const DAY_SHORT: Record<number, string> = { 0: 'Нд', 1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб' };
-const TIME_LABEL: Record<string, string> = {
-  morning: 'Ранок 9–12',
-  afternoon: 'День 12–17',
-  evening: 'Вечір 17–21',
-  any: 'Будь-який час',
+type WLLang = 'uk' | 'ru' | 'en';
+const WL_LABELS: Record<WLLang, {
+  title: string;
+  subtitle: string;
+  emptyTitle: string;
+  emptyDesc: string;
+  reserved: string;
+  waiting: string;
+  booked: string;
+  bookedBadge: string;
+  reservedBadge: (mins: number) => string;
+  daysAny: string;
+  timeAny: string;
+  daysShort: Record<number, string>;
+  timeWindows: Record<string, string>;
+}> = {
+  uk: {
+    title: 'Лист очікування',
+    subtitle: 'Клієнти що чекають твоє вікно',
+    emptyTitle: 'Поки нікого',
+    emptyDesc: 'Коли в клієнта не буде вільних слотів на твоєму календарі — він зможе встати в чергу. Тут побачиш хто чекає. Звільниться вікно — система сама запропонує першому підходящому.',
+    reserved: 'Зарезервовано — чекаємо запис',
+    waiting: 'В черзі',
+    booked: 'Записалися із черги',
+    bookedBadge: 'записався',
+    reservedBadge: (m) => `резерв · ще ${m} хв`,
+    daysAny: 'Будь-який день',
+    timeAny: 'Будь-який час',
+    daysShort: { 0: 'Нд', 1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб' },
+    timeWindows: {
+      morning: 'Ранок 9–12',
+      afternoon: 'День 12–17',
+      evening: 'Вечір 17–21',
+      any: 'Будь-який час',
+    },
+  },
+  ru: {
+    title: 'Лист ожидания',
+    subtitle: 'Клиенты которые ждут твоё окошко',
+    emptyTitle: 'Пока никого',
+    emptyDesc: 'Когда у клиента не будет свободных слотов в твоём календаре — он сможет встать в очередь. Здесь увидишь кто ждёт. Освободится окно — система сама предложит первому подходящему.',
+    reserved: 'Зарезервировано — ждём запись',
+    waiting: 'В очереди',
+    booked: 'Записались из очереди',
+    bookedBadge: 'записался',
+    reservedBadge: (m) => `резерв · ещё ${m} мин`,
+    daysAny: 'Любой день',
+    timeAny: 'Любое время',
+    daysShort: { 0: 'Вс', 1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб' },
+    timeWindows: {
+      morning: 'Утро 9–12',
+      afternoon: 'День 12–17',
+      evening: 'Вечер 17–21',
+      any: 'Любое время',
+    },
+  },
+  en: {
+    title: 'Waitlist',
+    subtitle: 'Clients waiting for your slot',
+    emptyTitle: 'Nobody yet',
+    emptyDesc: 'When a client has no free slots in your calendar — they can join the queue. You will see who is waiting here. When a slot opens — the system will offer it to the first matching client.',
+    reserved: 'Reserved — waiting for booking',
+    waiting: 'In queue',
+    booked: 'Booked from queue',
+    bookedBadge: 'booked',
+    reservedBadge: (m) => `reserved · ${m} min left`,
+    daysAny: 'Any day',
+    timeAny: 'Any time',
+    daysShort: { 0: 'Sun', 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat' },
+    timeWindows: {
+      morning: 'Morning 9–12',
+      afternoon: 'Day 12–17',
+      evening: 'Evening 17–21',
+      any: 'Any time',
+    },
+  },
 };
 
 export default function MasterMiniAppWaitlist() {
   const { userId } = useAuthStore();
   const { haptic } = useTelegram();
   const router = useRouter();
+  const lang = useMiniAppLocale();
+  const L = WL_LABELS[lang];
   const [entries, setEntries] = useState<WaitlistEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -75,7 +148,7 @@ export default function MasterMiniAppWaitlist() {
 
   return (
     <MobilePage className="od-master-waitlist">
-      <PageHeader title="Лист очікування" subtitle="Клієнти що чекають твоє вікно" />
+      <PageHeader title={L.title} subtitle={L.subtitle} />
 
       <div style={{ padding: `8px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column', gap: 16 }}>
         {loading && (
@@ -90,29 +163,28 @@ export default function MasterMiniAppWaitlist() {
             background: T.surface, borderRadius: R.md, border: `1px solid ${T.borderSubtle}`,
           }}>
             <Users size={32} color={T.textTertiary} style={{ margin: '0 auto 12px' }} />
-            <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>Поки нікого</p>
+            <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{L.emptyTitle}</p>
             <p style={{ ...TYPE.caption, color: T.textTertiary, margin: '6px 0 0', lineHeight: 1.5 }}>
-              Коли в клієнта не буде вільних слотів на твоєму календарі — він зможе встати в чергу.
-              Тут побачиш хто чекає. Звільниться вікно — система сама запропонує першому підходящому.
+              {L.emptyDesc}
             </p>
           </div>
         )}
 
         {!loading && reserved.length > 0 && (
-          <Section title="Зарезервовано — чекаємо запис" entries={reserved} accent="#10b981" />
+          <Section title={L.reserved} entries={reserved} accent="#10b981" L={L} />
         )}
         {!loading && waiting.length > 0 && (
-          <Section title="В черзі" entries={waiting} accent={T.accent} />
+          <Section title={L.waiting} entries={waiting} accent={T.accent} L={L} />
         )}
         {!loading && booked.length > 0 && (
-          <Section title="Записалися із черги" entries={booked} accent={T.textTertiary} />
+          <Section title={L.booked} entries={booked} accent={T.textTertiary} L={L} />
         )}
       </div>
     </MobilePage>
   );
 }
 
-function Section({ title, entries, accent }: { title: string; entries: WaitlistEntry[]; accent: string }) {
+function Section({ title, entries, accent, L }: { title: string; entries: WaitlistEntry[]; accent: string; L: typeof WL_LABELS[WLLang] }) {
   return (
     <div>
       <p style={{
@@ -122,18 +194,18 @@ function Section({ title, entries, accent }: { title: string; entries: WaitlistE
       }}>{title}</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {entries.map((e) => (
-          <EntryCard key={e.id} entry={e} accent={accent} />
+          <EntryCard key={e.id} entry={e} accent={accent} L={L} />
         ))}
       </div>
     </div>
   );
 }
 
-function EntryCard({ entry, accent }: { entry: WaitlistEntry; accent: string }) {
+function EntryCard({ entry, accent, L }: { entry: WaitlistEntry; accent: string; L: typeof WL_LABELS[WLLang] }) {
   const days = entry.preferred_days?.length
-    ? entry.preferred_days.sort().map((d) => DAY_SHORT[d]).join(' · ')
-    : 'Будь-який день';
-  const timeLabel = TIME_LABEL[entry.preferred_time_window] ?? 'Будь-який час';
+    ? entry.preferred_days.sort().map((d) => L.daysShort[d]).join(' · ')
+    : L.daysAny;
+  const timeLabel = L.timeWindows[entry.preferred_time_window] ?? L.timeAny;
   const TimeIcon = entry.preferred_time_window === 'morning' ? Sun
     : entry.preferred_time_window === 'evening' ? Moon
     : entry.preferred_time_window === 'afternoon' ? Sunset : Clock;
@@ -148,13 +220,13 @@ function EntryCard({ entry, accent }: { entry: WaitlistEntry; accent: string }) 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{entry.client_name}</p>
         {entry.status === 'reserved' && entry.reserved_until && (
-          <ReservedBadge until={entry.reserved_until} />
+          <ReservedBadge until={entry.reserved_until} L={L} />
         )}
         {entry.status === 'booked' && (
           <span style={{
             ...TYPE.micro, fontWeight: 700, padding: '2px 8px', borderRadius: R.pill,
             background: '#10b98115', color: accent,
-          }}>записався</span>
+          }}>{L.bookedBadge}</span>
         )}
       </div>
       <p style={{ ...TYPE.caption, color: T.textSecondary, margin: 0 }}>
@@ -181,7 +253,7 @@ function Chip({ text, icon }: { text: string; icon?: React.ReactNode }) {
   );
 }
 
-function ReservedBadge({ until }: { until: string }) {
+function ReservedBadge({ until, L }: { until: string; L: typeof WL_LABELS[WLLang] }) {
   const [minutesLeft, setMinutesLeft] = useState(() => {
     const ms = new Date(until).getTime() - Date.now();
     return Math.max(0, Math.floor(ms / 60000));
@@ -200,7 +272,7 @@ function ReservedBadge({ until }: { until: string }) {
       ...TYPE.micro, fontWeight: 700, padding: '2px 8px', borderRadius: R.pill,
       background: '#10b98115', color: '#059669',
     }}>
-      резерв · ще {minutesLeft} хв
+      {L.reservedBadge(minutesLeft)}
     </span>
   );
 }
