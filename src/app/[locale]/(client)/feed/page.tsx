@@ -34,6 +34,8 @@ const FEED_LABELS: Record<FeedLang, {
   recommended: (c: string | null) => string; allMasters: string;
   cat: { hair: string; nails: string; face: string; massage: string; brows: string; laser: string; skin: string; all: string };
   months: string[];
+  locale: string;
+  reset: string;
   month: string; halfYear: string; year: string; period: string;
   ctaSubscribe: string; emptySlots: string;
   durationUnit: string;
@@ -51,6 +53,8 @@ const FEED_LABELS: Record<FeedLang, {
     recommended: (c) => c ? `Рекомендовані у ${c}` : 'Рекомендовані', allMasters: 'Усі майстри',
     cat: { hair: 'Волосся', nails: 'Нігті', face: 'Обличчя', massage: 'Масаж', brows: 'Брови', laser: 'Лазер', skin: 'Шкіра', all: 'Усі' },
     months: ['Січ', 'Лют', 'Бер', 'Кві', 'Тра', 'Чер', 'Лип', 'Сер', 'Вер', 'Жов', 'Лис', 'Гру'],
+    locale: 'uk-UA',
+    reset: 'Скинути',
     month: 'Місяць', halfYear: 'Півроку', year: 'Рік', period: 'Період',
     ctaSubscribe: 'Знайти майстрів', emptySlots: 'Підпишись на майстрів — їх найближчі вікна з’являться тут.',
     durationUnit: 'хв',
@@ -68,6 +72,8 @@ const FEED_LABELS: Record<FeedLang, {
     recommended: (c) => c ? `Рекомендуем в ${c}` : 'Рекомендуем', allMasters: 'Все мастера',
     cat: { hair: 'Волосы', nails: 'Ногти', face: 'Лицо', massage: 'Массаж', brows: 'Брови', laser: 'Лазер', skin: 'Кожа', all: 'Все' },
     months: ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'],
+    locale: 'ru-RU',
+    reset: 'Сбросить',
     month: 'Месяц', halfYear: 'Полгода', year: 'Год', period: 'Период',
     ctaSubscribe: 'Найти мастеров', emptySlots: 'Подпишись на мастеров — их ближайшие окна появятся здесь.',
     durationUnit: 'мин',
@@ -85,6 +91,8 @@ const FEED_LABELS: Record<FeedLang, {
     recommended: (c) => c ? `Recommended in ${c}` : 'Recommended', allMasters: 'All masters',
     cat: { hair: 'Hair', nails: 'Nails', face: 'Face', massage: 'Massage', brows: 'Brows', laser: 'Laser', skin: 'Skin', all: 'All' },
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    locale: 'en-US',
+    reset: 'Reset',
     month: 'Month', halfYear: 'Half year', year: 'Year', period: 'Period',
     ctaSubscribe: 'Find masters', emptySlots: 'Follow some masters — their next openings will show up here.',
     durationUnit: 'min',
@@ -653,7 +661,7 @@ function PeriodFilter({
 }) {
   const monthLabel = `${L.months[pickMonth.month]} ${pickMonth.year}`;
   const rangeLabel = rangeFrom && rangeTo
-    ? `${formatShort(rangeFrom)} – ${formatShort(rangeTo)}`
+    ? `${formatShort(rangeFrom, L.locale)} – ${formatShort(rangeTo, L.locale)}`
     : L.period;
 
   return (
@@ -706,6 +714,9 @@ function PeriodFilter({
               setRangeTo(t);
               if (f && t) setFilter('pick-range');
             }}
+            months={L.months}
+            locale={L.locale}
+            resetLabel={L.reset}
           />
         </PopoverContent>
       </Popover>
@@ -772,12 +783,24 @@ function MonthPicker({
 }
 
 function RangePicker({
-  from, to, onChange,
+  from, to, onChange, months, locale, resetLabel,
 }: {
   from: Date | null;
   to: Date | null;
   onChange: (from: Date | null, to: Date | null) => void;
+  months: readonly string[];
+  locale: string;
+  resetLabel: string;
 }) {
+  // Локализованные дни недели Mon..Sun из toLocaleDateString
+  const weekdays = useMemo(() => {
+    const monday = new Date(2024, 0, 1); // Mon
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      return d.toLocaleDateString(locale, { weekday: 'short' });
+    });
+  }, [locale]);
   const initial = from ?? new Date();
   const [month, setMonth] = useState(new Date(initial.getFullYear(), initial.getMonth(), 1));
 
@@ -823,7 +846,7 @@ function RangePicker({
           <ChevronLeft className="size-4" />
         </button>
         <span className="text-[14px] font-semibold">
-          {MONTH_NAMES_UK[month.getMonth()]} {month.getFullYear()}
+          {months[month.getMonth()]} {month.getFullYear()}
         </span>
         <button
           onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
@@ -833,7 +856,7 @@ function RangePicker({
         </button>
       </div>
       <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[10px] text-muted-foreground">
-        {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'].map((d) => <div key={d}>{d}</div>)}
+        {weekdays.map((d) => <div key={d}>{d}</div>)}
       </div>
       <div className="grid grid-cols-7 gap-1">
         {days.map((d, i) => {
@@ -860,14 +883,14 @@ function RangePicker({
       </div>
       <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
         <span>
-          {from ? formatShort(from) : '—'} <ChevronRight className="inline size-3" /> {to ? formatShort(to) : '—'}
+          {from ? formatShort(from, locale) : '—'} <ChevronRight className="inline size-3" /> {to ? formatShort(to, locale) : '—'}
         </span>
         {(from || to) && (
           <button
             onClick={() => onChange(null, null)}
             className="font-medium text-[#2563eb] hover:underline"
           >
-            Скинути
+            {resetLabel}
           </button>
         )}
       </div>
@@ -1013,8 +1036,8 @@ function formatHHMM(d: Date): string {
   return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 }
 
-function formatShort(d: Date): string {
-  return `${d.getDate()} ${MONTH_NAMES_UK[d.getMonth()].toLowerCase()}`;
+function formatShort(d: Date, locale: string = 'uk-UA'): string {
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 }
 
 function formatWhen(iso: string): string {
