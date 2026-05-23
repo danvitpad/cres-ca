@@ -163,13 +163,30 @@ export default function ClientFeedPage() {
 
         const { data: profile } = await supabase
           .from('profiles')
-          .select('first_name, full_name')
+          .select('first_name, last_name, full_name')
           .eq('id', user.id)
           .maybeSingle();
+        let resolvedFirstName = '';
         if (profile) {
-          const p = profile as { first_name?: string | null; full_name?: string | null };
-          setFirstName((p.first_name || p.full_name?.split(' ')[0] || '').trim());
+          const p = profile as { first_name?: string | null; last_name?: string | null; full_name?: string | null };
+          resolvedFirstName = (p.first_name || p.full_name?.split(' ')[0] || '').trim();
         }
+        if (!resolvedFirstName) {
+          // Fallback: profile fields not set — try clients.full_name (master created the client record)
+          const { data: clientRow } = await supabase
+            .from('clients')
+            .select('full_name')
+            .eq('profile_id', user.id)
+            .limit(1)
+            .maybeSingle();
+          const cFull = (clientRow as { full_name?: string | null } | null)?.full_name;
+          if (cFull) resolvedFirstName = cFull.split(' ')[0]?.trim() ?? '';
+        }
+        if (!resolvedFirstName && user.email) {
+          // Last fallback — username part of email (before "@")
+          resolvedFirstName = user.email.split('@')[0]?.trim() ?? '';
+        }
+        if (resolvedFirstName) setFirstName(resolvedFirstName);
 
         const { data: clientRows } = await supabase
           .from('clients')

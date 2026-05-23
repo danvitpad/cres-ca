@@ -114,7 +114,14 @@ export default function MapView({
     }).setView(center, zoom);
     mapRef.current = map;
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    // Carto Positron — бесплатные тайлы без агрессивной OSM policy;
+    // OSM-tile.openstreetmap.org начал блокировать запросы без явного
+    // User-Agent (его браузер не выставляет), отсюда пустая серая карта.
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      subdomains: 'abcd',
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap &copy; CARTO',
+    }).addTo(map);
 
     masterLayerRef.current = L.layerGroup().addTo(map);
     salonLayerRef.current = L.layerGroup().addTo(map);

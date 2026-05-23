@@ -133,6 +133,7 @@ export default function MiniAppConnectionsPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('all');
   const [removing, setRemoving] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!userId) { setLoading(false); return; }
@@ -254,7 +255,7 @@ export default function MiniAppConnectionsPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [userId]);
+  }, [userId, refreshKey]);
 
   const unfollow = useCallback(async (id: string, name: string) => {
     if (removing) return;
@@ -271,7 +272,13 @@ export default function MiniAppConnectionsPage() {
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ masterId: id }),
       });
-      if (res.ok) setMasters((prev) => prev.filter((m) => m.id !== id));
+      if (res.ok) {
+        // Локально убираем карточку для мгновенного UX...
+        setMasters((prev) => prev.filter((m) => m.id !== id));
+        // ...и сразу же перечитываем с сервера — защита от случая когда unfollow
+        // прошёл, но локальный filter не сработал (например id-несовпадение).
+        setRefreshKey((k) => k + 1);
+      }
     } finally {
       setRemoving(null);
     }

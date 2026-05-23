@@ -118,9 +118,23 @@ export default function MiniAppProfilePage() {
       // Stats: completed visits + unique masters + total spent — клиентские
       // RLS-политики на appointments допускают чтение через client_id, ок.
       const supabase = createClient();
-      const { data: clientRows } = await supabase
+      // Сначала пробуем по profile_id, потом фоллбэк по телефону —
+      // мастер мог завести клиента «руками» (clients.profile_id=null),
+      // а потом клиент авторизовался по тому же телефону и получил profiles row.
+      let clientIds: string[] = [];
+      const { data: byProfile } = await supabase
         .from('clients').select('id').eq('profile_id', userId);
-      const clientIds = (clientRows ?? []).map((c) => (c as { id: string }).id);
+      clientIds = (byProfile ?? []).map((c) => (c as { id: string }).id);
+      if (clientIds.length === 0) {
+        const { data: profileRow } = await supabase
+          .from('profiles').select('phone').eq('id', userId).maybeSingle();
+        const phone = (profileRow as { phone?: string | null } | null)?.phone?.trim();
+        if (phone) {
+          const { data: byPhone } = await supabase
+            .from('clients').select('id').eq('phone', phone);
+          clientIds = (byPhone ?? []).map((c) => (c as { id: string }).id);
+        }
+      }
       let visits = 0, masters = 0, spent = 0;
       if (clientIds.length > 0) {
         const { data: appts } = await supabase

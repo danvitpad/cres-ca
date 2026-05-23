@@ -78,6 +78,22 @@ export default function MyMastersPage() {
       const lastVisitByMaster = new Map<string, string>();
       const minPriceByMaster = new Map<string, number>();
 
+      // Min price per master = catalog minimum (same semantics as /search «Від ₴X»).
+      // Раньше брали мин. цену из исторических записей — это сбивало клиента, потому что
+      // в /search показывалось «від ₴250», а тут «від ₴800». Теперь синхронно по каталогу.
+      const { data: servicesRows } = await supabase
+        .from('services').select('master_id, price, is_active')
+        .in('master_id', masterIds);
+      (servicesRows ?? []).forEach((s) => {
+        const r = s as { master_id: string; price: number | string | null; is_active?: boolean | null };
+        if (r.is_active === false) return;
+        if (r.price == null) return;
+        const p = Number(r.price);
+        if (!p || p <= 0) return;
+        const cur = minPriceByMaster.get(r.master_id);
+        if (cur == null || p < cur) minPriceByMaster.set(r.master_id, p);
+      });
+
       if (clientIds.length > 0) {
         const nowIso = new Date().toISOString();
         const { data: upcoming } = await supabase
@@ -101,13 +117,6 @@ export default function MyMastersPage() {
           visitsByMaster.set(mId, (visitsByMaster.get(mId) ?? 0) + 1);
           const prev = lastVisitByMaster.get(mId);
           if (!prev || r.starts_at > prev) lastVisitByMaster.set(mId, r.starts_at);
-          if (r.price != null) {
-            const p = Number(r.price);
-            if (p > 0) {
-              const cur = minPriceByMaster.get(mId);
-              if (cur == null || p < cur) minPriceByMaster.set(mId, p);
-            }
-          }
         });
       }
 
