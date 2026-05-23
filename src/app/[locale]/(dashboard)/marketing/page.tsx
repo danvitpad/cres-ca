@@ -9,6 +9,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useLocale } from 'next-intl';
 import { TrendingUp, Tag, Star, Send, Megaphone, Ticket, Heart, ChevronRight, Plus, ArrowLeft } from 'lucide-react';
 import { usePageTheme, pageContainer } from '@/lib/dashboard-theme';
 import { useMaster } from '@/hooks/use-master';
@@ -26,13 +27,79 @@ import { ReferralProgramPanel } from '@/components/marketing/referral-program-pa
 // одно понятное место «куда пойти чтобы кому-то что-то разослать».
 type TopTab = 'campaigns' | 'automation' | 'deals' | 'reviews' | 'referrals';
 
-const TABS = [
-  { value: 'campaigns',  label: 'Рассылки' },
-  { value: 'automation', label: 'Автоматика' },
-  { value: 'deals',      label: 'Акции' },
-  { value: 'reviews',    label: 'Отзывы' },
-  { value: 'referrals',  label: 'Рекомендации' },
-] as const;
+type MktLang = 'uk' | 'ru' | 'en';
+const MKT_LABELS: Record<MktLang, {
+  title: string; subtitle: string;
+  tabs: Record<TopTab, string>;
+  kpiActiveCampaigns: string; kpiActiveCampaignsSubOn: string; kpiActiveCampaignsSubOff: string;
+  kpiPromos: string; kpiPromosUsed: (n: number) => string; kpiPromosEmpty: string;
+  kpiRating: string; kpiRatingSub: (n: number) => string; kpiRatingEmpty: string;
+  kpiBroadcasts: string; kpiBroadcastsOn: string; kpiBroadcastsOff: string;
+  // Mobile
+  mobHeader: string; mobHeroLabel: string;
+  mobHeroDelta: string;
+  cardDeals: string; cardDealsSub: string; cardDealsBadge: (n: number) => string;
+  cardPromos: string; cardPromosSub: string; cardPromosBadge: (n: number) => string;
+  cardReviews: string; cardReviewsSub: string; cardReviewsBadge: (n: number) => string;
+  cardBroadcasts: string; cardBroadcastsSub: string; cardBroadcastsBadge: (n: number) => string;
+  refTitle: string; refSubFmt: (n: number, sum: number) => string;
+  locale: string;
+}> = {
+  uk: {
+    title: 'Маркетинг', subtitle: 'Розсилки, автоматика, акції, відгуки і рекомендації',
+    tabs: { campaigns: 'Розсилки', automation: 'Автоматика', deals: 'Акції', reviews: 'Відгуки', referrals: 'Рекомендації' },
+    kpiActiveCampaigns: 'Активні акції',
+    kpiActiveCampaignsSubOn: 'кампаній працює', kpiActiveCampaignsSubOff: 'запустіть першу',
+    kpiPromos: 'Промокоди', kpiPromosUsed: (n) => `використано ${n}×`, kpiPromosEmpty: 'не використані',
+    kpiRating: 'Середній рейтинг', kpiRatingSub: (n) => `${n} відгуків`, kpiRatingEmpty: 'відгуків немає',
+    kpiBroadcasts: 'Розсилок за тиждень', kpiBroadcastsOn: 'цього тижня', kpiBroadcastsOff: 'тихо',
+    mobHeader: 'Маркетинг', mobHeroLabel: 'ДОХІД З МАРКЕТИНГУ',
+    mobHeroDelta: '+18% порівняно з минулим місяцем',
+    cardDeals: 'Акції', cardDealsSub: 'Знижки, абонементи', cardDealsBadge: (n) => `${n} активні`,
+    cardPromos: 'Промокоди', cardPromosSub: 'Разові та багаторазові', cardPromosBadge: (n) => `${n} активні`,
+    cardReviews: 'Відгуки', cardReviewsSub: 'Збір та відповіді', cardReviewsBadge: (n) => `${n} всього`,
+    cardBroadcasts: 'Розсилки', cardBroadcastsSub: 'Email і Telegram', cardBroadcastsBadge: (n) => `${n} за тиждень`,
+    refTitle: 'Реферальна програма',
+    refSubFmt: (n, sum) => `${n} рекомендованих · ₴ ${sum.toLocaleString('uk-UA')} надійшло`,
+    locale: 'uk-UA',
+  },
+  ru: {
+    title: 'Маркетинг', subtitle: 'Рассылки, автоматика, акции, отзывы и рекомендации',
+    tabs: { campaigns: 'Рассылки', automation: 'Автоматика', deals: 'Акции', reviews: 'Отзывы', referrals: 'Рекомендации' },
+    kpiActiveCampaigns: 'Активных акций',
+    kpiActiveCampaignsSubOn: 'кампаний работает', kpiActiveCampaignsSubOff: 'запустите первую',
+    kpiPromos: 'Промокоды', kpiPromosUsed: (n) => `использовано ${n}×`, kpiPromosEmpty: 'не использованы',
+    kpiRating: 'Средний рейтинг', kpiRatingSub: (n) => `${n} отзывов`, kpiRatingEmpty: 'отзывов нет',
+    kpiBroadcasts: 'Рассылок за неделю', kpiBroadcastsOn: 'на этой неделе', kpiBroadcastsOff: 'тихо',
+    mobHeader: 'Маркетинг', mobHeroLabel: 'ДОХОД С МАРКЕТИНГА',
+    mobHeroDelta: '+18% по сравнению с прошлым месяцем',
+    cardDeals: 'Акции', cardDealsSub: 'Скидки, абонементы', cardDealsBadge: (n) => `${n} активные`,
+    cardPromos: 'Промокоды', cardPromosSub: 'Разовые и многоразовые', cardPromosBadge: (n) => `${n} активные`,
+    cardReviews: 'Отзывы', cardReviewsSub: 'Сбор и ответы', cardReviewsBadge: (n) => `${n} всего`,
+    cardBroadcasts: 'Рассылки', cardBroadcastsSub: 'Email и Telegram', cardBroadcastsBadge: (n) => `${n} за неделю`,
+    refTitle: 'Реферальная программа',
+    refSubFmt: (n, sum) => `${n} рекомендованных · ₴ ${sum.toLocaleString('ru-RU')} получено`,
+    locale: 'ru-RU',
+  },
+  en: {
+    title: 'Marketing', subtitle: 'Broadcasts, automation, deals, reviews and referrals',
+    tabs: { campaigns: 'Broadcasts', automation: 'Automation', deals: 'Deals', reviews: 'Reviews', referrals: 'Referrals' },
+    kpiActiveCampaigns: 'Active deals',
+    kpiActiveCampaignsSubOn: 'campaigns running', kpiActiveCampaignsSubOff: 'launch your first',
+    kpiPromos: 'Promo codes', kpiPromosUsed: (n) => `used ${n}×`, kpiPromosEmpty: 'not used',
+    kpiRating: 'Average rating', kpiRatingSub: (n) => `${n} reviews`, kpiRatingEmpty: 'no reviews',
+    kpiBroadcasts: 'Broadcasts this week', kpiBroadcastsOn: 'this week', kpiBroadcastsOff: 'quiet',
+    mobHeader: 'Marketing', mobHeroLabel: 'MARKETING REVENUE',
+    mobHeroDelta: '+18% vs last month',
+    cardDeals: 'Deals', cardDealsSub: 'Discounts, subscriptions', cardDealsBadge: (n) => `${n} active`,
+    cardPromos: 'Promo codes', cardPromosSub: 'Single-use and reusable', cardPromosBadge: (n) => `${n} active`,
+    cardReviews: 'Reviews', cardReviewsSub: 'Collect and respond', cardReviewsBadge: (n) => `${n} total`,
+    cardBroadcasts: 'Broadcasts', cardBroadcastsSub: 'Email and Telegram', cardBroadcastsBadge: (n) => `${n} this week`,
+    refTitle: 'Referral program',
+    refSubFmt: (n, sum) => `${n} referred · ₴ ${sum.toLocaleString('en-US')} earned`,
+    locale: 'en-US',
+  },
+};
 
 export default function MarketingPage() {
   const searchParams = useSearchParams();
@@ -40,6 +107,16 @@ export default function MarketingPage() {
   const pathname = usePathname();
   const { C } = usePageTheme();
   const { master } = useMaster();
+  const localeRaw = useLocale();
+  const mktLang: MktLang = (['uk', 'ru', 'en'].includes(localeRaw) ? localeRaw : 'ru') as MktLang;
+  const L = MKT_LABELS[mktLang];
+  const TABS: ReadonlyArray<{ value: TopTab; label: string }> = [
+    { value: 'campaigns',  label: L.tabs.campaigns },
+    { value: 'automation', label: L.tabs.automation },
+    { value: 'deals',      label: L.tabs.deals },
+    { value: 'reviews',    label: L.tabs.reviews },
+    { value: 'referrals',  label: L.tabs.referrals },
+  ];
   const [stats, setStats] = useState<{
     activeCampaigns: number;
     activePromos: number;
@@ -141,27 +218,27 @@ export default function MarketingPage() {
 
     // Overview grid
     const mktSections = [
-      { key: 'deals' as TopTab,      icon: Megaphone, title: 'Акції',    sub: 'Знижки, абонементи',  badge: stats ? `${stats.activeCampaigns} активні` : '—',  badgeWarn: false },
-      { key: 'campaigns' as TopTab,  icon: Ticket,    title: 'Промокоди', sub: 'Разові та багаторазові', badge: stats ? `${stats.activePromos} активні` : '—', badgeWarn: false },
-      { key: 'reviews' as TopTab,    icon: Star,      title: 'Відгуки',  sub: 'Збір та відповіді',   badge: stats ? `${stats.totalReviews} всього` : '—',        badgeWarn: false },
-      { key: 'campaigns' as TopTab,  icon: Send,      title: 'Розсилки', sub: 'Email і Telegram',    badge: stats ? `${stats.weeklyBroadcasts} за тиждень` : '—', badgeWarn: true },
+      { key: 'deals' as TopTab,      icon: Megaphone, title: L.cardDeals,      sub: L.cardDealsSub,      badge: stats ? L.cardDealsBadge(stats.activeCampaigns) : '—', badgeWarn: false },
+      { key: 'campaigns' as TopTab,  icon: Ticket,    title: L.cardPromos,     sub: L.cardPromosSub,     badge: stats ? L.cardPromosBadge(stats.activePromos) : '—',   badgeWarn: false },
+      { key: 'reviews' as TopTab,    icon: Star,      title: L.cardReviews,    sub: L.cardReviewsSub,    badge: stats ? L.cardReviewsBadge(stats.totalReviews) : '—',  badgeWarn: false },
+      { key: 'campaigns' as TopTab,  icon: Send,      title: L.cardBroadcasts, sub: L.cardBroadcastsSub, badge: stats ? L.cardBroadcastsBadge(stats.weeklyBroadcasts) : '—', badgeWarn: true },
     ] as const;
 
     return (
       <div style={{ background: '#f8fafc', minHeight: '100vh', paddingBottom: 100 }}>
         {/* Header */}
         <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Маркетинг</span>
+          <span style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>{L.mobHeader}</span>
         </div>
 
         <div style={{ padding: '16px' }}>
           {/* Hero KPI card */}
           <div style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', borderRadius: 16, padding: '20px', marginBottom: 16, position: 'relative', overflow: 'hidden' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>ДОХІД З МАРКЕТИНГУ — {new Date().toLocaleString('uk-UA', { month: 'long' }).toUpperCase()}</div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>{L.mobHeroLabel} — {new Date().toLocaleString(L.locale, { month: 'long' }).toUpperCase()}</div>
             <div style={{ fontSize: 32, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>₴ 12 480</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>
               <TrendingUp style={{ width: 13, height: 13 }} />
-              +18% порівняно з минулим місяцем
+              {L.mobHeroDelta}
             </div>
           </div>
 
@@ -200,8 +277,8 @@ export default function MarketingPage() {
               <Heart style={{ width: 20, height: 20, color: '#ef4444' }} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Реферальна програма</div>
-              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>8 рекомендованих · ₴ 1 200 надійшло</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{L.refTitle}</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{L.refSubFmt(0, 0)}</div>
             </div>
             <ChevronRight style={{ width: 16, height: 16, color: '#cbd5e1', flexShrink: 0 }} />
           </button>
@@ -231,10 +308,10 @@ export default function MarketingPage() {
           fontSize: 28, fontWeight: 700, color: C.text,
           letterSpacing: '-0.02em', margin: 0, lineHeight: 1,
         }}>
-          Маркетинг
+          {L.title}
         </h1>
         <p style={{ fontSize: 14, color: C.textTertiary, margin: '6px 0 0' }}>
-          Рассылки, автоматика, акции, отзывы и рекомендации
+          {L.subtitle}
         </p>
       </div>
 
@@ -247,32 +324,32 @@ export default function MarketingPage() {
           marginBottom: 24,
         }}>
           <MktKpiCard
-            label="Активных акций"
+            label={L.kpiActiveCampaigns}
             value={String(stats.activeCampaigns)}
-            sub={stats.activeCampaigns > 0 ? 'кампаний работает' : 'запустите первую'}
+            sub={stats.activeCampaigns > 0 ? L.kpiActiveCampaignsSubOn : L.kpiActiveCampaignsSubOff}
             icon={<TrendingUp size={14} />}
             C={C}
           />
           <MktKpiCard
-            label="Промокоды"
+            label={L.kpiPromos}
             value={String(stats.activePromos)}
-            sub={stats.usedPromos > 0 ? `использовано ${stats.usedPromos}×` : 'не использованы'}
+            sub={stats.usedPromos > 0 ? L.kpiPromosUsed(stats.usedPromos) : L.kpiPromosEmpty}
             icon={<Tag size={14} />}
             highlight
             C={C}
           />
           <MktKpiCard
-            label="Средний рейтинг"
+            label={L.kpiRating}
             value={stats.avgRating > 0 ? stats.avgRating.toFixed(1) : '—'}
-            sub={stats.totalReviews > 0 ? `${stats.totalReviews} отзывов` : 'отзывов нет'}
+            sub={stats.totalReviews > 0 ? L.kpiRatingSub(stats.totalReviews) : L.kpiRatingEmpty}
             icon={<Star size={14} />}
             valueColor="#f59e0b"
             C={C}
           />
           <MktKpiCard
-            label="Рассылок за неделю"
+            label={L.kpiBroadcasts}
             value={String(stats.weeklyBroadcasts)}
-            sub={stats.weeklyBroadcasts > 0 ? 'на этой неделе' : 'тихо'}
+            sub={stats.weeklyBroadcasts > 0 ? L.kpiBroadcastsOn : L.kpiBroadcastsOff}
             icon={<Send size={14} />}
             C={C}
           />
