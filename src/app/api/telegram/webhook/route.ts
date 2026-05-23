@@ -1884,6 +1884,19 @@ async function handleCallbackQuery(cb: NonNullable<TelegramUpdate['callback_quer
         });
       } catch {}
     }
+
+    // Mark pending notifications for this appt as 'sent' — мы уже только
+    // что отправили TG напрямую и клиенту и мастеру. Без этого cron
+    // /api/cron/notifications через 1-5 мин подберёт pending row от
+    // DB-триггера dispatch_booking_notification и пошлёт ВТОРОЕ сообщение.
+    try {
+      await supabase
+        .from('notifications')
+        .update({ status: 'sent', sent_at: new Date().toISOString() })
+        .eq('channel', 'telegram')
+        .eq('status', 'pending')
+        .filter('data->>apt_id', 'eq', apptId);
+    } catch {}
     return;
   }
 
