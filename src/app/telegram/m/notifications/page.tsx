@@ -13,6 +13,46 @@ import { motion } from 'framer-motion';
 import { Bell, Loader2, Inbox, UserPlus, UserCheck, Users, X, MailOpen, CheckCircle2, XCircle, Send } from 'lucide-react';
 import { MobilePage, PageHeader, EmptyState } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
+import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
+
+type NotifLang = 'uk' | 'ru' | 'en';
+const NOTIF_LABELS: Record<NotifLang, {
+  title: string;
+  todayLabel: string;
+  yesterdayLabel: string;
+  locale: string;
+  unread: (n: number) => string;
+  allRead: string;
+  markAllRead: string;
+  clearAll: string;
+  emptyTitle: string;
+  emptyDesc: string;
+  mutual: string;
+  subscribe: string;
+  dismissAria: string;
+}> = {
+  uk: {
+    title: 'Сповіщення', todayLabel: 'Сьогодні', yesterdayLabel: 'Вчора', locale: 'uk-UA',
+    unread: (n) => `${n} непрочитаних`, allRead: 'Всі прочитані',
+    markAllRead: 'Прочитати всі', clearAll: 'Очистити всі',
+    emptyTitle: 'Порожньо', emptyDesc: 'Нові записи та події зʼявляться тут',
+    mutual: 'Взаємно', subscribe: 'Підписатися', dismissAria: 'Прибрати сповіщення',
+  },
+  ru: {
+    title: 'Уведомления', todayLabel: 'Сегодня', yesterdayLabel: 'Вчера', locale: 'ru-RU',
+    unread: (n) => `${n} непрочитанных`, allRead: 'Всё прочитано',
+    markAllRead: 'Прочитать всё', clearAll: 'Очистить всё',
+    emptyTitle: 'Пусто', emptyDesc: 'Новые записи и события появятся здесь',
+    mutual: 'Взаимно', subscribe: 'Подписаться', dismissAria: 'Скрыть уведомление',
+  },
+  en: {
+    title: 'Notifications', todayLabel: 'Today', yesterdayLabel: 'Yesterday', locale: 'en-US',
+    unread: (n) => `${n} unread`, allRead: 'All read',
+    markAllRead: 'Mark all read', clearAll: 'Clear all',
+    emptyTitle: 'Empty', emptyDesc: 'New bookings and events will show up here',
+    mutual: 'Mutual', subscribe: 'Follow', dismissAria: 'Dismiss notification',
+  },
+};
 
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
@@ -64,13 +104,13 @@ function groupByDay(items: Notif[]) {
   });
 }
 
-function formatDay(d: Date) {
+function formatDay(d: Date, L: typeof NOTIF_LABELS[NotifLang]) {
   const today = new Date();
   const y = new Date(today);
   y.setDate(y.getDate() - 1);
-  if (d.toDateString() === today.toDateString()) return 'Сегодня';
-  if (d.toDateString() === y.toDateString()) return 'Вчера';
-  return d.toLocaleDateString('ru', { day: 'numeric', month: 'long' });
+  if (d.toDateString() === today.toDateString()) return L.todayLabel;
+  if (d.toDateString() === y.toDateString()) return L.yesterdayLabel;
+  return d.toLocaleDateString(L.locale, { day: 'numeric', month: 'long' });
 }
 
 const NOTIF_ICONS: Record<string, typeof Bell> = {
@@ -101,6 +141,8 @@ export default function MasterMiniAppNotifications() {
   const router = useRouter();
   const { haptic, ready } = useTelegram();
   const { userId } = useAuthStore();
+  const lang = useMiniAppLocale();
+  const L = NOTIF_LABELS[lang];
   const [items, setItems] = useState<Notif[]>([]);
   const [loading, setLoading] = useState(true);
   const [followStates, setFollowStates] = useState<Record<string, boolean | 'loading'>>({});
@@ -224,12 +266,12 @@ export default function MasterMiniAppNotifications() {
         style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
       >
         <PageHeader
-          title="Уведомления"
+          title={L.title}
           subtitle={
             items.length > 0
               ? unreadCount > 0
-                ? `${unreadCount} непрочитанных`
-                : 'Всё прочитано'
+                ? L.unread(unreadCount)
+                : L.allRead
               : undefined
           }
         />
@@ -253,7 +295,7 @@ export default function MasterMiniAppNotifications() {
                   fontFamily: 'inherit',
                 }}
               >
-                Прочитать всё
+                {L.markAllRead}
               </button>
             )}
             <button
@@ -272,7 +314,7 @@ export default function MasterMiniAppNotifications() {
                 fontFamily: 'inherit',
               }}
             >
-              Очистить всё
+              {L.clearAll}
             </button>
           </div>
         )}
@@ -304,8 +346,8 @@ export default function MasterMiniAppNotifications() {
                   <Inbox size={28} color={T.accent} strokeWidth={2} />
                 </div>
               }
-              title="Пусто"
-              desc="Новые записи и события появятся здесь"
+              title={L.emptyTitle}
+              desc={L.emptyDesc}
             />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -320,7 +362,7 @@ export default function MasterMiniAppNotifications() {
                       letterSpacing: '0.08em',
                     }}
                   >
-                    {formatDay(g.date)}
+                    {formatDay(g.date, L)}
                   </p>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {g.items.map((n) => {
@@ -422,7 +464,7 @@ export default function MasterMiniAppNotifications() {
                                 {n.body}
                               </p>
                               <p style={{ ...TYPE.micro, marginTop: 4 }}>
-                                {new Date(n.sent_at ?? n.created_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
+                                {new Date(n.sent_at ?? n.created_at).toLocaleTimeString(L.locale, { hour: '2-digit', minute: '2-digit' })}
                                 {' · '}
                                 {n.channel}
                               </p>
@@ -458,11 +500,11 @@ export default function MasterMiniAppNotifications() {
                                   <Loader2 size={11} className="animate-spin" />
                                 ) : followState === true ? (
                                   <>
-                                    <UserCheck size={11} /> Взаимно
+                                    <UserCheck size={11} /> {L.mutual}
                                   </>
                                 ) : (
                                   <>
-                                    <UserPlus size={11} /> Подписаться
+                                    <UserPlus size={11} /> {L.subscribe}
                                   </>
                                 )}
                               </button>
@@ -480,13 +522,13 @@ export default function MasterMiniAppNotifications() {
                                   fontWeight: 700,
                                 }}
                               >
-                                Взаимно
+                                {L.mutual}
                               </span>
                             )}
 
                             <span
                               role="button"
-                              aria-label="Скрыть уведомление"
+                              aria-label={L.dismissAria}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 dismissOne(n.id);
