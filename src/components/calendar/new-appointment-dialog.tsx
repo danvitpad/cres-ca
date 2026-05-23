@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectTrigger, SelectContent, SelectItem } from '@/components/ui/select-animated';
 import { FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
+import { formatMoney } from '@/lib/format/money';
 
 interface Props {
   open: boolean;
@@ -164,7 +165,7 @@ export function NewAppointmentDialog({
         const timeStr = startsAt.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
         const priceNum = Number(service.price || 0);
         const priceStr = priceNum > 0
-          ? `${priceNum.toLocaleString('ru')} ${service.currency || 'UAH'}`
+          ? formatMoney(priceNum, service.currency || 'UAH')
           : 'не указана';
         const durMin = service.duration_minutes;
         const durHours = Math.floor(durMin / 60);

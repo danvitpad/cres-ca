@@ -567,7 +567,13 @@ export default function BookPage() {
     }
 
     if (error) {
-      toast.error(tc('error'));
+      // Blacklisted by this master — DB trigger raises with hint='blacklisted'
+      const errMsg = String(error.message ?? '');
+      if (errMsg.includes('blacklisted') || (error as { hint?: string }).hint === 'blacklisted') {
+        toast.error('Этот мастер закрыл запись для тебя. Свяжись с ним напрямую.');
+      } else {
+        toast.error(tc('error'));
+      }
       setSubmitting(false);
       return;
     }

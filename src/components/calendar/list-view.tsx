@@ -12,6 +12,7 @@ import { CalendarX, Clock } from 'lucide-react';
 import type { AppointmentData } from '@/hooks/use-appointments';
 import { FONT } from '@/lib/dashboard-theme';
 import { EmptyState } from '@/components/shared/primitives/empty-state';
+import { formatMoney } from '@/lib/format/money';
 
 interface ListViewProps {
   appointments: AppointmentData[];
@@ -121,7 +122,7 @@ export function ListView({ appointments, onAppointmentClick, onDayClick }: ListV
                 <div style={{ fontSize: 12, color: C.textTertiary, fontVariantNumeric: 'tabular-nums' }}>
                   {items.length} {items.length === 1 ? 'запись' : items.length < 5 ? 'записи' : 'записей'}
                   {' · '}
-                  {dayTotal.toLocaleString('ru-RU')} {currency}
+                  {formatMoney(dayTotal, currency)}
                 </div>
               </div>
 
@@ -194,7 +195,7 @@ export function ListView({ appointments, onAppointmentClick, onDayClick }: ListV
                         fontSize: 14, fontWeight: 600, color: C.text,
                         textAlign: 'right', fontVariantNumeric: 'tabular-nums',
                       }}>
-                        {Number(a.price || 0).toLocaleString('ru-RU')} {a.currency || 'UAH'}
+                        {formatMoney(Number(a.price || 0), a.currency || 'UAH')}
                       </span>
                     </button>
                   );
