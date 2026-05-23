@@ -107,42 +107,71 @@ export default function SettingsPage() {
     );
   }
 
+  type SettingsLang = 'uk' | 'ru' | 'en';
+  const lang: SettingsLang = (['uk', 'ru', 'en'].includes(locale) ? locale : 'uk') as SettingsLang;
+  const L = {
+    uk: {
+      gProfile: 'Профіль', gNotif: 'Сповіщення', gSubscription: 'Підписка', gGeneral: 'Загальне',
+      profile: 'Профіль і контакти', hours: 'Графік роботи', categories: 'Категорії та послуги',
+      notifications: 'Push і Telegram', feedback: 'Зворотній зв’язок',
+      subscription: 'Тариф і оплата', invite: 'Запрошення',
+      vertical: 'Вертикаль', features: 'Модулі', policies: 'Правила', security: 'Безпека',
+      settings: 'Налаштування',
+    },
+    ru: {
+      gProfile: 'Профиль', gNotif: 'Уведомления', gSubscription: 'Подписка', gGeneral: 'Общее',
+      profile: 'Профиль и контакты', hours: 'График работы', categories: 'Категории и услуги',
+      notifications: 'Push и Telegram', feedback: 'Обратная связь',
+      subscription: 'Тариф и оплата', invite: 'Приглашение',
+      vertical: 'Вертикаль', features: 'Модули', policies: 'Правила', security: 'Безопасность',
+      settings: 'Настройки',
+    },
+    en: {
+      gProfile: 'Profile', gNotif: 'Notifications', gSubscription: 'Subscription', gGeneral: 'General',
+      profile: 'Profile & contacts', hours: 'Working hours', categories: 'Categories & services',
+      notifications: 'Push & Telegram', feedback: 'Feedback',
+      subscription: 'Plan & billing', invite: 'Invitation',
+      vertical: 'Vertical', features: 'Modules', policies: 'Policies', security: 'Security',
+      settings: 'Settings',
+    },
+  }[lang];
+
   const groups: SettingGroup[] = [
     {
-      label: 'Профіль',
+      label: L.gProfile,
       items: [
-        { key: 'profile', icon: UserCircle, title: 'Профіль і контакти', color: 'cobalt' },
-        { key: 'hours', icon: CalendarClock, title: 'Графік роботи', color: 'emerald' },
-        { key: 'categories', icon: Layers, title: 'Категорії та послуги', color: 'amber', href: `/${locale}/settings/categories` },
+        { key: 'profile', icon: UserCircle, title: L.profile, color: 'cobalt' },
+        { key: 'hours', icon: CalendarClock, title: L.hours, color: 'emerald' },
+        { key: 'categories', icon: Layers, title: L.categories, color: 'amber', href: `/${locale}/settings/categories` },
       ],
     },
     {
-      label: 'Сповіщення',
+      label: L.gNotif,
       items: [
-        { key: 'notifications', icon: BellRing, title: 'Push і Telegram', color: 'sky' },
-        { key: 'feedback', icon: MessageSquareHeart, title: 'Зворотній зв’язок', color: 'purple', href: `/${locale}/settings/feedback` },
+        { key: 'notifications', icon: BellRing, title: L.notifications, color: 'sky' },
+        { key: 'feedback', icon: MessageSquareHeart, title: L.feedback, color: 'purple', href: `/${locale}/settings/feedback` },
       ],
     },
     {
-      label: 'Підписка',
+      label: L.gSubscription,
       items: [
-        { key: 'subscription', icon: CreditCard, title: 'Тариф і оплата', color: 'cobalt' },
-        { key: 'invite', icon: LinkIcon, title: 'Запрошення', color: 'sky' },
+        { key: 'subscription', icon: CreditCard, title: L.subscription, color: 'cobalt' },
+        { key: 'invite', icon: LinkIcon, title: L.invite, color: 'sky' },
       ],
     },
     {
-      label: 'Загальне',
+      label: L.gGeneral,
       items: [
-        { key: 'vertical', icon: Briefcase, title: 'Вертикаль', color: 'purple' },
-        { key: 'features', icon: Layers, title: 'Модулі', color: 'amber' },
-        { key: 'policies', icon: Shield, title: 'Правила', color: 'emerald' },
-        { key: 'security', icon: KeyRound, title: 'Безпека', color: 'danger' },
+        { key: 'vertical', icon: Briefcase, title: L.vertical, color: 'purple' },
+        { key: 'features', icon: Layers, title: L.features, color: 'amber' },
+        { key: 'policies', icon: Shield, title: L.policies, color: 'emerald' },
+        { key: 'security', icon: KeyRound, title: L.security, color: 'danger' },
       ],
     },
   ];
 
   const allSections = groups.flatMap((g) => g.items);
-  const activeTitle = allSections.find((s) => s.key === activeSection)?.title ?? 'Налаштування';
+  const activeTitle = allSections.find((s) => s.key === activeSection)?.title ?? L.settings;
 
   return (
     <SettingsAllInOneView
@@ -150,33 +179,34 @@ export default function SettingsPage() {
       allSections={allSections}
       activeSection={activeSection}
       activeTitle={activeTitle}
+      settingsLabel={L.settings}
       onSelect={setActiveSection}
     >
-      <SettingsAnchor id="profile" title="Профіль і контакти">
+      <SettingsAnchor id="profile" title={L.profile}>
         <ProfileTab master={master} userId={userId!} onSaved={refetch} />
       </SettingsAnchor>
-      <SettingsAnchor id="vertical" title="Вертикаль">
+      <SettingsAnchor id="vertical" title={L.vertical}>
         <VerticalTab master={master} onSaved={refetch} />
       </SettingsAnchor>
-      <SettingsAnchor id="features" title="Модулі">
+      <SettingsAnchor id="features" title={L.features}>
         <FeaturesTab master={master} onSaved={refetch} />
       </SettingsAnchor>
-      <SettingsAnchor id="hours" title="Графік роботи">
+      <SettingsAnchor id="hours" title={L.hours}>
         <WorkingHoursTab master={master} onSaved={refetch} />
       </SettingsAnchor>
-      <SettingsAnchor id="security" title="Безпека">
+      <SettingsAnchor id="security" title={L.security}>
         <SecurityTab />
       </SettingsAnchor>
-      <SettingsAnchor id="notifications" title="Push і Telegram">
+      <SettingsAnchor id="notifications" title={L.notifications}>
         <NotificationsTab master={master} onSaved={refetch} />
       </SettingsAnchor>
-      <SettingsAnchor id="policies" title="Правила">
+      <SettingsAnchor id="policies" title={L.policies}>
         <PoliciesTab master={master} onSaved={refetch} />
       </SettingsAnchor>
-      <SettingsAnchor id="subscription" title="Тариф і оплата">
+      <SettingsAnchor id="subscription" title={L.subscription}>
         <SubscriptionTab />
       </SettingsAnchor>
-      <SettingsAnchor id="invite" title="Запрошення">
+      <SettingsAnchor id="invite" title={L.invite}>
         <InviteLinkTab master={master} />
       </SettingsAnchor>
     </SettingsAllInOneView>
@@ -200,6 +230,7 @@ function SettingsAllInOneView({
   allSections,
   activeSection,
   activeTitle,
+  settingsLabel,
   onSelect,
   children,
 }: {
@@ -207,6 +238,7 @@ function SettingsAllInOneView({
   allSections: SettingSection[];
   activeSection: string | null;
   activeTitle: string;
+  settingsLabel: string;
   onSelect: (key: string | null) => void;
   children: React.ReactNode;
 }) {
@@ -224,7 +256,7 @@ function SettingsAllInOneView({
       <div className={`md:hidden ${activeSection ? 'hidden' : 'block'}`}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
           <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0, color: C.text }}>
-            Налаштування
+            {activeTitle}
           </h1>
         </div>
 
@@ -308,7 +340,7 @@ function SettingsAllInOneView({
         <aside style={{ width: 240, flexShrink: 0, position: 'sticky', top: 24, alignSelf: 'flex-start' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, paddingBottom: 12, borderBottom: `1px solid ${C.border}` }}>
             <SettingsCogIcon size={15} style={{ color: C.accent }} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Налаштування</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{settingsLabel}</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {allSections.map((s) => {
