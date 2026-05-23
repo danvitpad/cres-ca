@@ -60,6 +60,7 @@ const SEARCH_LABELS: Record<SearchLang, {
   mapSoon: string;
   bookCta: string;
   sort: Record<SortMode, string>;
+  cat: Record<'hair' | 'nails' | 'face' | 'massage' | 'brows' | 'laser' | 'skin' | 'all', string>;
 }> = {
   uk: {
     master: 'Майстер',
@@ -82,6 +83,7 @@ const SEARCH_LABELS: Record<SearchLang, {
     reviewsAbbr: 'відг.', scheduleOnPage: 'графік на сторінці',
     mapSoon: 'Карта · скоро', bookCta: 'Записатись',
     sort: { rating: 'Рейтингом', distance: 'Відстанню', price_asc: 'Ціною ↑', price_desc: 'Ціною ↓', next_slot: 'Найближчий слот' },
+    cat: { hair: 'Волосся', nails: 'Манікюр', face: 'Обличчя', massage: 'Масаж', brows: 'Брови', laser: 'Лазер', skin: 'Шкіра', all: 'Усі категорії' },
   },
   ru: {
     master: 'Мастер',
@@ -104,6 +106,7 @@ const SEARCH_LABELS: Record<SearchLang, {
     reviewsAbbr: 'отз.', scheduleOnPage: 'график на странице',
     mapSoon: 'Карта · скоро', bookCta: 'Записаться',
     sort: { rating: 'Рейтингу', distance: 'Расстоянию', price_asc: 'Цене ↑', price_desc: 'Цене ↓', next_slot: 'Ближайший слот' },
+    cat: { hair: 'Волосы', nails: 'Маникюр', face: 'Лицо', massage: 'Массаж', brows: 'Брови', laser: 'Лазер', skin: 'Кожа', all: 'Все категории' },
   },
   en: {
     master: 'Master',
@@ -126,6 +129,7 @@ const SEARCH_LABELS: Record<SearchLang, {
     reviewsAbbr: 'rev.', scheduleOnPage: 'schedule on page',
     mapSoon: 'Map · coming soon', bookCta: 'Book',
     sort: { rating: 'Rating', distance: 'Distance', price_asc: 'Price ↑', price_desc: 'Price ↓', next_slot: 'Next slot' },
+    cat: { hair: 'Hair', nails: 'Nails', face: 'Face', massage: 'Massage', brows: 'Brows', laser: 'Laser', skin: 'Skin', all: 'All categories' },
   },
 };
 
@@ -274,7 +278,10 @@ export default function SearchPage() {
     });
   }
 
-  const headerTitle = `${categoryLabel(initialCat) || (query.trim() || L.masters)}${city ? L.inCity(city) : ''}`;
+  const catLabel = initialCat && (initialCat in L.cat)
+    ? L.cat[initialCat as keyof typeof L.cat]
+    : '';
+  const headerTitle = `${catLabel || (query.trim() || L.masters)}${city ? L.inCity(city) : ''}`;
 
   return (
     <div className="space-y-5 pb-12">

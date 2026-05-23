@@ -679,6 +679,7 @@ function PeriodFilter({
           <MonthPicker
             value={pickMonth}
             onChange={(v) => { setPickMonth(v); setFilter('pick-month'); }}
+            months={L.months}
           />
         </PopoverContent>
       </Popover>
@@ -729,10 +730,11 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 }
 
 function MonthPicker({
-  value, onChange,
+  value, onChange, months,
 }: {
   value: { year: number; month: number };
   onChange: (v: { year: number; month: number }) => void;
+  months: readonly string[];
 }) {
   const [year, setYear] = useState(value.year);
   return (
@@ -747,7 +749,7 @@ function MonthPicker({
         </button>
       </div>
       <div className="grid grid-cols-3 gap-1.5">
-        {MONTH_NAMES_UK.map((m, i) => {
+        {months.map((m, i) => {
           const isActive = value.year === year && value.month === i;
           return (
             <button
