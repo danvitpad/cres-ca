@@ -125,6 +125,7 @@ export default function MarketingPage() {
     totalReviews: number;
     weeklyBroadcasts: number;
   } | null>(null);
+  const [refStats, setRefStats] = useState<{ count: number; sum: number }>({ count: 0, sum: 0 });
 
   // Mobile state
   const [isMobileView, setIsMobileView] = useState(false);
@@ -144,17 +145,28 @@ export default function MarketingPage() {
     (async () => {
       const supabase = createClient();
       const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
-      const [campaignsR, promosR, reviewsR, broadcastsR] = await Promise.all([
+      const [campaignsR, promosR, reviewsR, broadcastsR, refRewardsR] = await Promise.all([
         supabase.from('campaigns').select('id, is_active').eq('master_id', master.id),
         supabase.from('promo_codes').select('id, is_active, uses_count').eq('master_id', master.id),
         supabase.from('reviews').select('id, rating').eq('master_id', master.id),
         supabase.from('master_broadcasts').select('id, created_at').eq('master_id', master.id).gte('created_at', weekAgo),
+        // Реферальные награды у этого мастера: каждая запись = одна
+        // успешная рекомендация (триггер 00161 пишет visit_earn после
+        // первого завершённого визита приведённого клиента).
+        supabase.from('loyalty_transactions')
+          .select('amount')
+          .eq('master_id', master.id)
+          .eq('kind', 'referral_reward'),
       ]);
       if (cancelled) return;
       const campaigns = campaignsR.data ?? [];
       const promos = promosR.data ?? [];
       const reviews = reviewsR.data ?? [];
       const broadcasts = broadcastsR.data ?? [];
+      const refRewards = (refRewardsR.data ?? []) as Array<{ amount: number | string | null }>;
+      const refCount = refRewards.length;
+      const refSum = refRewards.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+      setRefStats({ count: refCount, sum: refSum });
       const avgRating = reviews.length > 0
         ? reviews.reduce((s: number, r: { rating: number | null }) => s + (Number(r.rating) || 0), 0) / reviews.length
         : 0;
@@ -278,7 +290,7 @@ export default function MarketingPage() {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{L.refTitle}</div>
-              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{L.refSubFmt(0, 0)}</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{L.refSubFmt(refStats.count, refStats.sum)}</div>
             </div>
             <ChevronRight style={{ width: 16, height: 16, color: '#cbd5e1', flexShrink: 0 }} />
           </button>
