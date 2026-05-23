@@ -11,12 +11,123 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useLocale } from 'next-intl';
 import {
   Star, MapPin, Clock, Coins, Check, ChevronDown, List, Map as MapIcon, Locate, Search as SearchIcon,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
+
+type SearchLang = 'uk' | 'ru' | 'en';
+const SEARCH_LABELS: Record<SearchLang, {
+  master: string;
+  inCity: (city: string) => string;
+  masters: string;
+  searching: string;
+  foundResult: (n: number) => string;
+  today: string;
+  rating: string;
+  minRating: string;
+  anyRating: string;
+  rating47: string;
+  rating48: string;
+  price: string;
+  yourBudget: string;
+  upTo: (p: number) => string;
+  cheap: string;
+  premium: string;
+  proximity: string;
+  findByGeo: string;
+  orAddress: string;
+  addressPlaceholder: string;
+  radius: string;
+  radiusAny: string;
+  radius1km: string;
+  radius3km: string;
+  radius10km: string;
+  female: string;
+  mobile: string;
+  sortBy: string;
+  list: string;
+  map: string;
+  fromPrice: string;
+  noResultsTitle: string;
+  noResultsDesc: string;
+  resetFilters: string;
+  reviewsAbbr: string;
+  scheduleOnPage: string;
+  mapSoon: string;
+  bookCta: string;
+  sort: Record<SortMode, string>;
+}> = {
+  uk: {
+    master: 'Майстер',
+    inCity: (c) => ` у ${c}`,
+    masters: 'Майстри',
+    searching: 'Шукаємо…',
+    foundResult: (n) => `Знайшли ${n} ${n === 1 ? 'майстра' : n < 5 ? 'майстрів' : 'майстрів'}`,
+    today: 'Сьогодні',
+    rating: 'Рейтинг', minRating: 'Мінімальний рейтинг',
+    anyRating: 'Будь-який', rating47: '⭐ 4.7+', rating48: '⭐ 4.8+ (топ)',
+    price: 'Ціна', yourBudget: 'Ваш бюджет', upTo: (p) => `до ₴${p}`,
+    cheap: 'дешево', premium: 'преміум',
+    proximity: 'Близькість', findByGeo: 'Знайти за геопозицією',
+    orAddress: 'Або вкажіть адресу', addressPlaceholder: 'вул. Хрещатик 12, Київ',
+    radius: 'Радіус', radiusAny: 'Будь-який', radius1km: '1 км', radius3km: '3 км', radius10km: '10 км',
+    female: 'Тільки жінки', mobile: 'Виїзд', sortBy: 'Сортувати',
+    list: 'Список', map: 'Карта', fromPrice: 'від',
+    noResultsTitle: 'Нічого не знайшли', noResultsDesc: 'Спробуй прибрати фільтри або змінити місто.',
+    resetFilters: 'Скинути фільтри',
+    reviewsAbbr: 'відг.', scheduleOnPage: 'графік на сторінці',
+    mapSoon: 'Карта · скоро', bookCta: 'Записатись',
+    sort: { rating: 'Рейтингом', distance: 'Відстанню', price_asc: 'Ціною ↑', price_desc: 'Ціною ↓', next_slot: 'Найближчий слот' },
+  },
+  ru: {
+    master: 'Мастер',
+    inCity: (c) => ` в ${c}`,
+    masters: 'Мастера',
+    searching: 'Ищем…',
+    foundResult: (n) => `Нашли ${n} ${n === 1 ? 'мастера' : n < 5 ? 'мастера' : 'мастеров'}`,
+    today: 'Сегодня',
+    rating: 'Рейтинг', minRating: 'Минимальный рейтинг',
+    anyRating: 'Любой', rating47: '⭐ 4.7+', rating48: '⭐ 4.8+ (топ)',
+    price: 'Цена', yourBudget: 'Ваш бюджет', upTo: (p) => `до ₴${p}`,
+    cheap: 'дёшево', premium: 'премиум',
+    proximity: 'Близость', findByGeo: 'Найти по геолокации',
+    orAddress: 'Или укажите адрес', addressPlaceholder: 'ул. Сумская 12, Харьков',
+    radius: 'Радиус', radiusAny: 'Любой', radius1km: '1 км', radius3km: '3 км', radius10km: '10 км',
+    female: 'Только женщины', mobile: 'Выезд', sortBy: 'Сортировать',
+    list: 'Список', map: 'Карта', fromPrice: 'от',
+    noResultsTitle: 'Ничего не нашли', noResultsDesc: 'Попробуй убрать фильтры или изменить город.',
+    resetFilters: 'Сбросить фильтры',
+    reviewsAbbr: 'отз.', scheduleOnPage: 'график на странице',
+    mapSoon: 'Карта · скоро', bookCta: 'Записаться',
+    sort: { rating: 'Рейтингу', distance: 'Расстоянию', price_asc: 'Цене ↑', price_desc: 'Цене ↓', next_slot: 'Ближайший слот' },
+  },
+  en: {
+    master: 'Master',
+    inCity: (c) => ` in ${c}`,
+    masters: 'Masters',
+    searching: 'Searching…',
+    foundResult: (n) => `Found ${n} master${n === 1 ? '' : 's'}`,
+    today: 'Today',
+    rating: 'Rating', minRating: 'Minimum rating',
+    anyRating: 'Any', rating47: '⭐ 4.7+', rating48: '⭐ 4.8+ (top)',
+    price: 'Price', yourBudget: 'Your budget', upTo: (p) => `up to ₴${p}`,
+    cheap: 'cheap', premium: 'premium',
+    proximity: 'Proximity', findByGeo: 'Find by geolocation',
+    orAddress: 'Or enter address', addressPlaceholder: '12 Main St, Kyiv',
+    radius: 'Radius', radiusAny: 'Any', radius1km: '1 km', radius3km: '3 km', radius10km: '10 km',
+    female: 'Female only', mobile: 'Mobile', sortBy: 'Sort',
+    list: 'List', map: 'Map', fromPrice: 'from',
+    noResultsTitle: 'Nothing found', noResultsDesc: 'Try removing filters or changing city.',
+    resetFilters: 'Reset filters',
+    reviewsAbbr: 'rev.', scheduleOnPage: 'schedule on page',
+    mapSoon: 'Map · coming soon', bookCta: 'Book',
+    sort: { rating: 'Rating', distance: 'Distance', price_asc: 'Price ↑', price_desc: 'Price ↓', next_slot: 'Next slot' },
+  },
+};
 
 interface MasterRow {
   id: string;
@@ -35,16 +146,12 @@ interface MasterRow {
 type SortMode = 'rating' | 'distance' | 'price_asc' | 'price_desc' | 'next_slot';
 type ViewMode = 'list' | 'map';
 
-const SORT_LABELS: Record<SortMode, string> = {
-  rating: 'Рейтингом',
-  distance: 'Відстанню',
-  price_asc: 'Ціною ↑',
-  price_desc: 'Ціною ↓',
-  next_slot: 'Найближчий слот',
-};
-
 export default function SearchPage() {
   const sp = useSearchParams();
+  const localeRaw = useLocale();
+  const lang: SearchLang = (['uk', 'ru', 'en'].includes(localeRaw) ? localeRaw : 'uk') as SearchLang;
+  const L = SEARCH_LABELS[lang];
+  const SORT_LABELS = L.sort;
   const initialQ = sp?.get('q') ?? '';
   const initialCity = sp?.get('city') ?? '';
   const initialCat = sp?.get('cat') ?? '';
@@ -126,7 +233,7 @@ export default function SearchPage() {
         rating: m.rating,
         city: m.city,
         avatar_url: m.avatar_url,
-        fullName: (m.display_name ?? profile?.full_name ?? 'Майстер').toString(),
+        fullName: (m.display_name ?? profile?.full_name ?? L.master).toString(),
         reviewsCount: reviewsByMaster.get(m.id) ?? 0,
         minPrice: minPriceByMaster.get(m.id) ?? null,
       };
@@ -167,35 +274,35 @@ export default function SearchPage() {
     });
   }
 
-  const headerTitle = `${categoryLabel(initialCat) || (query.trim() || 'Майстри')}${city ? ` у ${city}` : ''}`;
+  const headerTitle = `${categoryLabel(initialCat) || (query.trim() || L.masters)}${city ? L.inCity(city) : ''}`;
 
   return (
     <div className="space-y-5 pb-12">
       <header>
         <h1 className="text-[28px] font-extrabold tracking-tight">{headerTitle}</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          {loading ? 'Шукаємо…' : `Знайшли ${filtered.length} ${pluralMaster(filtered.length)}, готов${filtered.length === 1 ? 'ий' : 'і'} прийняти`}
+          {loading ? L.searching : L.foundResult(filtered.length)}
         </p>
       </header>
 
       {/* Filter chips */}
       <div className="flex flex-wrap items-center gap-1.5">
         <FilterChip active={todayOnly} onClick={() => setTodayOnly((v) => !v)} icon={<Check className="size-3.5" />}>
-          Сьогодні
+          {L.today}
         </FilterChip>
 
         <Popover>
           <PopoverTrigger className={chipClass(minRating > 0)}>
-            <Star className="size-3.5" /> Рейтинг {minRating > 0 ? `${minRating}+` : ''}
+            <Star className="size-3.5" /> {L.rating} {minRating > 0 ? `${minRating}+` : ''}
             <ChevronDown className="size-3 opacity-60" />
           </PopoverTrigger>
           <PopoverContent align="start" className="w-[220px] p-2">
-            <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Мінімальний рейтинг</div>
+            <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{L.minRating}</div>
             {[
-              [0, 'Будь-який'],
+              [0, L.anyRating],
               [4.0, '⭐ 4.0+'],
               [4.5, '⭐ 4.5+'],
-              [4.8, '⭐ 4.8+ (топ)'],
+              [4.8, L.rating48],
             ].map(([v, l]) => (
               <button
                 key={v as number}
@@ -217,14 +324,14 @@ export default function SearchPage() {
 
         <Popover>
           <PopoverTrigger className={chipClass(maxPrice < 2000)}>
-            <Coins className="size-3.5" /> Ціна {maxPrice < 2000 ? `до ₴${maxPrice}` : ''}
+            <Coins className="size-3.5" /> {L.price} {maxPrice < 2000 ? L.upTo(maxPrice) : ''}
             <ChevronDown className="size-3 opacity-60" />
           </PopoverTrigger>
           <PopoverContent align="start" className="w-[300px] p-3">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ваш бюджет</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{L.yourBudget}</div>
             <div className="mt-3 flex items-center justify-between text-[12px]">
               <span className="text-muted-foreground">₴100</span>
-              <span className="font-semibold text-[#2563eb]">до ₴{maxPrice}</span>
+              <span className="font-semibold text-[#2563eb]">{L.upTo(maxPrice)}</span>
               <span className="text-muted-foreground">₴2000+</span>
             </div>
             <input
@@ -237,15 +344,15 @@ export default function SearchPage() {
               className="mt-2 w-full accent-[#2563eb]"
             />
             <div className="mt-1 flex justify-between text-[10px] text-muted-foreground/70">
-              <span>дешево</span>
-              <span>преміум</span>
+              <span>{L.cheap}</span>
+              <span>{L.premium}</span>
             </div>
           </PopoverContent>
         </Popover>
 
         <Popover>
           <PopoverTrigger className={chipClass(radius !== 'any' || !!city)}>
-            <MapPin className="size-3.5" /> Близькість
+            <MapPin className="size-3.5" /> {L.proximity}
             <ChevronDown className="size-3 opacity-60" />
           </PopoverTrigger>
           <PopoverContent align="start" className="w-[320px] p-3 space-y-2.5">
@@ -253,23 +360,23 @@ export default function SearchPage() {
               onClick={detectLocation}
               className="flex w-full items-center gap-2 rounded-xl bg-[#2563eb]/10 px-3 py-2.5 text-[13px] font-semibold text-[#2563eb] hover:bg-[#2563eb]/15"
             >
-              <Locate className="size-3.5" /> Знайти за геопозицією
+              <Locate className="size-3.5" /> {L.findByGeo}
             </button>
             <div className="border-t border-border" />
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Або вкажіть адресу</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{L.orAddress}</div>
             <input
               value={addressInput}
               onChange={(e) => setAddressInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') setCity(addressInput); }}
-              placeholder="вул. Хрещатик 12, Київ"
+              placeholder={L.addressPlaceholder}
               className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[13px] outline-none focus:border-[#2563eb]"
             />
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Радіус</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{L.radius}</div>
             {([
-              ['any', 'Будь-яка відстань'],
-              ['1km', 'До 1 км пішки'],
-              ['3km', 'До 3 км'],
-              ['10km', 'До 10 км'],
+              ['any', L.radiusAny],
+              ['1km', L.radius1km],
+              ['3km', L.radius3km],
+              ['10km', L.radius10km],
             ] as const).map(([v, l]) => (
               <button
                 key={v}
@@ -289,14 +396,14 @@ export default function SearchPage() {
           </PopoverContent>
         </Popover>
 
-        <FilterChip active={femaleOnly} onClick={() => setFemaleOnly((v) => !v)}>Жінка-майстер</FilterChip>
-        <FilterChip active={mobileOnly} onClick={() => setMobileOnly((v) => !v)}>Виїзд додому</FilterChip>
+        <FilterChip active={femaleOnly} onClick={() => setFemaleOnly((v) => !v)}>{L.female}</FilterChip>
+        <FilterChip active={mobileOnly} onClick={() => setMobileOnly((v) => !v)}>{L.mobile}</FilterChip>
       </div>
 
       {/* Toolbar: count + sort + view */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-[13px] text-muted-foreground">
-          <strong className="text-foreground">{filtered.length}</strong> {pluralMaster(filtered.length)} знайдено
+          {L.foundResult(filtered.length)}
         </div>
         <div className="flex items-center gap-2">
           <Popover>
@@ -330,7 +437,7 @@ export default function SearchPage() {
                 'flex size-7 items-center justify-center rounded-full transition-colors',
                 view === 'list' ? 'bg-[#2563eb] text-white' : 'text-muted-foreground hover:text-foreground',
               )}
-              aria-label="Список"
+              aria-label={L.list}
             >
               <List className="size-3.5" />
             </button>
@@ -340,7 +447,7 @@ export default function SearchPage() {
                 'flex size-7 items-center justify-center rounded-full transition-colors',
                 view === 'map' ? 'bg-[#2563eb] text-white' : 'text-muted-foreground hover:text-foreground',
               )}
-              aria-label="Карта"
+              aria-label={L.map}
             >
               <MapIcon className="size-3.5" />
             </button>
@@ -359,16 +466,16 @@ export default function SearchPage() {
           <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-[#2563eb]/12 text-[#2563eb]">
             <SearchIcon className="size-6" />
           </div>
-          <p className="mt-4 text-[15px] font-semibold">Нічого не знайшли</p>
+          <p className="mt-4 text-[15px] font-semibold">{L.noResultsTitle}</p>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            Спробуй прибрати фільтри або змінити місто.
+            {L.noResultsDesc}
           </p>
         </div>
       ) : (
         <div className={cn('grid gap-4', view === 'list' ? 'lg:grid-cols-[1fr_360px]' : 'lg:grid-cols-1')}>
           {/* Results list */}
           <div className="flex flex-col gap-2.5">
-            {filtered.map((m) => <ResultRow key={m.id} m={m} />)}
+            {filtered.map((m) => <ResultRow key={m.id} m={m} L={L} />)}
           </div>
 
           {/* Map column (sticky on desktop) — light grid placeholder, не агрессивный */}
@@ -398,7 +505,7 @@ export default function SearchPage() {
                     );
                   })}
                   <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-card/90 px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground backdrop-blur">
-                    Карта · скоро
+                    {L.mapSoon}
                   </div>
                 </div>
               </div>
@@ -410,7 +517,7 @@ export default function SearchPage() {
   );
 }
 
-function ResultRow({ m }: { m: MasterRow }) {
+function ResultRow({ m, L }: { m: MasterRow; L: typeof SEARCH_LABELS[SearchLang] }) {
   const initials = m.fullName.split(/\s+/).slice(0, 2).map((p) => p.charAt(0).toUpperCase()).join('') || '?';
   return (
     <Link
@@ -434,7 +541,7 @@ function ResultRow({ m }: { m: MasterRow }) {
           <span className="inline-flex items-center gap-1">
             <Star className="size-3 fill-amber-400 text-amber-400" />
             <strong className="text-foreground">{m.rating ? m.rating.toFixed(1) : '—'}</strong>
-            {m.reviewsCount > 0 ? ` · ${m.reviewsCount} відг.` : ''}
+            {m.reviewsCount > 0 ? ` · ${m.reviewsCount} ${L.reviewsAbbr}` : ''}
           </span>
           {m.city && (
             <>
@@ -446,16 +553,16 @@ function ResultRow({ m }: { m: MasterRow }) {
           )}
           <span>·</span>
           <span className="inline-flex items-center gap-1">
-            <Clock className="size-3" /> графік на сторінці
+            <Clock className="size-3" /> {L.scheduleOnPage}
           </span>
         </div>
       </div>
       <div className="shrink-0 text-right">
         <div className="text-[13px] font-bold text-foreground">
-          {m.minPrice ? `від ₴${Math.round(m.minPrice)}` : '—'}
+          {m.minPrice ? `${L.fromPrice} ₴${Math.round(m.minPrice)}` : '—'}
         </div>
         <span className="mt-1.5 inline-flex items-center justify-center rounded-full bg-[#2563eb] px-4 py-1.5 text-[12px] font-semibold text-white">
-          Записатись
+          {L.bookCta}
         </span>
       </div>
     </Link>
