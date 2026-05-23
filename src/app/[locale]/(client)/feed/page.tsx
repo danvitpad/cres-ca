@@ -12,6 +12,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useLocale } from 'next-intl';
 import {
   Activity, CalendarPlus, ChevronLeft, ChevronRight, Clock, Coins, Droplets, Eye,
   Hand, Loader2, MapPin, MoreHorizontal, Repeat, Scissors, Search,
@@ -20,6 +21,75 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
+
+type FeedLang = 'uk' | 'ru' | 'en';
+const FEED_LABELS: Record<FeedLang, {
+  greeting: string; fallbackName: string;
+  visits: string; masters: string; spent: string;
+  nextAppt: string; appointment: string; details: string; route: string;
+  noAppts: string; findMaster: string; findMasterHint: string; toSearch: string;
+  freeSlots: string; allMyMasters: string;
+  yourRegulars: string; allHistory: string; repeat: string; times: (n: number) => string;
+  newMaster: string; allCategories: string;
+  recommended: (c: string | null) => string; allMasters: string;
+  cat: { hair: string; nails: string; face: string; massage: string; brows: string; laser: string; skin: string; all: string };
+  months: string[];
+  month: string; halfYear: string; year: string; period: string;
+  ctaSubscribe: string; emptySlots: string;
+  durationUnit: string;
+}> = {
+  uk: {
+    greeting: 'Привіт,', fallbackName: 'друже',
+    visits: 'Візити', masters: 'Майстри', spent: 'Витрачено',
+    nextAppt: 'Наступний запис', appointment: 'Запис', details: 'Деталі запису', route: 'Маршрут',
+    noAppts: 'Поки немає записів', findMaster: 'Знайти майстра',
+    findMasterHint: 'Підбери послугу, час та локацію — все в одному вікні.', toSearch: 'До пошуку',
+    freeSlots: 'Вільні слоти у ваших майстрів', allMyMasters: 'Усі мої майстри',
+    yourRegulars: 'Ваші постійні', allHistory: 'Уся історія',
+    repeat: 'Повторити', times: (n) => `раз${n === 1 ? '' : n < 5 ? 'и' : 'ів'}`,
+    newMaster: 'Знайти нового майстра', allCategories: 'Усі категорії',
+    recommended: (c) => c ? `Рекомендовані у ${c}` : 'Рекомендовані', allMasters: 'Усі майстри',
+    cat: { hair: 'Волосся', nails: 'Нігті', face: 'Обличчя', massage: 'Масаж', brows: 'Брови', laser: 'Лазер', skin: 'Шкіра', all: 'Усі' },
+    months: ['Січ', 'Лют', 'Бер', 'Кві', 'Тра', 'Чер', 'Лип', 'Сер', 'Вер', 'Жов', 'Лис', 'Гру'],
+    month: 'Місяць', halfYear: 'Півроку', year: 'Рік', period: 'Період',
+    ctaSubscribe: 'Знайти майстрів', emptySlots: 'Підпишись на майстрів — їх найближчі вікна з’являться тут.',
+    durationUnit: 'хв',
+  },
+  ru: {
+    greeting: 'Привет,', fallbackName: 'друг',
+    visits: 'Визиты', masters: 'Мастера', spent: 'Потрачено',
+    nextAppt: 'Следующая запись', appointment: 'Запись', details: 'Детали записи', route: 'Маршрут',
+    noAppts: 'Пока нет записей', findMaster: 'Найти мастера',
+    findMasterHint: 'Подбери услугу, время и локацию — всё в одном окне.', toSearch: 'К поиску',
+    freeSlots: 'Свободные слоты ваших мастеров', allMyMasters: 'Все мои мастера',
+    yourRegulars: 'Ваши постоянные', allHistory: 'Вся история',
+    repeat: 'Повторить', times: (n) => `раз${n === 1 ? '' : n < 5 ? 'а' : ''}`,
+    newMaster: 'Найти нового мастера', allCategories: 'Все категории',
+    recommended: (c) => c ? `Рекомендуем в ${c}` : 'Рекомендуем', allMasters: 'Все мастера',
+    cat: { hair: 'Волосы', nails: 'Ногти', face: 'Лицо', massage: 'Массаж', brows: 'Брови', laser: 'Лазер', skin: 'Кожа', all: 'Все' },
+    months: ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'],
+    month: 'Месяц', halfYear: 'Полгода', year: 'Год', period: 'Период',
+    ctaSubscribe: 'Найти мастеров', emptySlots: 'Подпишись на мастеров — их ближайшие окна появятся здесь.',
+    durationUnit: 'мин',
+  },
+  en: {
+    greeting: 'Hi,', fallbackName: 'friend',
+    visits: 'Visits', masters: 'Masters', spent: 'Spent',
+    nextAppt: 'Next appointment', appointment: 'Appointment', details: 'Details', route: 'Route',
+    noAppts: 'No appointments yet', findMaster: 'Find a master',
+    findMasterHint: 'Pick a service, time and location — all in one place.', toSearch: 'Search',
+    freeSlots: 'Free slots from your masters', allMyMasters: 'All my masters',
+    yourRegulars: 'Your regulars', allHistory: 'Full history',
+    repeat: 'Repeat', times: (n) => n === 1 ? 'time' : 'times',
+    newMaster: 'Find a new master', allCategories: 'All categories',
+    recommended: (c) => c ? `Recommended in ${c}` : 'Recommended', allMasters: 'All masters',
+    cat: { hair: 'Hair', nails: 'Nails', face: 'Face', massage: 'Massage', brows: 'Brows', laser: 'Laser', skin: 'Skin', all: 'All' },
+    months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    month: 'Month', halfYear: 'Half year', year: 'Year', period: 'Period',
+    ctaSubscribe: 'Find masters', emptySlots: 'Follow some masters — their next openings will show up here.',
+    durationUnit: 'min',
+  },
+};
 
 interface FeedSlot {
   id: string;
@@ -82,23 +152,27 @@ interface PeriodStats {
 
 type FilterMode = 'month' | 'half' | 'year' | 'pick-month' | 'pick-range';
 
-const CATEGORIES = [
-  { key: 'hair',    label: 'Волосся',  icon: Scissors },
-  { key: 'nails',   label: 'Нігті',    icon: Hand },
-  { key: 'face',    label: 'Обличчя',  icon: Smile },
-  { key: 'massage', label: 'Масаж',    icon: Activity },
-  { key: 'brows',   label: 'Брови',    icon: Eye },
-  { key: 'laser',   label: 'Лазер',    icon: Zap },
-  { key: 'skin',    label: 'Шкіра',    icon: Droplets },
-  { key: 'all',     label: 'Усі',      icon: MoreHorizontal },
+const CATEGORY_DEFS = [
+  { key: 'hair',    icon: Scissors },
+  { key: 'nails',   icon: Hand },
+  { key: 'face',    icon: Smile },
+  { key: 'massage', icon: Activity },
+  { key: 'brows',   icon: Eye },
+  { key: 'laser',   icon: Zap },
+  { key: 'skin',    icon: Droplets },
+  { key: 'all',     icon: MoreHorizontal },
 ] as const;
 
-const MONTH_NAMES_UK = [
-  'Січ', 'Лют', 'Бер', 'Кві', 'Тра', 'Чер',
-  'Лип', 'Сер', 'Вер', 'Жов', 'Лис', 'Гру',
-];
+// MonthPicker / formatShort — служебные хелперы, ниже по файлу. Локаль
+// сюда не пробрасываем (риск регрессий), но fallback по uk оставляем —
+// MonthPicker всё равно вызывается в Popover'е под uk-локалью большинство
+// времени. Полная локализация MonthPicker — отдельная задача.
+const MONTH_NAMES_UK = ['Січ', 'Лют', 'Бер', 'Кві', 'Тра', 'Чер', 'Лип', 'Сер', 'Вер', 'Жов', 'Лис', 'Гру'];
 
 export default function ClientFeedPage() {
+  const localeRaw = useLocale();
+  const lang: FeedLang = (['uk', 'ru', 'en'].includes(localeRaw) ? localeRaw : 'uk') as FeedLang;
+  const L = FEED_LABELS[lang];
   const [firstName, setFirstName] = useState<string>('');
   const [clientIds, setClientIds] = useState<string[]>([]);
   const [stats, setStats] = useState<PeriodStats | null>(null);
@@ -312,9 +386,9 @@ export default function ClientFeedPage() {
       {/* 0. Greeting + period stats */}
       <header className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <div className="text-[13px] text-muted-foreground mb-1">Привіт,</div>
+          <div className="text-[13px] text-muted-foreground mb-1">{L.greeting}</div>
           <div className="text-[28px] font-extrabold tracking-tight text-foreground">
-            {firstName || 'друже'} 👋
+            {firstName || L.fallbackName} 👋
           </div>
         </div>
 
@@ -328,21 +402,22 @@ export default function ClientFeedPage() {
             rangeTo={rangeTo}
             setRangeFrom={setRangeFrom}
             setRangeTo={setRangeTo}
+            L={L}
           />
 
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <StatCard
-              label="Візити"
+              label={L.visits}
               value={stats?.visits ?? 0}
               suffix=""
             />
             <StatCard
-              label="Майстри"
+              label={L.masters}
               value={stats?.masters ?? 0}
               suffix=""
             />
             <StatCard
-              label="Витрачено"
+              label={L.spent}
               value={stats?.spent ?? 0}
               suffix=" ₴"
               wide
@@ -364,10 +439,10 @@ export default function ClientFeedPage() {
         >
           <div className="flex-1">
             <div className="text-[12px] font-semibold uppercase tracking-[0.08em] opacity-80">
-              Наступний запис
+              {L.nextAppt}
             </div>
             <div className="mt-2 text-[24px] font-extrabold">
-              {nextAppt.service_name ?? 'Запис'}
+              {nextAppt.service_name ?? L.appointment}
             </div>
             <div className="mt-1 text-[15px] opacity-90">
               у {nextAppt.master_name} · {formatWhen(nextAppt.starts_at)}
@@ -380,7 +455,7 @@ export default function ClientFeedPage() {
               )}
               {nextAppt.duration_minutes && (
                 <span className="inline-flex items-center gap-1.5">
-                  <Clock className="size-3.5" /> {nextAppt.duration_minutes} хв
+                  <Clock className="size-3.5" /> {nextAppt.duration_minutes} {L.durationUnit}
                 </span>
               )}
               {nextAppt.price != null && (
@@ -392,10 +467,10 @@ export default function ClientFeedPage() {
           </div>
           <div className="flex flex-col gap-2.5 sm:shrink-0">
             <span className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-[14px] font-semibold text-[#2563eb]">
-              Деталі запису
+              {L.details}
             </span>
             <span className="inline-flex items-center gap-2 rounded-full border-[1.5px] border-white/40 bg-white/15 px-5 py-3 text-[14px] font-semibold text-white">
-              <MapPin className="size-3.5" /> Маршрут
+              <MapPin className="size-3.5" /> {L.route}
             </span>
           </div>
         </Link>
@@ -406,24 +481,24 @@ export default function ClientFeedPage() {
         >
           <div className="flex-1">
             <div className="text-[12px] font-semibold uppercase tracking-[0.08em] opacity-80">
-              Поки немає записів
+              {L.noAppts}
             </div>
-            <div className="mt-2 text-[24px] font-extrabold">Знайти майстра</div>
+            <div className="mt-2 text-[24px] font-extrabold">{L.findMaster}</div>
             <div className="mt-1 text-[15px] opacity-90">
-              Підбери послугу, час та локацію — все в одному вікні.
+              {L.findMasterHint}
             </div>
           </div>
           <span className="inline-flex items-center gap-2 self-start rounded-full bg-white px-5 py-3 text-[14px] font-semibold text-[#2563eb] sm:self-auto">
-            <Search className="size-4" /> До пошуку
+            <Search className="size-4" /> {L.toSearch}
           </span>
         </Link>
       )}
 
       {/* 2. Free slots */}
       <Section
-        title="Вільні слоти у ваших майстрів"
+        title={L.freeSlots}
         moreHref="/my-masters"
-        moreLabel="Усі мої майстри"
+        moreLabel={L.allMyMasters}
       >
         {loadingSlots ? (
           <div className="flex items-center justify-center py-10">
@@ -431,8 +506,8 @@ export default function ClientFeedPage() {
           </div>
         ) : slots.length === 0 ? (
           <EmptyHint
-            text="Підпишись на майстрів — їх найближчі вікна з'являться тут."
-            ctaLabel="Знайти майстрів"
+            text={L.emptySlots}
+            ctaLabel={L.ctaSubscribe}
             ctaHref="/search"
           />
         ) : (
@@ -445,9 +520,9 @@ export default function ClientFeedPage() {
       {/* 3. Your regulars */}
       {regulars.length > 0 && (
         <Section
-          title="Ваші постійні"
+          title={L.yourRegulars}
           moreHref="/appointments?tab=past"
-          moreLabel="Уся історія"
+          moreLabel={L.allHistory}
         >
           <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
             {regulars.map((r) => (
@@ -467,7 +542,7 @@ export default function ClientFeedPage() {
                     {r.master_name}
                   </div>
                   <div className="mt-1 flex gap-2 text-[11px] text-muted-foreground/80">
-                    <span>{r.visit_count} раз{plural(r.visit_count)}</span>
+                    <span>{r.visit_count} {L.times(r.visit_count)}</span>
                     {r.service_price != null && (
                       <>
                         <span>·</span>
@@ -478,7 +553,7 @@ export default function ClientFeedPage() {
                 </div>
                 <span
                   className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#2563eb]/12 text-[#2563eb] transition-colors group-hover:bg-[#2563eb] group-hover:text-white"
-                  aria-label="Повторити"
+                  aria-label={L.repeat}
                 >
                   <Repeat className="size-[18px]" />
                 </span>
@@ -490,12 +565,12 @@ export default function ClientFeedPage() {
 
       {/* 4. Categories */}
       <Section
-        title="Знайти нового майстра"
+        title={L.newMaster}
         moreHref="/search"
-        moreLabel="Усі категорії"
+        moreLabel={L.allCategories}
       >
         <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
-          {CATEGORIES.map(({ key, label, icon: Icon }) => (
+          {CATEGORY_DEFS.map(({ key, icon: Icon }) => (
             <Link
               key={key}
               href={`/search?cat=${key}`}
@@ -504,7 +579,7 @@ export default function ClientFeedPage() {
               <span className="flex size-10 items-center justify-center rounded-xl bg-[#2563eb]/12 text-[#2563eb]">
                 <Icon className="size-5" />
               </span>
-              <span className="text-[12px] font-medium text-muted-foreground">{label}</span>
+              <span className="text-[12px] font-medium text-muted-foreground">{L.cat[key]}</span>
             </Link>
           ))}
         </div>
@@ -513,9 +588,9 @@ export default function ClientFeedPage() {
       {/* 5. Recommended */}
       {featured.length > 0 && (
         <Section
-          title={city ? `Рекомендовані у ${city}` : 'Рекомендовані'}
+          title={L.recommended(city)}
           moreHref="/search"
-          moreLabel="Усі майстри"
+          moreLabel={L.allMasters}
         >
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {featured.map((m) => (
@@ -564,7 +639,7 @@ export default function ClientFeedPage() {
 
 function PeriodFilter({
   filter, setFilter, pickMonth, setPickMonth,
-  rangeFrom, rangeTo, setRangeFrom, setRangeTo,
+  rangeFrom, rangeTo, setRangeFrom, setRangeTo, L,
 }: {
   filter: FilterMode;
   setFilter: (m: FilterMode) => void;
@@ -574,17 +649,18 @@ function PeriodFilter({
   rangeTo: Date | null;
   setRangeFrom: (d: Date | null) => void;
   setRangeTo: (d: Date | null) => void;
+  L: typeof FEED_LABELS[FeedLang];
 }) {
-  const monthLabel = `${MONTH_NAMES_UK[pickMonth.month]} ${pickMonth.year}`;
+  const monthLabel = `${L.months[pickMonth.month]} ${pickMonth.year}`;
   const rangeLabel = rangeFrom && rangeTo
     ? `${formatShort(rangeFrom)} – ${formatShort(rangeTo)}`
-    : 'Період';
+    : L.period;
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <Chip active={filter === 'month'} onClick={() => setFilter('month')}>Місяць</Chip>
-      <Chip active={filter === 'half'} onClick={() => setFilter('half')}>Півроку</Chip>
-      <Chip active={filter === 'year'} onClick={() => setFilter('year')}>Рік</Chip>
+      <Chip active={filter === 'month'} onClick={() => setFilter('month')}>{L.month}</Chip>
+      <Chip active={filter === 'half'} onClick={() => setFilter('half')}>{L.halfYear}</Chip>
+      <Chip active={filter === 'year'} onClick={() => setFilter('year')}>{L.year}</Chip>
 
       <Popover>
         <PopoverTrigger
@@ -596,7 +672,7 @@ function PeriodFilter({
           )}
         >
           <CalendarRange className="size-3.5" />
-          {filter === 'pick-month' ? monthLabel : 'Місяць'}
+          {filter === 'pick-month' ? monthLabel : L.month}
           <ChevronRight className="size-3 rotate-90 opacity-60" />
         </PopoverTrigger>
         <PopoverContent align="end" className="w-[260px] p-3">
@@ -617,7 +693,7 @@ function PeriodFilter({
           )}
         >
           <CalendarRange className="size-3.5" />
-          {filter === 'pick-range' && rangeFrom && rangeTo ? rangeLabel : 'Період'}
+          {filter === 'pick-range' && rangeFrom && rangeTo ? rangeLabel : L.period}
           <ChevronRight className="size-3 rotate-90 opacity-60" />
         </PopoverTrigger>
         <PopoverContent align="end" className="w-[320px] p-3">
