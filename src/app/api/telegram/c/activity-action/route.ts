@@ -63,11 +63,45 @@ export async function POST(request: Request) {
       .eq('id', appointment_id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // Уведомление мастеру шлёт DB-триггер trg_booking_updated через
-    // dispatch_booking_notification('cancelled', ...) — один канонический
-    // формат «Клиент отменил запись» с полным контекстом. Раньше тут был
-    // ещё и прямой sendMessage + ручная вставка в notifications — это
-    // приводило к дублям у мастера. Убрано.
+    // Триггер trg_booking_updated → dispatch_booking_notification('cancelled')
+    // уведомит КЛИЕНТА (подтверждение). Мастеру дублируем здесь — иначе
+    // master ничего не узнает, пока не откроет календарь.
+    try {
+      const { data: master } = await admin
+        .from('masters').select('profile_id').eq('id', apt.master_id).maybeSingle();
+      const masterProfileId = (master as { profile_id?: string } | null)?.profile_id;
+      if (masterProfileId) {
+        const svc = Array.isArray(apt.service) ? apt.service[0] : apt.service;
+        const serviceName = (svc as { name?: string } | null)?.name || 'услугу';
+        const { data: cli } = await admin
+          .from('clients').select('full_name').eq('id', apt.client_id).maybeSingle();
+        const clientName = (cli as { full_name?: string } | null)?.full_name || 'Клиент';
+        const when = apt.starts_at
+          ? new Date(apt.starts_at).toLocaleString('ru', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+          : '';
+
+        // Dedupe: skip if same kind already exists in last 5 min
+        const { data: existing } = await admin
+          .from('notifications').select('id')
+          .eq('profile_id', masterProfileId)
+          .filter('data->>apt_id', 'eq', appointment_id)
+          .filter('data->>kind', 'eq', 'booking_cancelled_master')
+          .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
+          .maybeSingle();
+        if (!existing) {
+          await admin.from('notifications').insert({
+            profile_id: masterProfileId,
+            channel: 'telegram',
+            status: 'pending',
+            scheduled_for: new Date().toISOString(),
+            title: '⚠️ Клиент отменил запись',
+            body: `${clientName} отменил запись на ${serviceName} (${when}).`,
+            data: { kind: 'booking_cancelled_master', apt_id: appointment_id, client_id: apt.client_id },
+          });
+        }
+      }
+    } catch { /* best-effort */ }
+
     return NextResponse.json({ ok: true });
   }
 

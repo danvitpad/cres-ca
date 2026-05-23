@@ -130,6 +130,14 @@ export async function POST(request: Request) {
     .select('id, starts_at, service_id, price, currency');
   if (insErr) {
     console.error('[book] insert failed:', insErr.message, { master_id, clientId, rows });
+    // Blacklist DB-trigger 00160 поднимает exception с hint='blacklisted'.
+    const msg = String(insErr.message ?? '');
+    if (msg.includes('blacklisted') || (insErr as { hint?: string }).hint === 'blacklisted') {
+      return NextResponse.json(
+        { error: 'blacklisted', message: 'Мастер закрыл запись для тебя' },
+        { status: 403 },
+      );
+    }
     return NextResponse.json({ error: insErr.message }, { status: 500 });
   }
   if (!inserted || inserted.length === 0) {
@@ -269,18 +277,12 @@ export async function POST(request: Request) {
       data: { type: isReschedule ? 'appointment_rescheduled' : 'new_booking', client_id: clientId, action_url: '/calendar' },
     });
   }
-  // In-app notification for client (notification bell in Mini App)
-  if (profile.id && service_names && date_formatted && selected_time) {
-    await admin.from('notifications').insert({
-      profile_id: profile.id,
-      channel: 'in_app',
-      title: isReschedule ? 'Запись перенесена' : 'Запись подтверждена',
-      body: bodyText,
-      status: 'sent',
-      sent_at: new Date().toISOString(),
-      data: { type: isReschedule ? 'appointment_rescheduled' : 'appointment_created', action_url: '/telegram/app/activity' },
-    });
-  }
+  // ⚠️ Раньше тут была ещё одна insert в notifications для клиента
+  // (channel='in_app'). Это создавало ДУБЛЬ в колокольчике: DB-триггер
+  // dispatch_booking_notification('created') уже инсёртит pending row
+  // для клиента с богатым кастомным шаблоном мастера, она появляется
+  // в bell сразу же. Доп. insert от 2026-04 был мёртвым кодом из
+  // эпохи когда триггера ещё не было. Убран 2026-05-23.
 
   // Redeem gift certificate if provided (fire-and-forget: booking is already committed)
   if (gift_cert_code) {

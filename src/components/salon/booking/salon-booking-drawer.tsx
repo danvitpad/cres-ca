@@ -311,7 +311,13 @@ export function SalonBookingDrawer({
         .single();
 
       if (error) {
-        toast.error(error.message || 'Не удалось создать запись');
+        // Blacklisted by this master (DB trigger 00160 raises with hint)
+        const msg = String(error.message ?? '');
+        if (msg.includes('blacklisted') || (error as { hint?: string }).hint === 'blacklisted') {
+          toast.error('Этот мастер закрыл запись для тебя. Свяжись с ним напрямую.');
+        } else {
+          toast.error(msg || 'Не удалось создать запись');
+        }
         return;
       }
       // Notify master + confirm to client (best-effort)
