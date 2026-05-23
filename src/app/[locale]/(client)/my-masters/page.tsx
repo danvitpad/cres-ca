@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useLocale } from 'next-intl';
 import { toast } from 'sonner';
 import {
   Star, MapPin, User, CalendarPlus, Heart, Zap, Search, UserPlus,
@@ -19,6 +20,74 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useConfirm } from '@/hooks/use-confirm';
 import { cn } from '@/lib/utils';
+
+type MMLang = 'uk' | 'ru' | 'en';
+const MM_LABELS: Record<MMLang, {
+  title: string;
+  inFavorites: (n: number) => string;
+  withFreeToday: (n: number) => string;
+  master: string;
+  removeTitle: string; removeDescription: (name: string) => string;
+  removeConfirm: string; removeFailed: string; removeOk: string;
+  tabAll: string; tabRegular: string; tabRecent: string;
+  removeAria: string;
+  todayAt: (t: string) => string;
+  statVisits: string; statFrom: string; statSlots: string; statHas: string;
+  page: string; book: string;
+  emptyTitle: string; emptyDesc: string; emptyCta: string;
+}> = {
+  uk: {
+    title: 'Мої майстри',
+    inFavorites: (n) => `${n} в обраних`,
+    withFreeToday: (n) => `${n} з вільними слотами сьогодні`,
+    master: 'Майстер',
+    removeTitle: 'Видалити з обраних?',
+    removeDescription: (name) => `${name} більше не буде у списку «Мої майстри».`,
+    removeConfirm: 'Видалити', removeFailed: 'Не вдалось видалити', removeOk: 'Видалено з обраних',
+    tabAll: 'Усі', tabRegular: 'Постійні', tabRecent: 'Останні візити',
+    removeAria: 'Прибрати з обраних',
+    todayAt: (t) => `Сьогодні запис о ${t}`,
+    statVisits: 'Візитів', statFrom: 'Від', statSlots: 'Слотів', statHas: 'Є',
+    page: 'Сторінка', book: 'Записатись',
+    emptyTitle: 'Поки немає улюблених майстрів',
+    emptyDesc: 'Додавай мастерів у обрані — будеш бачити їх найближчі вікна, акції та зможеш записуватись в один клік.',
+    emptyCta: 'Знайти майстра',
+  },
+  ru: {
+    title: 'Мои мастера',
+    inFavorites: (n) => `${n} в избранных`,
+    withFreeToday: (n) => `${n} со свободными слотами сегодня`,
+    master: 'Мастер',
+    removeTitle: 'Удалить из избранных?',
+    removeDescription: (name) => `${name} больше не будет в списке «Мои мастера».`,
+    removeConfirm: 'Удалить', removeFailed: 'Не удалось удалить', removeOk: 'Удалено из избранных',
+    tabAll: 'Все', tabRegular: 'Постоянные', tabRecent: 'Последние визиты',
+    removeAria: 'Убрать из избранных',
+    todayAt: (t) => `Сегодня запись в ${t}`,
+    statVisits: 'Визитов', statFrom: 'От', statSlots: 'Слотов', statHas: 'Есть',
+    page: 'Страница', book: 'Записаться',
+    emptyTitle: 'Пока нет любимых мастеров',
+    emptyDesc: 'Добавляй мастеров в избранные — будешь видеть их ближайшие окна, акции и сможешь записываться в один клик.',
+    emptyCta: 'Найти мастера',
+  },
+  en: {
+    title: 'My masters',
+    inFavorites: (n) => `${n} in favorites`,
+    withFreeToday: (n) => `${n} with free slots today`,
+    master: 'Master',
+    removeTitle: 'Remove from favorites?',
+    removeDescription: (name) => `${name} will no longer be in your "My masters" list.`,
+    removeConfirm: 'Remove', removeFailed: 'Failed to remove', removeOk: 'Removed from favorites',
+    tabAll: 'All', tabRegular: 'Regulars', tabRecent: 'Recent visits',
+    removeAria: 'Remove from favorites',
+    todayAt: (t) => `Today's appointment at ${t}`,
+    statVisits: 'Visits', statFrom: 'From', statSlots: 'Slots', statHas: 'Yes',
+    page: 'Page', book: 'Book',
+    emptyTitle: 'No favorite masters yet',
+    emptyDesc: 'Add masters to favorites — you will see their next openings, promotions and book in one click.',
+    emptyCta: 'Find a master',
+  },
+};
 
 type SalonEmbed =
   | { id: string; name: string; logo_url: string | null; city: string | null }
@@ -44,6 +113,9 @@ type Tab = 'all' | 'regular' | 'recent';
 export default function MyMastersPage() {
   const { userId } = useAuthStore();
   const confirm = useConfirm();
+  const localeRaw = useLocale();
+  const lang: MMLang = (['uk', 'ru', 'en'].includes(localeRaw) ? localeRaw : 'uk') as MMLang;
+  const L = MM_LABELS[lang];
   const [masters, setMasters] = useState<MasterRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('all');
@@ -148,7 +220,7 @@ export default function MyMastersPage() {
         return {
           id: m.id,
           slug: m.slug ?? m.invite_code ?? m.id ?? null,
-          full_name: (m.display_name ?? m.profiles?.full_name ?? 'Майстер').toString(),
+          full_name: (m.display_name ?? m.profiles?.full_name ?? L.master).toString(),
           avatar_url: m.avatar_url ?? m.profiles?.avatar_url ?? null,
           specialization: m.specialization ?? null,
           rating: m.rating ?? null,
@@ -169,9 +241,9 @@ export default function MyMastersPage() {
 
   const handleUnsubscribe = useCallback(async (master: MasterRow) => {
     const ok = await confirm({
-      title: 'Видалити з обраних?',
-      description: `${master.full_name} більше не буде у списку «Мої майстри».`,
-      confirmLabel: 'Видалити',
+      title: L.removeTitle,
+      description: L.removeDescription(master.full_name),
+      confirmLabel: L.removeConfirm,
       destructive: true,
     });
     if (!ok) return;
@@ -184,14 +256,14 @@ export default function MyMastersPage() {
       });
       const json = (await res.json().catch(() => ({}))) as { following?: boolean };
       if (!res.ok || json.following !== false) {
-        toast.error('Не вдалось видалити'); return;
+        toast.error(L.removeFailed); return;
       }
       setMasters((prev) => prev.filter((m) => m.id !== master.id));
-      toast.success('Видалено з обраних');
+      toast.success(L.removeOk);
     } catch {
-      toast.error('Не вдалось видалити');
+      toast.error(L.removeFailed);
     } finally { setUnsubscribing(null); }
-  }, [confirm]);
+  }, [confirm, L]);
 
   const counts = useMemo(() => {
     const regular = masters.filter((m) => m.visitCount >= 3);
@@ -234,19 +306,19 @@ export default function MyMastersPage() {
     <div className="space-y-6 pb-12">
       {/* Hero */}
       <header>
-        <h1 className="text-[28px] font-extrabold tracking-tight">Мої майстри</h1>
+        <h1 className="text-[28px] font-extrabold tracking-tight">{L.title}</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          {masters.length} в обраних
-          {todayFreeCount > 0 ? ` · ${todayFreeCount} з вільними слотами сьогодні` : ''}
+          {L.inFavorites(masters.length)}
+          {todayFreeCount > 0 ? ` · ${L.withFreeToday(todayFreeCount)}` : ''}
         </p>
       </header>
 
       {/* 3 tabs */}
       <div className="inline-flex rounded-full bg-muted p-1">
         {([
-          ['all', 'Усі', counts.all],
-          ['regular', 'Постійні', counts.regular],
-          ['recent', 'Останні візити', null],
+          ['all', L.tabAll, counts.all],
+          ['regular', L.tabRegular, counts.regular],
+          ['recent', L.tabRecent, null],
         ] as const).map(([k, label, count]) => {
           const active = tab === k;
           return (
@@ -273,7 +345,7 @@ export default function MyMastersPage() {
       </div>
 
       {displayed.length === 0 ? (
-        <EmptyState />
+        <EmptyState L={L} />
       ) : (
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
           {displayed.map((m) => (
@@ -282,6 +354,7 @@ export default function MyMastersPage() {
               m={m}
               busy={unsubscribing === m.id}
               onUnfollow={() => handleUnsubscribe(m)}
+              L={L}
             />
           ))}
         </div>
@@ -290,7 +363,7 @@ export default function MyMastersPage() {
   );
 }
 
-function MasterCard({ m, busy, onUnfollow }: { m: MasterRow; busy: boolean; onUnfollow: () => void }) {
+function MasterCard({ m, busy, onUnfollow, L }: { m: MasterRow; busy: boolean; onUnfollow: () => void; L: typeof MM_LABELS[MMLang] }) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
   const next = m.nextVisit ? new Date(m.nextVisit) : null;
@@ -344,7 +417,7 @@ function MasterCard({ m, busy, onUnfollow }: { m: MasterRow; busy: boolean; onUn
         </div>
         <button
           onClick={onUnfollow}
-          aria-label="Прибрати з обраних"
+          aria-label={L.removeAria}
           className="flex size-9 shrink-0 items-center justify-center rounded-full border border-red-400/50 bg-red-500/10 text-red-500 transition-colors hover:bg-red-500/20"
         >
           <Heart className="size-4 fill-current" />
@@ -354,15 +427,15 @@ function MasterCard({ m, busy, onUnfollow }: { m: MasterRow; busy: boolean; onUn
       {/* Free slot today */}
       {isOnlineToday && nextTime && (
         <div className="flex items-center gap-1.5 rounded-xl bg-[#2563eb]/12 px-3 py-2 text-[12px] font-semibold text-[#2563eb]">
-          <Zap className="size-3.5" /> Сьогодні запис о {nextTime}
+          <Zap className="size-3.5" /> {L.todayAt(nextTime)}
         </div>
       )}
 
       {/* 3-col stats */}
       <div className="grid grid-cols-3 gap-2 border-y border-border py-3">
-        <Stat n={m.visitCount.toString()} label="Візитів" />
-        <Stat n={m.minPrice != null ? `₴${Math.round(m.minPrice)}` : '—'} label="Від" />
-        <Stat n={isOnlineToday ? 'Є' : '—'} label="Слотів" />
+        <Stat n={m.visitCount.toString()} label={L.statVisits} />
+        <Stat n={m.minPrice != null ? `₴${Math.round(m.minPrice)}` : '—'} label={L.statFrom} />
+        <Stat n={isOnlineToday ? L.statHas : '—'} label={L.statSlots} />
       </div>
 
       {/* Actions */}
@@ -371,13 +444,13 @@ function MasterCard({ m, busy, onUnfollow }: { m: MasterRow; busy: boolean; onUn
           href={`/m/${m.slug}`}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] border border-border bg-card py-2.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:bg-muted"
         >
-          <User className="size-3.5" /> Сторінка
+          <User className="size-3.5" /> {L.page}
         </Link>
         <Link
           href={`/book?master=${m.id}`}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] bg-[#2563eb] py-2.5 text-[12px] font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
         >
-          <CalendarPlus className="size-3.5" /> Записатись
+          <CalendarPlus className="size-3.5" /> {L.book}
         </Link>
       </div>
     </div>
@@ -398,21 +471,21 @@ function initials(name: string): string {
   return parts.map((p) => p.charAt(0).toUpperCase()).join('') || '?';
 }
 
-function EmptyState() {
+function EmptyState({ L }: { L: typeof MM_LABELS[MMLang] }) {
   return (
     <div className="flex flex-col items-center rounded-3xl border border-dashed border-border bg-card/50 p-14 text-center">
       <div className="flex size-16 items-center justify-center rounded-full bg-[#2563eb]/12 text-[#2563eb]">
         <UserPlus className="size-7" />
       </div>
-      <p className="mt-5 text-[16px] font-semibold">Поки немає улюблених майстрів</p>
+      <p className="mt-5 text-[16px] font-semibold">{L.emptyTitle}</p>
       <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
-        Додавай мастерів у обрані — будеш бачити їх найближчі вікна, акції та зможеш записуватись в один клік.
+        {L.emptyDesc}
       </p>
       <Link
         href="/search"
         className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-[#2563eb] px-5 py-2.5 text-[13px] font-semibold text-white hover:bg-[#1d4ed8]"
       >
-        <Search className="size-4" /> Знайти майстра
+        <Search className="size-4" /> {L.emptyCta}
       </Link>
     </div>
   );
