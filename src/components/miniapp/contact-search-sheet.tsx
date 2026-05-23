@@ -176,7 +176,7 @@ export function ContactSearchSheet({
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: '90dvh',
           background: T.surface,
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,

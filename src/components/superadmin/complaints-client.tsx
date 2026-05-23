@@ -46,7 +46,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   open: 'border-amber-400/30 bg-amber-500/10 text-amber-200',
-  in_progress: 'border-blue-400/30 bg-blue-500/10 text-blue-200',
+  in_progress: 'border-[var(--color-accent-border)] bg-[var(--color-accent-soft)] text-[var(--color-accent-text)]',
   closed: 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200',
 };
 
@@ -206,7 +206,7 @@ function ComplaintCard({
                 type="button"
                 disabled={busy}
                 onClick={() => onUpdate(row.id, 'in_progress')}
-                className="h-8 rounded-md border border-blue-400/30 bg-blue-500/10 px-3 text-[12px] font-medium text-blue-200 hover:bg-blue-500/15 disabled:opacity-50"
+                className="h-8 rounded-md border border-[var(--color-accent-border)] bg-[var(--color-accent-soft)] px-3 text-[12px] font-medium text-[var(--color-accent-text)] hover:bg-[var(--color-accent-hover)]/15 disabled:opacity-50"
               >
                 Принять в работу
               </button>

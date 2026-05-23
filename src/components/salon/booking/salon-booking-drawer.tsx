@@ -835,7 +835,7 @@ function TimeStep({
                 onClick={() => onDateChange(d)}
                 className={
                   'flex size-14 shrink-0 flex-col items-center justify-center rounded-full transition-colors ' +
-                  (isActive ? 'bg-blue-600 text-white' : 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50')
+                  (isActive ? 'bg-[var(--color-accent)] text-white' : 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50')
                 }
               >
                 <span className="text-[16px] font-bold leading-none tabular-nums">{d.getDate()}</span>
@@ -867,7 +867,7 @@ function TimeStep({
                     className={
                       'block w-full rounded-2xl border px-5 py-4 text-left transition-all ' +
                       (isSelected
-                        ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-200'
+                        ? 'border-[var(--color-accent)] bg-[var(--color-accent-soft)] ring-2 ring-[var(--color-accent-border)]'
                         : 'border-neutral-200 bg-white hover:border-neutral-300')
                     }
                   >

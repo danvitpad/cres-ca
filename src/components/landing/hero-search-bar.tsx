@@ -68,7 +68,7 @@ export function HeroSearchBar() {
       {/* Search button */}
       <button
         type="submit"
-        className="m-2 flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-zinc-800 active:scale-[0.97] dark:bg-blue-600 dark:hover:bg-blue-500"
+        className="m-2 flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-zinc-800 active:scale-[0.97] dark:bg-[var(--color-accent)] dark:hover:bg-[var(--color-accent-hover)]"
         style={{ height: 48 }}
       >
         <Search className="size-4" />

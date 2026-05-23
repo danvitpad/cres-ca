@@ -95,7 +95,7 @@ export function InlineAvatarEdit({ masterProfileId, initialUrl, name, className 
             // видно что это активный элемент управления.
             className="absolute -bottom-2 -right-2 z-20 flex size-11 items-center justify-center rounded-full border-[3px] border-white shadow-lg transition-transform hover:scale-110 active:scale-95 disabled:opacity-60"
             style={{
-              background: 'var(--ds-accent, #14b8a6)',
+              background: 'var(--ds-accent, #2563eb)',
               color: 'white',
             }}
             aria-label="Сменить аватар"

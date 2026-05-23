@@ -32,7 +32,7 @@ const typeIcons: Record<string, React.ReactNode> = {
 };
 
 const typeColors: Record<string, string> = {
-  schedule_gaps: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-950',
+  schedule_gaps: 'text-[var(--color-accent)] bg-[var(--color-accent-soft)] dark:text-[var(--color-accent-text)] dark:bg-[var(--color-accent-soft)]',
   dormant_clients: 'text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950',
   price_optimization: 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950',
   upsell_missed: 'text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-950',

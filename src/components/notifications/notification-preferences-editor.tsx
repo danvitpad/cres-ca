@@ -200,7 +200,7 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
       ? 'rounded-2xl border border-[var(--m-border-subtle)] bg-[var(--m-surface)] p-4 shadow-sm'
       : 'rounded-2xl border border-border bg-card p-4';
   const inputCls = isDark
-    ? 'h-10 w-full rounded-xl border border-white/15 bg-white/[0.05] px-3 text-sm text-white outline-none focus:border-blue-400/50'
+    ? 'h-10 w-full rounded-xl border border-white/15 bg-white/[0.05] px-3 text-sm text-white outline-none focus:border-[var(--color-accent)]'
     : isMini
       ? 'h-10 w-full rounded-xl border border-[var(--m-border-subtle)] bg-[var(--m-bg)] px-3 text-sm text-[var(--m-text)] outline-none focus:border-[var(--m-accent)]'
       : 'h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary';
@@ -222,7 +222,7 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
             type="checkbox"
             checked={enabled}
             onChange={(e) => setEnabled(e.target.checked)}
-            className="mt-0.5 size-4 accent-blue-500"
+            className="mt-0.5 size-4 accent-[var(--color-accent)]"
           />
           <div>
             <p className="text-sm font-semibold">Получать напоминания о записях</p>
@@ -236,7 +236,7 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
       {/* Active offsets list */}
       <div className={cardCls}>
         <div className="mb-3 flex items-center gap-2">
-          <Bell className="size-4 text-blue-500" />
+          <Bell className="size-4 text-[var(--color-accent)]" />
           <h3 className="text-sm font-semibold">Когда напомнить</h3>
         </div>
         <p className={`mb-3 text-[12px] ${textMuted}`}>
@@ -251,7 +251,7 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
                 className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2 ${offsetRowBg}`}
               >
                 <span className="flex items-center gap-2 text-sm">
-                  <Bell className="size-3.5 text-blue-500" />
+                  <Bell className="size-3.5 text-[var(--color-accent)]" />
                   <span>за <strong>{formatLabel(offsetToMinutes(o))}</strong> до визита</span>
                 </span>
                 <button
@@ -313,7 +313,7 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
             </div>
             <button
               onClick={addOffset}
-              className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-full bg-blue-500/15 px-3 text-xs font-semibold text-blue-600 hover:bg-blue-500/25 dark:text-blue-200"
+              className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-full bg-[var(--color-accent-soft)] px-3 text-xs font-semibold text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)]"
             >
               <Plus className="size-3.5" />
               Добавить
@@ -359,7 +359,7 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
       <button
         onClick={save}
         disabled={saving}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-blue-500 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-600 disabled:opacity-60"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-60"
       >
         {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
         Сохранить

@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 export type AppointmentStatus = 'booked' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
 
 const STATUS_COLOR: Record<AppointmentStatus, string> = {
-  booked: 'bg-blue-500',
+  booked: 'bg-[var(--color-accent)]',
   confirmed: 'bg-indigo-500',
   in_progress: 'bg-amber-500',
   completed: 'bg-emerald-500',

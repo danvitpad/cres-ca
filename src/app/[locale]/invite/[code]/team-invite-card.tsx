@@ -56,7 +56,7 @@ export default function TeamInviteCard({ code, locale, salon, role, usedAt, expi
               className="rounded-2xl object-cover mb-4"
             />
           ) : (
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-emerald-600 flex items-center justify-center mb-4">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[var(--color-accent)] to-emerald-600 flex items-center justify-center mb-4">
               <Building2 className="w-10 h-10 text-white" />
             </div>
           )}

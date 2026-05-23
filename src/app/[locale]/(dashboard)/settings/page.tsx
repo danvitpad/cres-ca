@@ -6,7 +6,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { toast } from 'sonner';
@@ -187,7 +187,7 @@ export default function SettingsPage() {
 
 // Background + text color classes for colored icon boxes matching mock tokens
 const ICON_COLORS: Record<NonNullable<SettingSection['color']>, { bg: string; fg: string }> = {
-  cobalt:  { bg: 'bg-blue-100',    fg: 'text-blue-600' },
+  cobalt:  { bg: 'bg-[var(--color-accent-soft)]',    fg: 'text-[var(--color-accent)]' },
   emerald: { bg: 'bg-emerald-100', fg: 'text-emerald-600' },
   amber:   { bg: 'bg-amber-100',   fg: 'text-amber-600' },
   sky:     { bg: 'bg-sky-100',     fg: 'text-sky-600' },
@@ -857,6 +857,8 @@ function SubscriptionTab() {
   const t = useTranslations('profile');
   const { C } = usePageTheme();
   const { tier } = useAuthStore();
+  const router = useRouter();
+  const locale = useLocale();
 
   // Карта tier → читаемое имя по-русски. Для trial показываем именно «Триал»,
   // даже если subscription_tier в БД содержит 'business' (наследие промо-бампа).
@@ -882,7 +884,7 @@ function SubscriptionTab() {
           {tier === 'trial' ? 'Бесплатный пробный период' : 'Действует до конца расчётного периода'}
         </span>
         <div style={{ flex: 1 }} />
-        <SettingsButton onClick={() => { /* TODO: open plan picker */ }} variant="secondary" C={C}>
+        <SettingsButton onClick={() => router.push(`/${locale}/settings/billing`)} variant="secondary" C={C}>
           {t('changePlan')}
         </SettingsButton>
       </div>

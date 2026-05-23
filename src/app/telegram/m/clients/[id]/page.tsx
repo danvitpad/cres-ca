@@ -17,11 +17,13 @@ import { motion } from 'framer-motion';
 import {
   Phone, Calendar, AlertTriangle, FileText,
   Loader2, Crown, BarChart3, Bot, Send, Pencil, Trash2,
-  Plus, Check, X, User as UserIcon, Heart, Mic, UserMinus,
+  Plus, Check, X, User as UserIcon, Heart, Mic, UserMinus, ShieldAlert,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { PageHeader } from '@/components/miniapp/shells';
+import { MiniBottomSheet } from '@/components/miniapp/bottom-sheet';
+import { createClient } from '@/lib/supabase/client';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 
 const I18N: Record<MiniAppLang, {
@@ -39,6 +41,9 @@ const I18N: Record<MiniAppLang, {
   analyticsTitle: string; analyticsVisits: string; analyticsSpent: string;
   analyticsAvg: string; analyticsLastVisit: string;
   dateLocale: string;
+  blacklistBtn: string; blacklistedBadge: string;
+  blacklistTitle: string; blacklistReasonLabel: string; blacklistReasonPlaceholder: string;
+  blacklistConfirm: string; blacklistCancel: string;
 }> = {
   uk: {
     notFound: 'Клієнт не знайдений',
@@ -56,6 +61,11 @@ const I18N: Record<MiniAppLang, {
     analyticsTitle: 'Аналітика', analyticsVisits: 'Візитів', analyticsSpent: 'Витрачено',
     analyticsAvg: 'Середній чек', analyticsLastVisit: 'Останній візит',
     dateLocale: 'uk-UA',
+    blacklistBtn: 'У чорний список', blacklistedBadge: 'У чорному списку',
+    blacklistTitle: 'У чорний список',
+    blacklistReasonLabel: 'Причина (обовʼязково)',
+    blacklistReasonPlaceholder: 'Наприклад: грубе поводження / 3 no-show поспіль',
+    blacklistConfirm: 'Додати', blacklistCancel: 'Скасувати',
   },
   ru: {
     notFound: 'Клиент не найден',
@@ -73,6 +83,11 @@ const I18N: Record<MiniAppLang, {
     analyticsTitle: 'Аналитика', analyticsVisits: 'Визитов', analyticsSpent: 'Потрачено',
     analyticsAvg: 'Средний чек', analyticsLastVisit: 'Последний визит',
     dateLocale: 'ru-RU',
+    blacklistBtn: 'В чёрный список', blacklistedBadge: 'В чёрном списке',
+    blacklistTitle: 'В чёрный список',
+    blacklistReasonLabel: 'Причина (обязательно)',
+    blacklistReasonPlaceholder: 'Например: грубое поведение / 3 no-show подряд',
+    blacklistConfirm: 'Добавить', blacklistCancel: 'Отмена',
   },
   en: {
     notFound: 'Client not found',
@@ -90,6 +105,11 @@ const I18N: Record<MiniAppLang, {
     analyticsTitle: 'Analytics', analyticsVisits: 'Visits', analyticsSpent: 'Spent',
     analyticsAvg: 'Avg check', analyticsLastVisit: 'Last visit',
     dateLocale: 'en-US',
+    blacklistBtn: 'Blacklist', blacklistedBadge: 'Blacklisted',
+    blacklistTitle: 'Add to blacklist',
+    blacklistReasonLabel: 'Reason (required)',
+    blacklistReasonPlaceholder: 'e.g. rude behavior / 3 no-shows in a row',
+    blacklistConfirm: 'Add', blacklistCancel: 'Cancel',
   },
 };
 
@@ -124,6 +144,8 @@ interface ClientFull {
   avg_check: number;
   last_visit_at: string | null;
   referrer_master_id?: string | null;
+  is_blacklisted?: boolean;
+  blacklist_reason?: string | null;
   /** Embed из API: имя мастера-партнёра, который привёл клиента (через партнёрскую ссылку). */
   referrer?: { display_name: string | null; profile: { full_name: string | null } | { full_name: string | null }[] | null } | null;
 }
@@ -176,6 +198,9 @@ export default function MasterMiniAppClientCard() {
   const [notFound, setNotFound] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [unfollowing, setUnfollowing] = useState(false);
+  const [blacklistOpen, setBlacklistOpen] = useState(false);
+  const [blacklistReason, setBlacklistReason] = useState('');
+  const [blacklisting, setBlacklisting] = useState(false);
 
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const reload = useCallback(async () => {
@@ -292,6 +317,28 @@ export default function MasterMiniAppClientCard() {
     }
   }
 
+  async function handleBlacklist() {
+    if (!client || blacklisting) return;
+    const reason = blacklistReason.trim();
+    if (!reason) return;
+    setBlacklisting(true);
+    haptic('warning');
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('clients')
+        .update({ is_blacklisted: true, blacklist_reason: reason })
+        .eq('id', client.id);
+      if (!error) {
+        setBlacklistOpen(false);
+        setBlacklistReason('');
+        await reload();
+      }
+    } finally {
+      setBlacklisting(false);
+    }
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -313,6 +360,15 @@ export default function MasterMiniAppClientCard() {
           <div className="flex items-center gap-1.5 flex-wrap">
             <h1 className="truncate text-[15px] font-bold">{client.full_name}</h1>
             {isVIP && <Crown className="size-3.5 text-amber-600" />}
+            {client.is_blacklisted && (
+              <span
+                title={client.blacklist_reason ?? ''}
+                className="inline-flex items-center gap-1 rounded-full border border-rose-300 bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-rose-600"
+              >
+                <ShieldAlert className="size-3" />
+                {t.blacklistedBadge}
+              </span>
+            )}
             {client.has_health_alert && (
               <button
                 type="button"
@@ -403,6 +459,16 @@ export default function MasterMiniAppClientCard() {
           >
             {unfollowing ? <Loader2 className="size-3.5 animate-spin" /> : <UserMinus className="size-3.5" />}
             Отписаться
+          </button>
+        )}
+        {!client.is_blacklisted && (
+          <button
+            type="button"
+            onClick={() => { haptic('warning'); setBlacklistOpen(true); }}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-rose-200 py-2 text-[12px] font-semibold text-rose-600 active:bg-rose-50"
+          >
+            <ShieldAlert className="size-3.5" />
+            {t.blacklistBtn}
           </button>
         )}
         <button
@@ -508,6 +574,45 @@ export default function MasterMiniAppClientCard() {
       >
         <ClientAiChat clientId={client.id} haptic={haptic} onApplied={reload} />
       </div>
+
+      <MiniBottomSheet
+        open={blacklistOpen}
+        onClose={() => { setBlacklistOpen(false); setBlacklistReason(''); }}
+        title={t.blacklistTitle}
+      >
+        <div className="flex flex-col gap-3 px-1 pb-2">
+          <label className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+            {t.blacklistReasonLabel}
+          </label>
+          <textarea
+            value={blacklistReason}
+            onChange={(e) => setBlacklistReason(e.target.value)}
+            placeholder={t.blacklistReasonPlaceholder}
+            rows={3}
+            autoFocus
+            className="w-full resize-none rounded-xl border border-neutral-200 bg-white p-3 text-[13px] outline-none focus:border-[var(--color-accent)]"
+          />
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => { setBlacklistOpen(false); setBlacklistReason(''); }}
+              disabled={blacklisting}
+              className="flex flex-1 items-center justify-center rounded-xl border border-neutral-200 py-2.5 text-[13px] font-semibold text-neutral-700"
+            >
+              {t.blacklistCancel}
+            </button>
+            <button
+              type="button"
+              onClick={handleBlacklist}
+              disabled={blacklisting || !blacklistReason.trim()}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-rose-500 py-2.5 text-[13px] font-semibold text-white disabled:opacity-50"
+            >
+              {blacklisting ? <Loader2 className="size-3.5 animate-spin" /> : <ShieldAlert className="size-3.5" />}
+              {t.blacklistConfirm}
+            </button>
+          </div>
+        </div>
+      </MiniBottomSheet>
     </motion.div>
   );
 }

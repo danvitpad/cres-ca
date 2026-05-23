@@ -23,6 +23,7 @@ import {
   Plus,
   CalendarDays,
   CalendarOff,
+  RotateCcw,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -48,7 +49,7 @@ const I18N: Record<MiniAppLang, {
   emptyTitle: string; emptyHint: string;
   defaultClient: string;
   clientSection: string; notesSection: string;
-  cancel: string; noShow: string;
+  cancel: string; noShow: string; repeat: string;
   exceeded: string; inProgress: string;
   minutes: string;
   riskLabel: Record<'low' | 'medium' | 'high', string>;
@@ -69,7 +70,7 @@ const I18N: Record<MiniAppLang, {
     emptyHint: 'Додайте запис вручну або чекайте онлайн-бронювання',
     defaultClient: 'Клієнт',
     clientSection: 'Клієнт', notesSection: 'Нотатки',
-    cancel: 'Скасувати', noShow: 'Не прийшов',
+    cancel: 'Скасувати', noShow: 'Не прийшов', repeat: 'Повторити запис',
     exceeded: 'Перевищено', inProgress: 'Йде візит',
     minutes: 'хв',
     riskLabel: { low: 'Низький ризик', medium: 'Середній ризик', high: 'Високий ризик' },
@@ -94,7 +95,7 @@ const I18N: Record<MiniAppLang, {
     emptyHint: 'Добавьте запись вручную или ждите онлайн-бронирования',
     defaultClient: 'Клиент',
     clientSection: 'Клиент', notesSection: 'Заметки',
-    cancel: 'Отменить', noShow: 'Не пришёл',
+    cancel: 'Отменить', noShow: 'Не пришёл', repeat: 'Повторить запись',
     exceeded: 'Превышено', inProgress: 'Идёт визит',
     minutes: 'мин',
     riskLabel: { low: 'Низкий риск', medium: 'Средний риск', high: 'Высокий риск' },
@@ -114,7 +115,7 @@ const I18N: Record<MiniAppLang, {
     emptyHint: 'Add a booking manually or wait for online bookings',
     defaultClient: 'Client',
     clientSection: 'Client', notesSection: 'Notes',
-    cancel: 'Cancel', noShow: 'No-show',
+    cancel: 'Cancel', noShow: 'No-show', repeat: 'Repeat booking',
     exceeded: 'Overtime', inProgress: 'Visit in progress',
     minutes: 'min',
     riskLabel: { low: 'Low risk', medium: 'Medium risk', high: 'High risk' },
@@ -151,6 +152,7 @@ interface Appointment {
   client_id: string | null;
   client_name: string;
   client_phone: string | null;
+  service_id: string | null;
   service_name: string;
   duration_min: number;
 }
@@ -245,6 +247,7 @@ export default function MasterMiniAppCalendar() {
       price: number | null;
       notes: string | null;
       client_id: string | null;
+      service_id: string | null;
       client: { profile: { full_name: string; phone: string | null } | { full_name: string; phone: string | null }[] | null } | null;
       service: { name: string; duration_minutes: number } | { name: string; duration_minutes: number }[] | null;
     }>;
@@ -266,6 +269,7 @@ export default function MasterMiniAppCalendar() {
       price: number | null;
       notes: string | null;
       client_id: string | null;
+      service_id: string | null;
       client: { profile: { full_name: string; phone: string | null } | { full_name: string; phone: string | null }[] | null } | null;
       service: { name: string; duration_minutes: number } | { name: string; duration_minutes: number }[] | null;
     };
@@ -282,6 +286,7 @@ export default function MasterMiniAppCalendar() {
         client_id: r.client_id,
         client_name: cp?.full_name ?? t.defaultClient,
         client_phone: cp?.phone ?? null,
+        service_id: r.service_id,
         service_name: svc?.name ?? '—',
         duration_min: Number(svc?.duration_minutes ?? 0),
       };
@@ -529,7 +534,7 @@ export default function MasterMiniAppCalendar() {
                   right: 0,
                   bottom: 0,
                   zIndex: 70,
-                  maxHeight: '85vh',
+                  maxHeight: '85dvh',
                   overflowY: 'auto',
                   background: T.surface,
                   borderRadius: `${R.lg}px ${R.lg}px 0 0`,
@@ -677,6 +682,28 @@ export default function MasterMiniAppCalendar() {
                         Если нужно отменить уже завершённую — можно через
                         историю записей (отмена → запись уйдёт из отчётов
                         по доходам). */}
+                    {active.client_id && active.service_id && (
+                      <Link
+                        href={`/telegram/m/slot/new?client_id=${active.client_id}&service_id=${active.service_id}`}
+                        onClick={() => { haptic('selection'); closeDrawer(); }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          padding: '12px',
+                          borderRadius: R.md,
+                          border: `1px solid ${T.border}`,
+                          background: T.surface,
+                          color: T.text,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                        }}
+                      >
+                        <RotateCcw size={14} /> {t.repeat}
+                      </Link>
+                    )}
                     {(active.status === 'booked' || active.status === 'confirmed') && (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
                         <button

@@ -176,7 +176,7 @@
 }
 
 .dark {
-  /* Ink dark theme — soft black (one tone above pure black), teal accent */
+  /* Ink dark theme — soft black (one tone above pure black), cobalt accent */
   --background: #141417;
   --foreground: #fafafa;
   --card: #1a1a1d;
@@ -246,7 +246,7 @@
   --m-text-secondary: #52525b;
   --m-text-tertiary: #71717a;
   --m-text-disabled: #d4d4d8;
-  /* Бренд CRES-CA — cobalt blue (Open Design выбор 2026-05-11). Раньше был teal #2563eb */
+  /* Бренд CRES-CA — cobalt blue #2563eb (Open Design выбор 2026-05-11). Раньше был teal #0d9488 */
   --m-accent: #2563eb;
   --m-accent-hover: #1d4ed8;
   --m-accent-soft: #dbeafe;

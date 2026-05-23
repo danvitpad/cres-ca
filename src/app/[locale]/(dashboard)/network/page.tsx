@@ -173,7 +173,7 @@ export default function NetworkPage() {
                   <div className="flex items-center gap-1.5">
                     <span className="truncate font-medium">{l.display_name ?? '—'}</span>
                     {(l.level ?? 0) > 0 && (
-                      <span className="shrink-0 rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-800 dark:bg-blue-500/15 dark:text-blue-300">
+                      <span className="shrink-0 rounded-full bg-[var(--color-accent-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--color-accent)] dark:bg-[var(--color-accent)]/15 dark:text-[var(--color-accent-text)]">
                         Lv {l.level}
                       </span>
                     )}

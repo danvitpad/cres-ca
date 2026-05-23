@@ -511,7 +511,7 @@ export default function ClientFeedPage() {
                   <span className="absolute right-2.5 top-2.5 flex size-8 items-center justify-center rounded-full bg-white/90 text-muted-foreground backdrop-blur dark:bg-neutral-900/80">
                     <Heart className="size-4" />
                   </span>
-                  <span className="absolute -bottom-7 left-3.5 flex size-[56px] items-center justify-center rounded-full border-[3px] border-card bg-white text-[16px] font-bold text-[#2563eb] shadow-sm dark:bg-neutral-800 dark:text-blue-300">
+                  <span className="absolute -bottom-7 left-3.5 flex size-[56px] items-center justify-center rounded-full border-[3px] border-card bg-white text-[16px] font-bold text-[#2563eb] shadow-sm dark:bg-neutral-800 dark:text-[var(--color-accent-text)]">
                     {initialsOf(m.fullName)}
                   </span>
                 </div>

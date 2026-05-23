@@ -194,8 +194,8 @@ export function TourOverlay() {
                 width: 32,
                 height: 32,
                 borderRadius: 8,
-                background: 'var(--ds-accent-soft, rgba(20,184,166,0.12))',
-                color: 'var(--ds-accent, #14b8a6)',
+                background: 'var(--ds-accent-soft, rgba(37,99,235,0.12))',
+                color: 'var(--ds-accent, #2563eb)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -211,7 +211,7 @@ export function TourOverlay() {
                   fontSize: 11,
                   fontWeight: 600,
                   letterSpacing: 0.4,
-                  color: 'var(--ds-accent, #14b8a6)',
+                  color: 'var(--ds-accent, #2563eb)',
                   textTransform: 'uppercase',
                 }}
               >
@@ -262,7 +262,7 @@ export function TourOverlay() {
                   style={{
                     flexShrink: 0,
                     marginTop: 2,
-                    color: 'var(--ds-accent, #14b8a6)',
+                    color: 'var(--ds-accent, #2563eb)',
                   }}
                 />
                 <span>{h}</span>
@@ -331,7 +331,7 @@ export function TourOverlay() {
                   height: 38,
                   padding: '0 18px',
                   borderRadius: 10,
-                  background: 'var(--ds-accent, #14b8a6)',
+                  background: 'var(--ds-accent, #2563eb)',
                   border: 'none',
                   color: 'white',
                   fontSize: 13.5,

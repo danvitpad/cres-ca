@@ -52,7 +52,7 @@ export const T = {
   categoryYellow: '#f4b740',
   categoryBlue: '#3b82f6',
   categoryPink: '#ec4899',
-  categoryTeal: '#14b8a6',
+  categoryTeal: '#06b6d4',
   categoryOrange: '#f97316',
   categoryGreen: '#84cc16',
   categoryViolet: '#a855f7',

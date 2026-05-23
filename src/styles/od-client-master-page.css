@@ -29,7 +29,7 @@
 .od-client-master-page .cover {
   width: 100%;
   height: 200px;
-  background: linear-gradient(135deg, #2563eb 0%, #14b8a6 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   position: relative;
   flex-shrink: 0;
 }
@@ -66,7 +66,7 @@
   width: 88px;
   height: 88px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #2563eb, #14b8a6);
+  background: linear-gradient(135deg, #2563eb, #60a5fa);
   padding: 3px;
   box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
 }

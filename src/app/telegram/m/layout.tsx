@@ -151,6 +151,7 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
         style={{
           ...FONT_BASE,
           minHeight: '100dvh',
+          overflowX: 'hidden',
           background: T.bg,
           color: T.text,
         }}
@@ -161,9 +162,10 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
             // берём env(safe-area-inset-top) от iOS — даёт высоту notch+бара,
             // достаточную чтобы контент не залезал под TG Close-кнопку.
             paddingTop: 'max(var(--tg-content-top, 0px), env(safe-area-inset-top, 0px))',
+            // Bottom nav — floating pill ~76px от низа. 128px = воздух.
             paddingBottom: isFullscreen
               ? 'max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px))'
-              : 'calc(81px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',
+              : 'calc(128px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',
           }}
         >
           <PageTransition>{children}</PageTransition>

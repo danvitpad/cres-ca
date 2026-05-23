@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   const { data: appointments } = await admin
     .from('appointments')
     .select(
-      'id, starts_at, ends_at, status, price, notes, client_id, client:clients(profile:profiles!clients_profile_id_fkey(full_name, phone)), service:services(name, duration_minutes)',
+      'id, starts_at, ends_at, status, price, notes, client_id, service_id, client:clients(profile:profiles!clients_profile_id_fkey(full_name, phone)), service:services(name, duration_minutes)',
     )
     .eq('master_id', master.id)
     .gte('starts_at', from.toISOString())

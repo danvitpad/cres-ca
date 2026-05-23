@@ -69,6 +69,7 @@ function MasterMiniAppQuickBookingInner() {
   const [error, setError] = useState<string | null>(null);
 
   const preClientId = params.get('client_id');
+  const preServiceId = params.get('service_id');
 
   // Эта страница всегда рендерится в light Mini App-теме. При системной dark
   // у iOS html-овский --m-bg резолвится в #141417 через prefers-color-scheme,
@@ -116,6 +117,13 @@ function MasterMiniAppQuickBookingInner() {
         if (pre) {
           setSelectedClient(pre);
           setStep('service');
+        }
+      }
+      if (preServiceId) {
+        const svc = ((json.services ?? []) as ServiceOpt[]).find((s) => s.id === preServiceId);
+        if (svc) {
+          setSelectedService(svc);
+          if (preClientId) setStep('time');
         }
       }
       setLoading(false);
@@ -365,7 +373,7 @@ function MasterMiniAppQuickBookingInner() {
           {!isTelegram() && (
             <button
               onClick={save}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-500 py-4 text-[15px] font-semibold text-white shadow-md shadow-blue-500/20 active:scale-[0.98] active:bg-blue-600 transition-all"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-accent)] py-4 text-[15px] font-semibold text-white shadow-md shadow-blue-500/20 active:scale-[0.98] active:bg-[var(--color-accent)] transition-all"
             >
               <Check className="size-4" /> Создать запись · {Number(selectedService.price).toFixed(0)} ₴
             </button>

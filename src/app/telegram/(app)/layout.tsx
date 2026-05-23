@@ -91,6 +91,7 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
         style={{
           ...FONT_BASE,
           minHeight: '100dvh',
+          overflowX: 'hidden',
           background: T.bg,
           color: T.text,
         }}
@@ -99,12 +100,10 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
           style={{
             paddingTop: 'max(var(--tg-content-top, 0px), env(safe-area-inset-top, 0px))',
             // Bottom nav — это floating pill (bottom: 12px + ~64px высота).
-            // Раньше padding был 96px — последний ряд карточек залезал под
-            // nav, юзер не видел нижнюю часть «Топ категории». Бампаем до
-            // 128px чтобы был видимый воздух между последним блоком и nav.
+            // 128px paddingBottom = воздух между последним блоком и nav.
             paddingBottom: isFullscreen
               ? 'max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px))'
-              : 'calc(81px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',
+              : 'calc(128px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',
           }}
         >
           <PageTransition>{children}</PageTransition>

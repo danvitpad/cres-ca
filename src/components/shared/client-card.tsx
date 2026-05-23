@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 export type ClientTier = 'new' | 'regular' | 'vip' | 'sleeping';
 
 const TIER_STYLES: Record<ClientTier, { bg: string; text: string; label: string }> = {
-  new: { bg: 'bg-blue-500/10', text: 'text-blue-600 dark:text-blue-400', label: 'Новый' },
+  new: { bg: 'bg-[var(--color-accent-soft)]', text: 'text-[var(--color-accent)] dark:text-[var(--color-accent-text)]', label: 'Новый' },
   regular: { bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', label: 'Постоянный' },
   vip: { bg: 'bg-amber-500/15', text: 'text-amber-600 dark:text-amber-400', label: 'VIP' },
   sleeping: { bg: 'bg-muted', text: 'text-muted-foreground', label: 'Спящий' },

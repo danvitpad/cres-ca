@@ -48,9 +48,9 @@ export function RebookPanel({ items }: { items: RebookCardData[] }) {
   if (items.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-blue-400/25 bg-blue-500/[0.04] p-5">
+    <div className="rounded-xl border border-[var(--color-accent-border)] bg-[var(--color-accent-soft)] p-5">
       <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-wider text-blue-200">
+        <h2 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-wider text-[var(--color-accent-text)]">
           <RefreshCw className="size-3.5" />
           Пора вернуть клиентов
         </h2>
@@ -125,7 +125,7 @@ function RebookCard({ item }: { item: RebookCardData }) {
           <p className="mt-0.5 truncate text-[12px] text-white/60">
             {item.serviceName} · обычно раз в {item.medianIntervalDays} дн · был {daysAgo(item.lastVisitAt)}
           </p>
-          <p className="mt-1.5 text-[12px] font-medium text-blue-200">
+          <p className="mt-1.5 text-[12px] font-medium text-[var(--color-accent-text)]">
             Предложить: {fmt(item.suggestedStartsAt)}
             {item.altSlots.length > 0 && (
               <span className="ml-1 text-white/40">
@@ -146,7 +146,7 @@ function RebookCard({ item }: { item: RebookCardData }) {
           <button
             onClick={approve}
             disabled={!!busy || !item.clientHasTelegram}
-            className="grid size-8 place-items-center rounded-md border border-blue-400/40 bg-blue-500/20 text-blue-100 hover:bg-blue-500/30 disabled:cursor-not-allowed disabled:opacity-40"
+            className="grid size-8 place-items-center rounded-md border border-[var(--color-accent-border)] bg-[var(--color-accent-soft)] text-[var(--color-accent-text)] hover:bg-[var(--color-accent-soft)] disabled:cursor-not-allowed disabled:opacity-40"
             title="Одобрить → отправить клиенту"
           >
             {busy === 'approve' ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}

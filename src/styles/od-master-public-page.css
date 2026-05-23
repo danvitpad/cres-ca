@@ -32,7 +32,7 @@
   height: 200px;
   position: relative;
   flex-shrink: 0;
-  background: linear-gradient(135deg, #2563eb 0%, #14b8a6 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
 .od-master-public-page .ip-share-btn {
   position: absolute;

@@ -254,7 +254,7 @@ export function WorkingHoursEditor({
       <div className="md:hidden flex flex-col">
 
         {/* Hint */}
-        <div className="mx-4 mb-3 flex items-start gap-2 rounded-xl bg-blue-50 p-3 text-xs leading-relaxed text-blue-600">
+        <div className="mx-4 mb-3 flex items-start gap-2 rounded-xl bg-[var(--color-accent-soft)] p-3 text-xs leading-relaxed text-[var(--color-accent)]">
           <Info size={14} className="mt-0.5 shrink-0" />
           <span>{L.hint}</span>
         </div>
@@ -273,15 +273,15 @@ export function WorkingHoursEditor({
                   'shrink-0 flex flex-col items-center justify-center min-w-[46px] px-2 py-2',
                   'rounded-xl border-[1.5px] cursor-pointer font-[inherit] transition-all',
                   active
-                    ? 'border-blue-500 bg-white text-blue-600 shadow-md'
+                    ? 'border-[var(--color-accent)] bg-white text-[var(--color-accent)] shadow-md'
                     : i === todayIdx
-                      ? 'border-blue-200 bg-neutral-100 text-neutral-500'
+                      ? 'border-[var(--color-accent-border)] bg-neutral-100 text-neutral-500'
                       : 'border-transparent bg-neutral-100 text-neutral-500',
                 ].join(' ')}
               >
                 <span className="text-[10px] font-bold tracking-wider uppercase leading-none">{ds[d]}</span>
                 <span className="text-base font-bold mt-0.5 leading-none">{weekDates[i]}</span>
-                <span className={`w-1.5 h-1.5 rounded-full bg-blue-500 mt-1 transition-opacity ${hasBlocks ? 'opacity-100' : 'opacity-0'}`} />
+                <span className={`w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] mt-1 transition-opacity ${hasBlocks ? 'opacity-100' : 'opacity-0'}`} />
               </button>
             );
           })}
@@ -295,7 +295,7 @@ export function WorkingHoursEditor({
             onClick={() => toggleDay(mobileDayKey)}
             className={[
               'relative w-11 h-6 rounded-full border-none cursor-pointer shrink-0 transition-colors duration-[140ms]',
-              hours[mobileDayKey].enabled ? 'bg-blue-600' : 'bg-neutral-300',
+              hours[mobileDayKey].enabled ? 'bg-[var(--color-accent)]' : 'bg-neutral-300',
             ].join(' ')}
             aria-label="Toggle working day"
           >
@@ -343,7 +343,7 @@ export function WorkingHoursEditor({
           <button
             type="button"
             onClick={() => copyToWeek(mobileDayKey)}
-            className="flex-1 flex items-center justify-center gap-2 rounded-xl border-none bg-blue-600 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+            className="flex-1 flex items-center justify-center gap-2 rounded-xl border-none bg-[var(--color-accent)] py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-accent-hover)]"
           >
             <Copy size={14} />
             {L.copyToWeek}
@@ -371,7 +371,7 @@ export function WorkingHoursEditor({
               className={[
                 'px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer border-none font-[inherit]',
                 activeTab === tab
-                  ? 'bg-blue-50 text-blue-600 font-semibold'
+                  ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent)] font-semibold'
                   : 'bg-transparent text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900',
               ].join(' ')}
             >
@@ -391,7 +391,7 @@ export function WorkingHoursEditor({
                   key={t.label}
                   type="button"
                   onClick={() => applyTemplate(t.start, t.end)}
-                  className="inline-flex items-center px-2.5 py-1 rounded-full border-[1.5px] border-neutral-200 bg-white text-xs font-semibold text-neutral-500 cursor-pointer transition-all hover:border-blue-500 hover:text-blue-600 font-[inherit]"
+                  className="inline-flex items-center px-2.5 py-1 rounded-full border-[1.5px] border-neutral-200 bg-white text-xs font-semibold text-neutral-500 cursor-pointer transition-all hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] font-[inherit]"
                 >
                   {t.label}
                 </button>
@@ -469,7 +469,7 @@ export function WorkingHoursEditor({
               <div className="text-base font-bold text-neutral-900 mb-1">{L.exceptionsEmpty}</div>
               <div className="text-sm text-neutral-500 max-w-xs leading-relaxed">{L.exceptionsEmptySub}</div>
             </div>
-            <button type="button" className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition">
+            <button type="button" className="inline-flex items-center gap-2 rounded-full bg-[var(--color-accent)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--color-accent-hover)] transition">
               <Plus size={14} />
               {L.addException}
             </button>
@@ -525,7 +525,7 @@ function SaveButton({
       type="button"
       onClick={onClick}
       disabled={busy || !dirty}
-      className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-6 py-2.5 text-sm font-bold text-white disabled:opacity-40 hover:bg-blue-700 transition w-full md:w-auto"
+      className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-accent)] px-6 py-2.5 text-sm font-bold text-white disabled:opacity-40 hover:bg-[var(--color-accent-hover)] transition w-full md:w-auto"
     >
       {busy
         ? <><Loader2 size={15} className="animate-spin" />{saving}</>
@@ -602,11 +602,11 @@ function DayColumn({
       {/* Column header (desktop only) */}
       {showHeader && (
         <div className="flex flex-col items-center justify-center gap-1 border-b border-neutral-200 py-2 shrink-0" style={{ height: 64 }}>
-          <span className={`text-[11px] font-bold uppercase tracking-wider leading-none ${isToday ? 'text-blue-600' : 'text-neutral-500'}`}>
+          <span className={`text-[11px] font-bold uppercase tracking-wider leading-none ${isToday ? 'text-[var(--color-accent)]' : 'text-neutral-500'}`}>
             {dayShort}
           </span>
           {dateNum !== undefined && (
-            <span className={`text-lg font-bold leading-none ${isToday ? 'text-blue-600' : 'text-neutral-800'}`}>
+            <span className={`text-lg font-bold leading-none ${isToday ? 'text-[var(--color-accent)]' : 'text-neutral-800'}`}>
               {dateNum}
             </span>
           )}
@@ -614,7 +614,7 @@ function DayColumn({
             type="checkbox"
             checked={enabled}
             onChange={onToggle}
-            className="w-4 h-4 cursor-pointer rounded accent-blue-600"
+            className="w-4 h-4 cursor-pointer rounded accent-[var(--color-accent)]"
             aria-label={`Toggle ${dayShort}`}
           />
         </div>
@@ -655,7 +655,7 @@ function DayColumn({
         {/* Drag ghost */}
         {drag && (
           <div
-            className="absolute left-[3px] right-[3px] rounded-md border-[1.5px] border-dashed border-blue-500 bg-blue-500/10 pointer-events-none z-[3] px-2 py-1 text-[11px] font-bold text-blue-600"
+            className="absolute left-[3px] right-[3px] rounded-md border-[1.5px] border-dashed border-[var(--color-accent)] bg-[var(--color-accent-soft)] pointer-events-none z-[3] px-2 py-1 text-[11px] font-bold text-[var(--color-accent)]"
             style={{ top: previewTop, height: previewH }}
           >
             {minToHHMM(drag.startMin)} — {minToHHMM(Math.max(drag.startMin + SNAP_MIN, drag.endMin))}
@@ -693,7 +693,7 @@ function DayColumn({
             <button
               type="button"
               onClick={onCopyToWeek}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10.5px] font-semibold text-neutral-400 border-none bg-transparent cursor-pointer transition hover:text-blue-600 hover:bg-blue-50 font-[inherit]"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10.5px] font-semibold text-neutral-400 border-none bg-transparent cursor-pointer transition hover:text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)] font-[inherit]"
             >
               <Copy size={10} />
               {copyLabel}
@@ -724,10 +724,10 @@ function WorkingBlock({
       onClick={onEdit}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className="absolute left-[3px] right-[3px] rounded-md bg-blue-50 border-[1.5px] border-blue-500 z-[2] text-left overflow-hidden transition"
+      className="absolute left-[3px] right-[3px] rounded-md bg-[var(--color-accent-soft)] border-[1.5px] border-[var(--color-accent)] z-[2] text-left overflow-hidden transition"
       style={{ top, height, boxShadow: hovered ? '0 4px 12px rgba(37,99,235,0.2)' : undefined }}
     >
-      <div className="px-2 py-1 text-[11px] font-bold text-blue-600 leading-tight">
+      <div className="px-2 py-1 text-[11px] font-bold text-[var(--color-accent)] leading-tight">
         {iv.start} — {iv.end}
         {height > 40 && <div className="text-[10px] font-medium opacity-70 mt-0.5">{durLabel}</div>}
       </div>
@@ -735,7 +735,7 @@ function WorkingBlock({
         <span
           role="button"
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="absolute top-[3px] right-[3px] w-[18px] h-[18px] rounded-full bg-blue-600 text-white flex items-center justify-center cursor-pointer hover:bg-red-500 transition"
+          className="absolute top-[3px] right-[3px] w-[18px] h-[18px] rounded-full bg-[var(--color-accent)] text-white flex items-center justify-center cursor-pointer hover:bg-red-500 transition"
         >
           <X size={10} strokeWidth={3} />
         </span>
@@ -813,7 +813,7 @@ function EditModal({
             <button
               type="button"
               onClick={onApply}
-              className="rounded-full bg-blue-600 px-5 py-2 text-sm font-bold text-white hover:bg-blue-700 transition"
+              className="rounded-full bg-[var(--color-accent)] px-5 py-2 text-sm font-bold text-white hover:bg-[var(--color-accent-hover)] transition"
             >
               {applyLabel}
             </button>

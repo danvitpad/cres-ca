@@ -278,7 +278,7 @@ export function AppointmentActions({ appointment, open, onOpenChange, onUpdated,
                 <div className={`size-2.5 rounded-full ${
                   appointment.status === 'completed' ? 'bg-emerald-500' :
                   appointment.status === 'cancelled' ? 'bg-red-500' :
-                  appointment.status === 'in_progress' ? 'bg-blue-500' :
+                  appointment.status === 'in_progress' ? 'bg-[var(--color-accent)]' :
                   'bg-amber-500'
                 }`} />
               </div>

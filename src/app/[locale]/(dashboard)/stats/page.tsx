@@ -33,8 +33,8 @@ interface Appointment {
 type StatsPeriod = 'day' | 'week' | 'month';
 
 const ACCENT_BG: Record<string, string> = {
-  violet: 'bg-blue-500/10 text-blue-500',
-  blue: 'bg-blue-500/10 text-blue-500',
+  violet: 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]',
+  blue: 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]',
   emerald: 'bg-emerald-500/10 text-emerald-600',
   rose: 'bg-rose-500/10 text-rose-500',
   amber: 'bg-amber-500/10 text-amber-600',

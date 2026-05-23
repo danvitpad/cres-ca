@@ -118,7 +118,7 @@ export function PortfolioGrid({ items }: { items: PortfolioItem[] }) {
             onClick={() => setActiveTag(null)}
             className={`rounded-full px-3 py-1 text-xs transition-colors ${
               activeTag === null
-                ? 'bg-blue-600 text-white'
+                ? 'bg-[var(--color-accent)] text-white'
                 : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
             }`}
           >
@@ -131,7 +131,7 @@ export function PortfolioGrid({ items }: { items: PortfolioItem[] }) {
               onClick={() => setActiveTag(tag)}
               className={`rounded-full px-3 py-1 text-xs transition-colors ${
                 activeTag === tag
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-[var(--color-accent)] text-white'
                   : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
               }`}
             >
@@ -147,7 +147,7 @@ export function PortfolioGrid({ items }: { items: PortfolioItem[] }) {
             type="button"
             key={item.id}
             onClick={() => setLightboxIdx(idx)}
-            className="group relative aspect-square overflow-hidden rounded-xl bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="group relative aspect-square overflow-hidden rounded-xl bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           >
             <Image
               src={item.image_url}

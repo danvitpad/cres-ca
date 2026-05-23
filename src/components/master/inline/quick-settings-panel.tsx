@@ -126,7 +126,7 @@ function ToggleRow({
 }) {
   return (
     <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-neutral-100 bg-white px-3 py-2 hover:bg-neutral-50">
-      <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-[var(--ds-accent-soft,rgba(20,184,166,0.12))] text-[var(--ds-accent,#14b8a6)]">
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-[var(--ds-accent-soft,rgba(37,99,235,0.12))] text-[var(--ds-accent,#2563eb)]">
         {icon}
       </span>
       <span className="flex-1 min-w-0">
@@ -138,7 +138,7 @@ function ToggleRow({
         aria-checked={checked}
         className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors"
         style={{
-          background: checked ? 'var(--ds-accent, #14b8a6)' : '#d1d5db',
+          background: checked ? 'var(--ds-accent, #2563eb)' : '#d1d5db',
           opacity: loading ? 0.6 : 1,
         }}
       >

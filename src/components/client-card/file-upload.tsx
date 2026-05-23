@@ -166,8 +166,8 @@ export function FileUpload({ clientId }: { clientId: string }) {
               >
                 <a href={f.file_url} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-2">
                   {f.file_type.startsWith('image/') ? (
-                    <div className="flex size-10 items-center justify-center rounded-lg bg-blue-500/10">
-                      <Image className="size-5 text-blue-500" />
+                    <div className="flex size-10 items-center justify-center rounded-lg bg-[var(--color-accent-soft)]">
+                      <Image className="size-5 text-[var(--color-accent)]" />
                     </div>
                   ) : (
                     <div className="flex size-10 items-center justify-center rounded-lg bg-amber-500/10">
