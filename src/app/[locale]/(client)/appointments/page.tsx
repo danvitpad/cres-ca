@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useLocale } from 'next-intl';
 import { toast } from 'sonner';
 import {
   CalendarDays, Clock, MapPin, Coins, RotateCcw, X, Star, Repeat, Zap, XCircle, CheckCircle2,
@@ -23,6 +24,96 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { humanizeError } from '@/lib/format/error';
+
+type ApptLang = 'uk' | 'ru' | 'en';
+const APPT_LABELS: Record<ApptLang, {
+  title: string; subtitle: string;
+  tabFuture: string; tabPast: string; tabCancelled: string;
+  cancelTitle: string; cancelFree: (h: number) => string;
+  cancelPartial: (h: number, amount: string) => string;
+  cancelLate: (amount: string) => string;
+  cancelReasonPlaceholder: string;
+  cancelKeep: string; cancelDo: string;
+  rateTitle: string; rateCommentPlaceholder: string; rateSend: string;
+  toastCancelled: string; toastReviewed: string;
+  master: string; appointment: string; from: string;
+  cancelledOn: string;
+  reschedule: string; rate: string; repeat: string; bookAgain: string; leaveReview: string;
+  done: string; cancelled: string; today: string; future: string;
+  emptyFutureTitle: string; emptyFutureCta: string;
+  emptyPastTitle: string; emptyPastCta: string;
+  emptyCancelledTitle: string; emptyCancelledCta: string;
+  durationUnit: string;
+  monthShort: string[];
+  locale: string;
+}> = {
+  uk: {
+    title: 'Мої записи', subtitle: 'Майбутні візити та історія',
+    tabFuture: 'Майбутні', tabPast: 'Минулі', tabCancelled: 'Скасовані',
+    cancelTitle: 'Скасувати запис?',
+    cancelFree: (h) => `До запису ще ${h} годин — скасування безкоштовне.`,
+    cancelPartial: (h, a) => `До запису ${h} годин — буде утримано ${a}.`,
+    cancelLate: (a) => `Пізнє скасування — утримується повна вартість: ${a}.`,
+    cancelReasonPlaceholder: 'Причина скасування (опціонально)',
+    cancelKeep: 'Залишити', cancelDo: 'Скасувати',
+    rateTitle: 'Оцінити візит', rateCommentPlaceholder: 'Що сподобалось? (опціонально)', rateSend: 'Надіслати',
+    toastCancelled: 'Запис скасовано', toastReviewed: 'Дякуємо за відгук',
+    master: 'Майстер', appointment: 'Запис', from: 'з',
+    cancelledOn: 'Скасовано',
+    reschedule: 'Перенести', rate: 'Оцінити', repeat: 'Повторити', bookAgain: 'Записатись знову', leaveReview: 'Залиш відгук',
+    done: 'Виконано', cancelled: 'Скасовано', today: 'Сьогодні', future: 'Майбутній',
+    emptyFutureTitle: 'Немає майбутніх записів', emptyFutureCta: 'Знайти майстра',
+    emptyPastTitle: 'Поки немає минулих візитів', emptyPastCta: 'Записатись',
+    emptyCancelledTitle: 'Скасованих записів немає', emptyCancelledCta: 'Подивитись майстрів',
+    durationUnit: 'хв',
+    monthShort: ['СІЧ', 'ЛЮТ', 'БЕР', 'КВІ', 'ТРА', 'ЧЕР', 'ЛИП', 'СЕР', 'ВЕР', 'ЖОВ', 'ЛИС', 'ГРУ'],
+    locale: 'uk-UA',
+  },
+  ru: {
+    title: 'Мои записи', subtitle: 'Будущие визиты и история',
+    tabFuture: 'Будущие', tabPast: 'Прошедшие', tabCancelled: 'Отменённые',
+    cancelTitle: 'Отменить запись?',
+    cancelFree: (h) => `До записи ещё ${h} часов — отмена бесплатна.`,
+    cancelPartial: (h, a) => `До записи ${h} часов — будет удержано ${a}.`,
+    cancelLate: (a) => `Поздняя отмена — удерживается полная стоимость: ${a}.`,
+    cancelReasonPlaceholder: 'Причина отмены (необязательно)',
+    cancelKeep: 'Оставить', cancelDo: 'Отменить',
+    rateTitle: 'Оценить визит', rateCommentPlaceholder: 'Что понравилось? (необязательно)', rateSend: 'Отправить',
+    toastCancelled: 'Запись отменена', toastReviewed: 'Спасибо за отзыв',
+    master: 'Мастер', appointment: 'Запись', from: 'у',
+    cancelledOn: 'Отменено',
+    reschedule: 'Перенести', rate: 'Оценить', repeat: 'Повторить', bookAgain: 'Записаться снова', leaveReview: 'Оставь отзыв',
+    done: 'Выполнено', cancelled: 'Отменено', today: 'Сегодня', future: 'Будущий',
+    emptyFutureTitle: 'Нет будущих записей', emptyFutureCta: 'Найти мастера',
+    emptyPastTitle: 'Пока нет прошедших визитов', emptyPastCta: 'Записаться',
+    emptyCancelledTitle: 'Отменённых записей нет', emptyCancelledCta: 'Посмотреть мастеров',
+    durationUnit: 'мин',
+    monthShort: ['ЯНВ', 'ФЕВ', 'МАР', 'АПР', 'МАЙ', 'ИЮН', 'ИЮЛ', 'АВГ', 'СЕН', 'ОКТ', 'НОЯ', 'ДЕК'],
+    locale: 'ru-RU',
+  },
+  en: {
+    title: 'My appointments', subtitle: 'Upcoming visits and history',
+    tabFuture: 'Upcoming', tabPast: 'Past', tabCancelled: 'Cancelled',
+    cancelTitle: 'Cancel appointment?',
+    cancelFree: (h) => `${h} hours until visit — cancellation is free.`,
+    cancelPartial: (h, a) => `${h} hours until visit — ${a} will be charged.`,
+    cancelLate: (a) => `Late cancellation — full charge: ${a}.`,
+    cancelReasonPlaceholder: 'Reason (optional)',
+    cancelKeep: 'Keep', cancelDo: 'Cancel',
+    rateTitle: 'Rate the visit', rateCommentPlaceholder: 'What did you like? (optional)', rateSend: 'Send',
+    toastCancelled: 'Appointment cancelled', toastReviewed: 'Thanks for the review',
+    master: 'Master', appointment: 'Appointment', from: 'with',
+    cancelledOn: 'Cancelled',
+    reschedule: 'Reschedule', rate: 'Rate', repeat: 'Repeat', bookAgain: 'Book again', leaveReview: 'Leave a review',
+    done: 'Completed', cancelled: 'Cancelled', today: 'Today', future: 'Upcoming',
+    emptyFutureTitle: 'No upcoming appointments', emptyFutureCta: 'Find a master',
+    emptyPastTitle: 'No past visits yet', emptyPastCta: 'Book',
+    emptyCancelledTitle: 'No cancelled appointments', emptyCancelledCta: 'See masters',
+    durationUnit: 'min',
+    monthShort: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'],
+    locale: 'en-US',
+  },
+};
 
 type SalonEmbed = { id: string; name: string; logo_url: string | null; city: string | null } | null;
 
@@ -67,6 +158,9 @@ export default function AppointmentsPage() {
   const router = useRouter();
   const sp = useSearchParams();
   const { userId } = useAuthStore();
+  const localeRaw = useLocale();
+  const lang: ApptLang = (['uk', 'ru', 'en'].includes(localeRaw) ? localeRaw : 'uk') as ApptLang;
+  const L = APPT_LABELS[lang];
 
   const initialTab: Tab = (() => {
     const q = sp?.get('tab');
@@ -169,7 +263,7 @@ export default function AppointmentsPage() {
       });
     }
     fetch(`/api/appointments/${cancelTarget.id}/notify`, { method: 'POST' }).catch(() => undefined);
-    toast.success('Запис скасовано');
+    toast.success(L.toastCancelled);
     setCancelTarget(null); setCancelReason(''); setCancelBusy(false);
     fetchAll();
   }
@@ -189,7 +283,7 @@ export default function AppointmentsPage() {
     });
     setRatingBusy(false);
     if (error) { toast.error(humanizeError(error)); return; }
-    toast.success('Дякуємо за відгук');
+    toast.success(L.toastReviewed);
     setReviewedIds((prev) => new Set(prev).add(ratingFor.id));
     setRatingFor(null); setRatingScore(5); setRatingComment('');
   }
@@ -215,16 +309,16 @@ export default function AppointmentsPage() {
   return (
     <div className="space-y-6 pb-12">
       <header>
-        <h1 className="text-[28px] font-extrabold tracking-tight">Мої записи</h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">Майбутні візити та історія</p>
+        <h1 className="text-[28px] font-extrabold tracking-tight">{L.title}</h1>
+        <p className="mt-1 text-[13px] text-muted-foreground">{L.subtitle}</p>
       </header>
 
       {/* 3 tabs as segmented pill */}
       <div className="inline-flex rounded-full bg-muted p-1">
         {([
-          ['future', 'Майбутні', future.length],
-          ['past', 'Минулі', past.length],
-          ['cancelled', 'Скасовані', cancelled.length],
+          ['future', L.tabFuture, future.length],
+          ['past', L.tabPast, past.length],
+          ['cancelled', L.tabCancelled, cancelled.length],
         ] as const).map(([k, label, count]) => {
           const active = tab === k;
           return (
@@ -251,7 +345,7 @@ export default function AppointmentsPage() {
       </div>
 
       {displayed.length === 0 ? (
-        <EmptyAppts tab={tab} />
+        <EmptyAppts tab={tab} L={L} />
       ) : (
         <div className="flex flex-col gap-3.5 max-w-[960px]">
           {displayed.map((a) => (
@@ -264,6 +358,7 @@ export default function AppointmentsPage() {
               onReschedule={() => reschedule(a)}
               onRepeat={() => repeat(a)}
               onRate={() => { setRatingFor(a); setRatingScore(5); setRatingComment(''); }}
+              L={L}
             />
           ))}
         </div>
@@ -272,39 +367,40 @@ export default function AppointmentsPage() {
       {/* Cancel dialog */}
       <Dialog open={!!cancelTarget} onOpenChange={(o) => !o && setCancelTarget(null)}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Скасувати запис?</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{L.cancelTitle}</DialogTitle></DialogHeader>
           {cancelTarget && (() => {
             const fee = computeCancellationFee(cancelTarget);
+            const feeAmount = `${fee.amount} ${cancelTarget.currency === 'UAH' || !cancelTarget.currency ? '₴' : cancelTarget.currency}`;
             return (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  {cancelTarget.service?.name} · {new Date(cancelTarget.starts_at).toLocaleString('uk-UA')}
+                  {cancelTarget.service?.name} · {new Date(cancelTarget.starts_at).toLocaleString(L.locale)}
                 </p>
                 {fee.kind === 'free' && (
                   <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-600">
-                    До запису ще {Math.round(fee.hoursUntil)} годин — скасування безкоштовне.
+                    {L.cancelFree(Math.round(fee.hoursUntil))}
                   </div>
                 )}
                 {fee.kind === 'partial' && (
                   <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-600">
-                    До запису {Math.round(fee.hoursUntil)} годин — буде утримано {fee.amount} {cancelTarget.currency ?? 'UAH'}.
+                    {L.cancelPartial(Math.round(fee.hoursUntil), feeAmount)}
                   </div>
                 )}
                 {fee.kind === 'late' && (
                   <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-600">
-                    Пізнє скасування — утримується повна вартість: {fee.amount} {cancelTarget.currency ?? 'UAH'}.
+                    {L.cancelLate(feeAmount)}
                   </div>
                 )}
                 <Textarea
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
-                  placeholder="Причина скасування (опціонально)"
+                  placeholder={L.cancelReasonPlaceholder}
                   rows={3}
                 />
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setCancelTarget(null)} disabled={cancelBusy}>Залишити</Button>
+                  <Button variant="outline" onClick={() => setCancelTarget(null)} disabled={cancelBusy}>{L.cancelKeep}</Button>
                   <Button variant="destructive" onClick={submitCancel} disabled={cancelBusy}>
-                    {cancelBusy ? '…' : 'Скасувати'}
+                    {cancelBusy ? '…' : L.cancelDo}
                   </Button>
                 </div>
               </div>
@@ -316,7 +412,7 @@ export default function AppointmentsPage() {
       {/* Rate dialog */}
       <Dialog open={!!ratingFor} onOpenChange={(o) => !o && !ratingBusy && setRatingFor(null)}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Оцінити візит</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{L.rateTitle}</DialogTitle></DialogHeader>
           {ratingFor && (
             <div className="space-y-4">
               <p className="text-xs text-muted-foreground">
@@ -332,10 +428,10 @@ export default function AppointmentsPage() {
                   );
                 })}
               </div>
-              <Textarea value={ratingComment} onChange={(e) => setRatingComment(e.target.value)} placeholder="Що сподобалось? (опціонально)" rows={3} />
+              <Textarea value={ratingComment} onChange={(e) => setRatingComment(e.target.value)} placeholder={L.rateCommentPlaceholder} rows={3} />
               <div className="flex gap-2">
-                <Button variant="ghost" className="flex-1" disabled={ratingBusy} onClick={() => setRatingFor(null)}>Скасувати</Button>
-                <Button className="flex-1" disabled={ratingBusy} onClick={submitRating}>{ratingBusy ? '…' : 'Надіслати'}</Button>
+                <Button variant="ghost" className="flex-1" disabled={ratingBusy} onClick={() => setRatingFor(null)}>{L.cancelDo}</Button>
+                <Button className="flex-1" disabled={ratingBusy} onClick={submitRating}>{ratingBusy ? '…' : L.rateSend}</Button>
               </div>
             </div>
           )}
@@ -346,7 +442,7 @@ export default function AppointmentsPage() {
 }
 
 function ApptCard({
-  row, isPastSlot, reviewed, onCancel, onReschedule, onRepeat, onRate,
+  row, isPastSlot, reviewed, onCancel, onReschedule, onRepeat, onRate, L,
 }: {
   row: AppointmentRow;
   isPastSlot: boolean;
@@ -355,12 +451,13 @@ function ApptCard({
   onReschedule: () => void;
   onRepeat: () => void;
   onRate: () => void;
+  L: typeof APPT_LABELS[ApptLang];
 }) {
   const start = new Date(row.starts_at);
   const day = start.getDate().toString().padStart(2, '0');
-  const monShort = MONTH_SHORT_UK[start.getMonth()];
+  const monShort = L.monthShort[start.getMonth()];
 
-  const masterName = row.master?.display_name || row.master?.profile?.full_name || 'Майстер';
+  const masterName = row.master?.display_name || row.master?.profile?.full_name || L.master;
   const dur = row.service?.duration_minutes;
   const time = `${start.getHours().toString().padStart(2, '0')}:${start.getMinutes().toString().padStart(2, '0')}`;
   const addr = row.master?.salon?.city || null;
@@ -387,18 +484,18 @@ function ApptCard({
       {/* Body */}
       <div className="min-w-0 flex-1">
         <div className="text-[16px] font-semibold text-foreground leading-tight">
-          {row.service?.name ?? 'Запис'}
+          {row.service?.name ?? L.appointment}
         </div>
-        <div className="mt-1 text-[13px] text-muted-foreground">з {masterName}</div>
+        <div className="mt-1 text-[13px] text-muted-foreground">{L.from} {masterName}</div>
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground/80">
           {!isCancelled && (
             <span className="inline-flex items-center gap-1">
-              <Clock className="size-3" /> {time}{dur ? ` · ${dur} хв` : ''}
+              <Clock className="size-3" /> {time}{dur ? ` · ${dur} ${L.durationUnit}` : ''}
             </span>
           )}
           {isCancelled && row.cancelled_at && (
             <span className="inline-flex items-center gap-1">
-              <XCircle className="size-3" /> Скасовано · {new Date(row.cancelled_at).toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' })}
+              <XCircle className="size-3" /> {L.cancelledOn} · {new Date(row.cancelled_at).toLocaleDateString(L.locale, { day: 'numeric', month: 'short' })}
             </span>
           )}
           {addr && !isCancelled && (
@@ -420,12 +517,13 @@ function ApptCard({
           status={status}
           isToday={isToday}
           canRate={canRate}
+          L={L}
         />
         <div className="flex flex-wrap gap-1.5">
           {!isPastSlot && !isCancelled && (
             <>
               <ActionBtn onClick={onReschedule}>
-                <RotateCcw className="size-3" /> Перенести
+                <RotateCcw className="size-3" /> {L.reschedule}
               </ActionBtn>
               <ActionBtn onClick={onCancel} danger>
                 <X className="size-3" />
@@ -436,17 +534,17 @@ function ApptCard({
             <>
               {canRate && (
                 <ActionBtn onClick={onRate} primary>
-                  <Star className="size-3" /> Оцінити
+                  <Star className="size-3" /> {L.rate}
                 </ActionBtn>
               )}
               <ActionBtn onClick={onRepeat}>
-                <Repeat className="size-3" /> Повторити
+                <Repeat className="size-3" /> {L.repeat}
               </ActionBtn>
             </>
           )}
           {isCancelled && (
             <ActionBtn onClick={onRepeat}>
-              <Repeat className="size-3" /> Записатись знову
+              <Repeat className="size-3" /> {L.bookAgain}
             </ActionBtn>
           )}
         </div>
@@ -455,25 +553,25 @@ function ApptCard({
   );
 }
 
-function StatusChip({ status, isToday, canRate }: { status: string; isToday: boolean; canRate: boolean }) {
+function StatusChip({ status, isToday, canRate, L }: { status: string; isToday: boolean; canRate: boolean; L: typeof APPT_LABELS[ApptLang] }) {
   if (canRate) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-amber-600">
-        <Star className="size-3" /> Залиш відгук
+        <Star className="size-3" /> {L.leaveReview}
       </span>
     );
   }
   if (status === 'completed') {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-600">
-        <CheckCircle2 className="size-3" /> Виконано
+        <CheckCircle2 className="size-3" /> {L.done}
       </span>
     );
   }
   if (['cancelled', 'cancelled_by_client', 'cancelled_by_master', 'no_show'].includes(status)) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-        <X className="size-3" /> Скасовано
+        <X className="size-3" /> {L.cancelled}
       </span>
     );
   }
@@ -481,13 +579,13 @@ function StatusChip({ status, isToday, canRate }: { status: string; isToday: boo
   if (isToday) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-[#2563eb]/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#2563eb]">
-        <Zap className="size-3" /> Сьогодні
+        <Zap className="size-3" /> {L.today}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-[#2563eb]/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#2563eb]">
-      Майбутній
+      {L.future}
     </span>
   );
 }
@@ -515,11 +613,11 @@ function ActionBtn({
   );
 }
 
-function EmptyAppts({ tab }: { tab: Tab }) {
+function EmptyAppts({ tab, L }: { tab: Tab; L: typeof APPT_LABELS[ApptLang] }) {
   const map = {
-    future: { title: 'Немає майбутніх записів', cta: 'Знайти майстра', href: '/search' },
-    past: { title: 'Поки немає минулих візитів', cta: 'Записатись', href: '/search' },
-    cancelled: { title: 'Скасованих записів немає', cta: 'Подивитись майстрів', href: '/my-masters' },
+    future: { title: L.emptyFutureTitle, cta: L.emptyFutureCta, href: '/search' },
+    past: { title: L.emptyPastTitle, cta: L.emptyPastCta, href: '/search' },
+    cancelled: { title: L.emptyCancelledTitle, cta: L.emptyCancelledCta, href: '/my-masters' },
   };
   const m = map[tab];
   return (
