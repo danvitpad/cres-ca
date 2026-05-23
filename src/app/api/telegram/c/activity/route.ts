@@ -21,18 +21,30 @@ export async function POST(request: Request) {
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
 
-  const { data: profile } = await admin.from('profiles').select('id, full_name').eq('telegram_id', result.user.id).maybeSingle();
+  const { data: profile } = await admin.from('profiles').select('id, full_name, phone').eq('telegram_id', result.user.id).maybeSingle();
   if (!profile) return NextResponse.json({ appointments: [], _debug: { reason: 'no_profile_for_tg', tg_id: result.user.id } });
 
-  const { data: clientRows } = await admin.from('clients').select('id, full_name, master_id').eq('profile_id', profile.id);
-  const clientIds = (clientRows ?? []).map((c) => c.id);
+  // 1) clients linked by profile_id (norm path)
+  // 2) fallback by phone — мастер мог завести клиента вручную с тем же
+  //    телефоном что у профиля, но без profile_id. Без этого фоллбэка
+  //    клиент видит пустую вкладку Записи (баг B16 был та же причина).
+  let clientIds: string[] = [];
+  const { data: byProfile } = await admin
+    .from('clients').select('id').eq('profile_id', profile.id);
+  clientIds = (byProfile ?? []).map((c) => c.id as string);
+  if (clientIds.length === 0 && profile.phone) {
+    const { data: byPhone } = await admin
+      .from('clients').select('id').eq('phone', profile.phone.trim());
+    clientIds = (byPhone ?? []).map((c) => c.id as string);
+  }
   if (clientIds.length === 0) {
     return NextResponse.json({
       appointments: [],
       _debug: {
-        reason: 'no_clients_for_profile',
+        reason: 'no_clients_for_profile_or_phone',
         profile_id: profile.id,
         profile_name: profile.full_name,
+        profile_phone: profile.phone,
         tg_id: result.user.id,
       },
     });
@@ -90,14 +102,32 @@ export async function POST(request: Request) {
     }, { status: 500 });
   }
 
+  // Mark which appointments already have a review from this user — needed so
+  // the page knows whether to show «Оцінити» button or just badge «Залишено
+  // відгук». Раньше reviewExists приходил только в detail-запросе → список
+  // всегда показывал кнопку «Оцінити» даже когда отзыв уже оставлен.
+  const aptIds = (data ?? []).map((a) => a.id);
+  let reviewedSet = new Set<string>();
+  if (aptIds.length > 0) {
+    const { data: revs } = await admin
+      .from('reviews').select('appointment_id')
+      .in('appointment_id', aptIds)
+      .eq('reviewer_id', profile.id)
+      .eq('target_type', 'master');
+    reviewedSet = new Set((revs ?? []).map((r) => r.appointment_id as string));
+  }
+  const enriched = (data ?? []).map((a) => ({
+    ...a,
+    reviewExists: reviewedSet.has(a.id),
+  }));
+
   return NextResponse.json({
-    appointments: data ?? [],
+    appointments: enriched,
     _debug: {
       profile_id: profile.id,
       profile_name: profile.full_name,
       tg_id: result.user.id,
-      client_rows: clientRows,
-      appointment_count: (data ?? []).length,
+      appointment_count: enriched.length,
     },
   });
 }
