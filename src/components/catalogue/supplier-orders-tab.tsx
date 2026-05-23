@@ -8,7 +8,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Truck, Plus, X, Send } from 'lucide-react';
+import { Truck, Plus, X, Send, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -197,6 +197,29 @@ export function SupplierOrdersTab() {
     window.open(`/api/supplier-orders/${orderId}/pdf`, '_blank');
   }
 
+  // «Получен» — отметить заказ как доставленный. PATCH-endpoint
+  // прибавляет qty к inventory_items автоматически.
+  const [markingId, setMarkingId] = useState<string | null>(null);
+  async function markDelivered(orderId: string) {
+    setMarkingId(orderId);
+    try {
+      const res = await fetch(`/api/supplier-orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'delivered' }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(j.error === 'terminal_status' ? 'Заказ уже завершён' : (j.error || 'Ошибка'));
+        return;
+      }
+      toast.success('Заказ получен — склад пополнен');
+      load();
+    } finally {
+      setMarkingId(null);
+    }
+  }
+
   const statusColor = (s: OrderStatus) =>
     s === 'delivered' ? C.success :
       s === 'cancelled' ? C.danger :
@@ -283,6 +306,23 @@ export function SupplierOrdersTab() {
                   >
                     PDF
                   </button>
+                  {(o.status === 'sent' || o.status === 'confirmed') && (
+                    <button
+                      onClick={() => markDelivered(o.id)}
+                      disabled={markingId === o.id}
+                      title="Отметить как полученный — позиции добавятся на склад"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        padding: '5px 9px', borderRadius: 6,
+                        border: `1px solid ${C.success}`,
+                        background: 'transparent', color: C.success,
+                        fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                        opacity: markingId === o.id ? 0.5 : 1,
+                      }}
+                    >
+                      <CheckCircle2 size={11} /> {markingId === o.id ? '…' : 'Получен'}
+                    </button>
+                  )}
                   {o.status === 'draft' && (
                     <button
                       onClick={() => {
@@ -348,7 +388,7 @@ export function SupplierOrdersTab() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
               <div>
                 <h3 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Новый заказ поставщику</h3>
-                <p style={{ fontSize: 12, color: C.textTertiary, margin: '4px 0 0 0' }}>Сохраняется как черновик. Отправка/доставка — в карточке заказа (скоро).</p>
+                <p style={{ fontSize: 12, color: C.textTertiary, margin: '4px 0 0 0' }}>Сохраняется черновиком. Дальше — «Отправить» (TG/Email) и «Получен» (склад пополнится).</p>
               </div>
               <button onClick={() => setCreateOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textTertiary, padding: 4 }}>
                 <X size={18} />

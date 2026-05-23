@@ -28,7 +28,7 @@ import { LoyaltyCreditButton } from '@/components/clients/loyalty-credit-button'
 import { ClientBehaviorAnalysis } from '@/components/clients/client-behavior-analysis';
 import { differenceInYears, differenceInDays, setYear, getYear, startOfDay } from 'date-fns';
 import {
-  ArrowLeft, RefreshCw, AlertTriangle, ShieldAlert,
+  ArrowLeft, RefreshCw, AlertTriangle, ShieldAlert, ShieldCheck,
   BarChart3, Phone, Mail, Cake,
   Calendar as CalendarIcon, FileText, Heart, User as UserIcon,
   Pencil, Trash2, Plus, Check, X, Bot, Send, Star,
@@ -335,8 +335,10 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         {/* Иконка-кнопка «В чёрный список» — всегда в хедере, без подписи.
             Tooltip объясняет действие при наведении. Реальная блокировка
             требует ввода причины в диалоге внизу. */}
-        {!client.is_blacklisted && (
+        {!client.is_blacklisted ? (
           <HeaderBlacklistButton clientId={id} onDone={loadClient} C={C} />
+        ) : (
+          <HeaderUnblacklistButton clientId={id} reason={client.blacklist_reason} onDone={loadClient} C={C} />
         )}
 
         <Link
@@ -469,7 +471,8 @@ function ClientTabs({
       )}
 
       {tab === 'analytics' && (
-        <div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          <ViolationsBlock client={client} C={C} />
           <AnalyticsBlock client={client} C={C} />
         </div>
       )}
@@ -1127,38 +1130,80 @@ function AnalyticsBlock({ client, C }: { client: ClientDetail; C: PageTheme }) {
           C={C}
         />
       </div>
-      <div
-        style={{
-          marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}`,
-          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8,
-        }}
-      >
-        <Tile
-          label="Поздних отмен"
-          value={client.late_cancellation_count ?? 0}
-          accent={(client.late_cancellation_count ?? 0) > 0 ? 'amber' : 'muted'}
-          hint="Отмена клиентом позже разрешённого срока"
-          C={C}
-        />
+    </BlockFrame>
+  );
+}
+
+/* ────────────────────── Violations block ────────────────────── */
+/* История нарушений — отдельный заметный блок над «Аналитикой».
+   Источник данных:
+   - no_show_count: auto-tracked триггером trg_sync_no_show_count
+     при appointments.status='no_show'.
+   - cancellation_count: общий счётчик отмен клиентом.
+   - late_cancellation_count / master_cancellation_count: пока optional
+     (без отдельных триггеров) — показываем только если бэкенд их выдаёт. */
+
+function ViolationsBlock({ client, C }: { client: ClientDetail; C: PageTheme }) {
+  const noShow = client.no_show_count ?? 0;
+  const cancellations = client.cancellation_count ?? 0;
+  const lateCancellations = client.late_cancellation_count ?? 0;
+  const masterCancellations = client.master_cancellation_count ?? 0;
+  const total = noShow + cancellations;
+
+  if (total === 0) {
+    return (
+      <BlockFrame icon={<AlertTriangle size={15} />} title="История нарушений" C={C}>
+        <p style={{ fontSize: 13, color: C.success ?? '#10b981', margin: 0 }}>
+          Нарушений нет — клиент надёжный.
+        </p>
+      </BlockFrame>
+    );
+  }
+
+  return (
+    <BlockFrame icon={<AlertTriangle size={15} />} title="История нарушений" C={C}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <Tile
           label="Не пришёл"
-          value={client.no_show_count ?? 0}
-          accent={(client.no_show_count ?? 0) > 0 ? 'rose' : 'muted'}
+          value={noShow}
+          accent={noShow > 0 ? 'rose' : 'muted'}
+          hint="Клиент не явился на запись"
           C={C}
         />
         <Tile
-          label="Отменил мастер"
-          value={client.master_cancellation_count ?? 0}
-          accent="muted"
-          hint="Не учитывается против клиента"
+          label="Всего отмен"
+          value={cancellations}
+          accent={cancellations > 0 ? 'amber' : 'muted'}
+          hint="Отмены клиентом (учитываются для блокировок)"
           C={C}
         />
       </div>
-      {(client.cancellation_count ?? 0) > 0 && (
-        <p style={{ marginTop: 10, fontSize: 11, color: C.textTertiary, lineHeight: 1.5 }}>
-          Всего отмен клиентом: {client.cancellation_count}.
-          {' '}Своевременных: {(client.cancellation_count ?? 0) - (client.late_cancellation_count ?? 0)} (без штрафа).
-        </p>
+      {(lateCancellations > 0 || masterCancellations > 0) && (
+        <div
+          style={{
+            marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}`,
+            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8,
+          }}
+        >
+          {lateCancellations > 0 && (
+            <Tile
+              label="Поздних отмен"
+              value={lateCancellations}
+              accent="amber"
+              hint="Отмена клиентом позже разрешённого срока"
+              C={C}
+            />
+          )}
+          {masterCancellations > 0 && (
+            <Tile
+              label="Отменил мастер"
+              value={masterCancellations}
+              accent="muted"
+              hint="Не учитывается против клиента"
+              C={C}
+            />
+          )}
+        </div>
       )}
     </BlockFrame>
   );
@@ -1506,6 +1551,100 @@ function HeaderBlacklistButton({ clientId, onDone, C }: { clientId: string; onDo
             </Button>
             <Button variant="destructive" size="sm" onClick={confirmBlacklist} disabled={saving || !reason.trim()}>
               {saving ? '…' : (t('addToBlacklist') || 'В чёрный список')}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   HeaderUnblacklistButton — иконка «снять с чёрного списка». Показывается
+   когда client.is_blacklisted=true. Popover с показом причины блокировки
+   + кнопкой подтверждения. UPDATE clients SET is_blacklisted=false,
+   blacklist_reason=NULL.
+   ───────────────────────────────────────────────────────────────────── */
+
+function HeaderUnblacklistButton({ clientId, reason, onDone, C }: { clientId: string; reason: string | null; onDone: () => void; C: PageTheme }) {
+  const t = useTranslations('clients');
+  const tc = useTranslations('common');
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function confirmUnblacklist() {
+    setSaving(true);
+    const supabase = createClient();
+    const { error } = await supabase.from('clients').update({
+      is_blacklisted: false,
+      blacklist_reason: null,
+    }).eq('id', clientId);
+    setSaving(false);
+    if (error) { toast.error(humanizeError(error)); return; }
+    toast.success(tc('success'));
+    setOpen(false);
+    onDone();
+  }
+
+  const successColor = '#16a34a';
+  const successSoft = 'rgba(22, 163, 74, 0.12)';
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title={t('removeFromBlacklist') || 'Снять с чёрного списка'}
+        aria-label={t('removeFromBlacklist') || 'Снять с чёрного списка'}
+        style={{
+          width: 36, height: 36, borderRadius: 10,
+          border: `1px solid ${C.border}`,
+          background: open ? successSoft : 'transparent',
+          color: successColor,
+          cursor: 'pointer',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        <ShieldCheck size={16} />
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+          width: 320, padding: 12, borderRadius: 12,
+          background: C.surface, border: `1px solid ${C.border}`,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          display: 'flex', flexDirection: 'column', gap: 8,
+          zIndex: 50,
+        }}>
+          <div style={{ fontSize: 12, color: C.textSecondary }}>
+            {t('blacklistReason') || 'Причина блокировки'}
+          </div>
+          <div style={{
+            fontSize: 13, color: C.text,
+            padding: 8, borderRadius: 8,
+            background: C.dangerSoft,
+            border: `1px solid ${C.border}`,
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+          }}>
+            {reason && reason.trim() ? reason : (t('noReason') || '—')}
+          </div>
+          <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 4 }}>
+            {t('removeFromBlacklistConfirm') || 'Снять блокировку? Клиент снова сможет записываться.'}
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+              {tc('cancel') || 'Отмена'}
+            </Button>
+            <Button
+              size="sm"
+              onClick={confirmUnblacklist}
+              disabled={saving}
+              style={{ background: successColor, color: '#fff', border: 'none' }}
+            >
+              {saving ? '…' : (t('removeFromBlacklist') || 'Разблокировать')}
             </Button>
           </div>
         </div>

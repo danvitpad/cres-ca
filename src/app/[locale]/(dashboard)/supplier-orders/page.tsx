@@ -61,6 +61,29 @@ export default function SupplierOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState<string | null>(null);
   const [sendingTg, setSendingTg] = useState<string | null>(null);
+  const [marking, setMarking] = useState<string | null>(null);
+
+  async function markDelivered(orderId: string) {
+    setMarking(orderId);
+    try {
+      const res = await fetch(`/api/supplier-orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'delivered' }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(j.error === 'terminal_status' ? 'Заказ уже завершён' : (j.error || 'Ошибка'));
+        return;
+      }
+      toast.success('Заказ получен — склад пополнен');
+      await load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setMarking(null);
+    }
+  }
 
   async function sendViaTelegram(orderId: string) {
     setSendingTg(orderId);
@@ -248,6 +271,18 @@ export default function SupplierOrdersPage() {
                             >
                               <Send className="size-3.5" />
                               {sendingTg === o.id ? '…' : 'TG'}
+                            </button>
+                          )}
+                          {(o.status === 'sent' || o.status === 'confirmed') && (
+                            <button
+                              type="button"
+                              onClick={() => markDelivered(o.id)}
+                              disabled={marking === o.id}
+                              title="Отметить как полученный — позиции добавятся на склад"
+                              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-500/10 disabled:opacity-50"
+                            >
+                              <CheckCircle2 className="size-3.5" />
+                              {marking === o.id ? '…' : 'Получен'}
                             </button>
                           )}
                           <a

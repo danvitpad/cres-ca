@@ -17,7 +17,7 @@ import { motion } from 'framer-motion';
 import {
   Phone, Calendar, AlertTriangle, FileText,
   Loader2, Crown, BarChart3, Bot, Send, Pencil, Trash2,
-  Plus, Check, X, User as UserIcon, Heart, Mic, UserMinus, ShieldAlert,
+  Plus, Check, X, User as UserIcon, Heart, Mic, UserMinus, ShieldAlert, ShieldCheck,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -44,6 +44,10 @@ const I18N: Record<MiniAppLang, {
   blacklistBtn: string; blacklistedBadge: string;
   blacklistTitle: string; blacklistReasonLabel: string; blacklistReasonPlaceholder: string;
   blacklistConfirm: string; blacklistCancel: string;
+  unblockBtn: string; unblockTitle: string; unblockHint: string;
+  unblockReasonLabel: string; unblockConfirm: string;
+  violationsTitle: string; violationsNoShow: string; violationsCancellations: string;
+  violationsEmpty: string;
 }> = {
   uk: {
     notFound: 'Клієнт не знайдений',
@@ -66,6 +70,14 @@ const I18N: Record<MiniAppLang, {
     blacklistReasonLabel: 'Причина (обовʼязково)',
     blacklistReasonPlaceholder: 'Наприклад: грубе поводження / 3 no-show поспіль',
     blacklistConfirm: 'Додати', blacklistCancel: 'Скасувати',
+    unblockBtn: 'Зняти блокування', unblockTitle: 'Зняти з чорного списку',
+    unblockHint: 'Клієнт знову зможе записуватись.',
+    unblockReasonLabel: 'Причина блокування',
+    unblockConfirm: 'Розблокувати',
+    violationsTitle: 'Історія порушень',
+    violationsNoShow: 'Не зʼявився',
+    violationsCancellations: 'Скасувань',
+    violationsEmpty: 'Порушень немає — клієнт надійний.',
   },
   ru: {
     notFound: 'Клиент не найден',
@@ -88,6 +100,14 @@ const I18N: Record<MiniAppLang, {
     blacklistReasonLabel: 'Причина (обязательно)',
     blacklistReasonPlaceholder: 'Например: грубое поведение / 3 no-show подряд',
     blacklistConfirm: 'Добавить', blacklistCancel: 'Отмена',
+    unblockBtn: 'Снять блокировку', unblockTitle: 'Снять с чёрного списка',
+    unblockHint: 'Клиент снова сможет записываться.',
+    unblockReasonLabel: 'Причина блокировки',
+    unblockConfirm: 'Разблокировать',
+    violationsTitle: 'История нарушений',
+    violationsNoShow: 'Не пришёл',
+    violationsCancellations: 'Отмен',
+    violationsEmpty: 'Нарушений нет — клиент надёжный.',
   },
   en: {
     notFound: 'Client not found',
@@ -110,6 +130,14 @@ const I18N: Record<MiniAppLang, {
     blacklistReasonLabel: 'Reason (required)',
     blacklistReasonPlaceholder: 'e.g. rude behavior / 3 no-shows in a row',
     blacklistConfirm: 'Add', blacklistCancel: 'Cancel',
+    unblockBtn: 'Unblock', unblockTitle: 'Remove from blacklist',
+    unblockHint: 'The client will be able to book again.',
+    unblockReasonLabel: 'Block reason',
+    unblockConfirm: 'Unblock',
+    violationsTitle: 'Violation history',
+    violationsNoShow: 'No-shows',
+    violationsCancellations: 'Cancellations',
+    violationsEmpty: 'No violations — reliable client.',
   },
 };
 
@@ -146,6 +174,9 @@ interface ClientFull {
   referrer_master_id?: string | null;
   is_blacklisted?: boolean;
   blacklist_reason?: string | null;
+  /** История нарушений — auto-tracked в БД. */
+  no_show_count?: number | null;
+  cancellation_count?: number | null;
   /** Embed из API: имя мастера-партнёра, который привёл клиента (через партнёрскую ссылку). */
   referrer?: { display_name: string | null; profile: { full_name: string | null } | { full_name: string | null }[] | null } | null;
 }
@@ -201,6 +232,8 @@ export default function MasterMiniAppClientCard() {
   const [blacklistOpen, setBlacklistOpen] = useState(false);
   const [blacklistReason, setBlacklistReason] = useState('');
   const [blacklisting, setBlacklisting] = useState(false);
+  const [unblockOpen, setUnblockOpen] = useState(false);
+  const [unblocking, setUnblocking] = useState(false);
 
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const reload = useCallback(async () => {
@@ -339,6 +372,28 @@ export default function MasterMiniAppClientCard() {
     }
   }
 
+  // Снять с чёрного списка — отдельный handler. UPDATE clients
+  // SET is_blacklisted=false, blacklist_reason=NULL. Триггер
+  // trg_blacklist_blocks_booking перестаёт блокировать новые записи.
+  async function handleUnblacklist() {
+    if (!client || unblocking) return;
+    setUnblocking(true);
+    haptic('selection');
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('clients')
+        .update({ is_blacklisted: false, blacklist_reason: null })
+        .eq('id', client.id);
+      if (!error) {
+        setUnblockOpen(false);
+        await reload();
+      }
+    } finally {
+      setUnblocking(false);
+    }
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -461,7 +516,7 @@ export default function MasterMiniAppClientCard() {
             Отписаться
           </button>
         )}
-        {!client.is_blacklisted && (
+        {!client.is_blacklisted ? (
           <button
             type="button"
             onClick={() => { haptic('warning'); setBlacklistOpen(true); }}
@@ -469,6 +524,15 @@ export default function MasterMiniAppClientCard() {
           >
             <ShieldAlert className="size-3.5" />
             {t.blacklistBtn}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => { haptic('selection'); setUnblockOpen(true); }}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-300 py-2 text-[12px] font-semibold text-emerald-700 active:bg-emerald-50"
+          >
+            <ShieldCheck className="size-3.5" />
+            {t.unblockBtn}
           </button>
         )}
         <button
@@ -526,6 +590,34 @@ export default function MasterMiniAppClientCard() {
         haptic={haptic}
         onSaved={reload}
       />
+
+      {/* 2.5. История нарушений — отдельный заметный блок. Auto-tracked:
+          no_show_count инкрементится триггером trg_sync_no_show_count
+          при appointments.status='no_show'; cancellation_count собирается
+          через отдельную логику. Если оба = 0 — показываем «надёжный». */}
+      {(() => {
+        const ns = Number(client.no_show_count ?? 0);
+        const cc = Number(client.cancellation_count ?? 0);
+        const totalBad = ns + cc;
+        return (
+          <Block icon={<AlertTriangle className="size-3.5" />} title={t.violationsTitle}>
+            {totalBad === 0 ? (
+              <p className="text-[12px] text-emerald-700">{t.violationsEmpty}</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <div className={`rounded-xl border p-2.5 text-center ${ns > 0 ? 'border-rose-200 bg-rose-50' : 'border-neutral-200'}`}>
+                  <p className={`text-[18px] font-bold leading-tight ${ns > 0 ? 'text-rose-600' : 'text-neutral-500'}`}>{ns}</p>
+                  <p className="mt-0.5 text-[10px] uppercase tracking-wide text-neutral-500">{t.violationsNoShow}</p>
+                </div>
+                <div className={`rounded-xl border p-2.5 text-center ${cc > 0 ? 'border-amber-200 bg-amber-50' : 'border-neutral-200'}`}>
+                  <p className={`text-[18px] font-bold leading-tight ${cc > 0 ? 'text-amber-700' : 'text-neutral-500'}`}>{cc}</p>
+                  <p className="mt-0.5 text-[10px] uppercase tracking-wide text-neutral-500">{t.violationsCancellations}</p>
+                </div>
+              </div>
+            )}
+          </Block>
+        );
+      })()}
 
       {/* 3. History */}
       <Block icon={<Calendar className="size-3.5" />} title={t.historyTitle}>
@@ -609,6 +701,45 @@ export default function MasterMiniAppClientCard() {
             >
               {blacklisting ? <Loader2 className="size-3.5 animate-spin" /> : <ShieldAlert className="size-3.5" />}
               {t.blacklistConfirm}
+            </button>
+          </div>
+        </div>
+      </MiniBottomSheet>
+
+      {/* Bottom-sheet «Снять с чёрного списка». Показывает причину блокировки
+          (read-only) + одну кнопку подтверждения. */}
+      <MiniBottomSheet
+        open={unblockOpen}
+        onClose={() => setUnblockOpen(false)}
+        title={t.unblockTitle}
+      >
+        <div className="flex flex-col gap-3 px-1 pb-2">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+              {t.unblockReasonLabel}
+            </p>
+            <p className="mt-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[13px] text-rose-700 whitespace-pre-wrap break-words">
+              {client.blacklist_reason && client.blacklist_reason.trim() ? client.blacklist_reason : '—'}
+            </p>
+          </div>
+          <p className="text-[12px] text-neutral-600">{t.unblockHint}</p>
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setUnblockOpen(false)}
+              disabled={unblocking}
+              className="flex flex-1 items-center justify-center rounded-xl border border-neutral-200 py-2.5 text-[13px] font-semibold text-neutral-700"
+            >
+              {t.blacklistCancel}
+            </button>
+            <button
+              type="button"
+              onClick={handleUnblacklist}
+              disabled={unblocking}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 py-2.5 text-[13px] font-semibold text-white disabled:opacity-50"
+            >
+              {unblocking ? <Loader2 className="size-3.5 animate-spin" /> : <ShieldCheck className="size-3.5" />}
+              {t.unblockConfirm}
             </button>
           </div>
         </div>
