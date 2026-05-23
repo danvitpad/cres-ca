@@ -1238,7 +1238,14 @@
     "filter_reviews": "Reviews",
     "markAllRead": "Mark all read",
     "clearAll": "Clear all",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "loading": "Loading…",
+    "empty": "No notifications",
+    "filter_social": "Social",
+    "subscribe": "Follow",
+    "subscribed": "Followed",
+    "unsubscribed": "Unfollowed",
+    "mutual": "Mutual"
   },
   "clientSettings": {
     "title": "Account settings",
@@ -1686,7 +1693,8 @@
     "confirmRemoveDesc": "{name} will be removed. Their visit history stays in your records.",
     "totalBudget": "Family budget (total)",
     "myBudget": "My own",
-    "spent": "spent"
+    "spent": "spent",
+    "otherPlaceholder": "Who is this? (aunt, friend, …)"
   },
   "queue": {
     "title": "Live Queue",

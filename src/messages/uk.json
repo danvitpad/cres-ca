@@ -1238,7 +1238,14 @@
     "filter_reviews": "Відгуки",
     "markAllRead": "Прочитати все",
     "clearAll": "Очистити все",
-    "dismiss": "Приховати"
+    "dismiss": "Приховати",
+    "loading": "Завантаження…",
+    "empty": "Немає сповіщень",
+    "filter_social": "Соціальні",
+    "subscribe": "Підписатися",
+    "subscribed": "Підписку оформлено",
+    "unsubscribed": "Підписку скасовано",
+    "mutual": "Взаємно"
   },
   "clientSettings": {
     "title": "Налаштування акаунту",
@@ -1686,7 +1693,8 @@
     "removed": "Члена родини видалено",
     "totalBudget": "Сімейний бюджет (всього)",
     "myBudget": "Я особисто",
-    "spent": "витрачено"
+    "spent": "витрачено",
+    "otherPlaceholder": "Хто це? (тітка, кум, друг…)"
   },
   "queue": {
     "title": "Жива черга",

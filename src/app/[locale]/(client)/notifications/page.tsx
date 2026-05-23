@@ -217,7 +217,7 @@ export default function NotificationsPage() {
       const data = await res.json();
       if (res.ok) {
         setFollowStates(prev => ({ ...prev, [targetId]: data.following }));
-        toast.success(data.following ? 'Подписка оформлена' : 'Подписка отменена');
+        toast.success(t(data.following ? 'subscribed' : 'unsubscribed'));
       }
     } catch {
       setFollowStates(prev => ({ ...prev, [targetId]: false }));
@@ -227,10 +227,10 @@ export default function NotificationsPage() {
   if (isMobileView) {
     const ACCENT = '#2563eb';
     const filterLabels: Record<typeof mobileFilter, string> = {
-      all: 'Усі',
-      bookings: 'Записи',
-      promos: 'Промо',
-      social: 'Соціальні',
+      all: t('filter_all'),
+      bookings: t('filter_bookings'),
+      promos: t('filter_promos'),
+      social: t('filter_social'),
     };
 
     const filtered = feed.filter((n) => {
@@ -250,7 +250,7 @@ export default function NotificationsPage() {
         <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Bell style={{ width: 20, height: 20, color: '#0f172a' }} />
-            <span style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Сповіщення</span>
+            <span style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>{t('title')}</span>
             {unreadCount > 0 && (
               <span style={{ padding: '2px 7px', borderRadius: 20, background: ACCENT, color: '#fff', fontSize: 11, fontWeight: 600 }}>
                 {unreadCount}
@@ -263,7 +263,7 @@ export default function NotificationsPage() {
               onClick={markAllRead}
               style={{ background: 'none', border: 'none', color: ACCENT, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
             >
-              Прочитати всі
+              {t('markAllRead')}
             </button>
           )}
         </div>
@@ -296,11 +296,11 @@ export default function NotificationsPage() {
         {/* Feed */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 0 120px' }}>
           {feedLoading ? (
-            <div style={{ padding: 32, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Завантаження…</div>
+            <div style={{ padding: 32, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>{t('loading')}</div>
           ) : filtered.length === 0 ? (
             <div style={{ padding: '48px 24px', textAlign: 'center' }}>
               <Bell style={{ width: 40, height: 40, color: '#cbd5e1', margin: '0 auto 12px' }} />
-              <div style={{ fontSize: 14, fontWeight: 500, color: '#64748b' }}>Немає сповіщень</div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: '#64748b' }}>{t('empty')}</div>
             </div>
           ) : (
             filtered.map((n) => {
@@ -378,9 +378,9 @@ export default function NotificationsPage() {
                         {followState === 'loading' ? (
                           <Loader2 style={{ width: 12, height: 12 }} />
                         ) : followState === true ? (
-                          <><UserCheck style={{ width: 12, height: 12 }} /> Взаємно</>
+                          <><UserCheck style={{ width: 12, height: 12 }} /> {t('mutual')}</>
                         ) : (
-                          <><UserPlus style={{ width: 12, height: 12 }} /> Підписатися</>
+                          <><UserPlus style={{ width: 12, height: 12 }} /> {t('subscribe')}</>
                         )}
                       </button>
                     )}
@@ -546,9 +546,9 @@ export default function NotificationsPage() {
                               {followState === 'loading' ? (
                                 <Loader2 className="size-3 animate-spin" />
                               ) : followState === true ? (
-                                <><UserCheck className="size-3" /> Взаимно</>
+                                <><UserCheck className="size-3" /> {t('mutual')}</>
                               ) : (
-                                <><UserPlus className="size-3" /> Подписаться</>
+                                <><UserPlus className="size-3" /> {t('subscribe')}</>
                               )}
                             </button>
                           )}

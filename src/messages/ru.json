@@ -1238,7 +1238,14 @@
     "filter_reviews": "Отзывы",
     "markAllRead": "Прочитать все",
     "clearAll": "Очистить все",
-    "dismiss": "Скрыть"
+    "dismiss": "Скрыть",
+    "loading": "Загрузка…",
+    "empty": "Нет уведомлений",
+    "filter_social": "Социальные",
+    "subscribe": "Подписаться",
+    "subscribed": "Подписка оформлена",
+    "unsubscribed": "Подписка отменена",
+    "mutual": "Взаимно"
   },
   "clientSettings": {
     "title": "Настройки аккаунта",
@@ -1686,7 +1693,8 @@
     "confirmRemoveDesc": "{name} будет удалён(а). История визитов сохранится в ваших записях.",
     "totalBudget": "Семейный бюджет (всего)",
     "myBudget": "Я лично",
-    "spent": "потрачено"
+    "spent": "потрачено",
+    "otherPlaceholder": "Кто это? (тётя, кум, друг…)"
   },
   "queue": {
     "title": "Живая очередь",
