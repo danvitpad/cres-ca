@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     const { data: appointment } = await admin
       .from('appointments')
       .select(
-        'id, starts_at, ends_at, status, price, currency, master_id, service_id, notes, service:services(name, color, description), master:masters(id, display_name, specialization, avatar_url, address, city, latitude, longitude, cancellation_policy, profile:profiles!masters_profile_id_fkey(full_name, avatar_url, phone))',
+        'id, starts_at, ends_at, status, price, currency, master_id, service_id, notes, service:services(name, color, description), master:masters(id, display_name, specialization, avatar_url, address, city, latitude, longitude, cancellation_policy, profile:profiles!masters_profile_id_fkey(full_name, avatar_url, phone, telegram_username))',
       )
       .eq('id', id)
       .in('client_id', clientIds)

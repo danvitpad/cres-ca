@@ -38,7 +38,7 @@ import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T } from '@/components/miniapp/design';
 import { formatMoney } from '@/lib/format/money';
 import { cleanAddress } from '@/lib/format/address';
-import { showMainButton, hideMainButton, setMainButtonLoading, isTelegram, tg } from '@/lib/telegram/webapp';
+import { showMainButton, hideMainButton, setMainButtonLoading, isTelegram, tg, showAlert } from '@/lib/telegram/webapp';
 import '@/styles/od-client-booking-flow.css';
 
 /* ─────────────────── Types ─────────────────── */
@@ -842,7 +842,34 @@ export default function MiniAppBookPage() {
 
   /* ── Confirmation (booking) ── */
   async function handleConfirm() {
-    if (selectedServices.length === 0 || !selectedDate || !selectedTime || !masterId || !userId) return;
+    // Превентивные проверки. Раньше handleConfirm молча return-ил
+    // если хотя бы одно из значений отсутствовало — пользователю
+    // казалось «кнопка не работает». Теперь явный toast/alert.
+    const missing: string[] = [];
+    if (selectedServices.length === 0) missing.push(lang === 'en' ? 'services' : lang === 'ru' ? 'услуги' : 'послуги');
+    if (!selectedDate) missing.push(lang === 'en' ? 'date' : lang === 'ru' ? 'дату' : 'дату');
+    if (!selectedTime) missing.push(lang === 'en' ? 'time' : lang === 'ru' ? 'время' : 'час');
+    if (!masterId) missing.push(lang === 'en' ? 'master' : lang === 'ru' ? 'мастера' : 'майстра');
+    if (missing.length > 0) {
+      haptic('error');
+      const msg = lang === 'en'
+        ? `Please select: ${missing.join(', ')}`
+        : lang === 'ru'
+          ? `Выберите: ${missing.join(', ')}`
+          : `Виберіть: ${missing.join(', ')}`;
+      showAlert(msg);
+      return;
+    }
+    if (!userId) {
+      haptic('error');
+      showAlert(lang === 'en'
+        ? 'Telegram session not initialized yet. Please reopen the Mini App.'
+        : lang === 'ru'
+          ? 'Сессия Telegram ещё не готова. Закройте и откройте Mini App.'
+          : 'Сесія Telegram ще не готова. Закрийте і відкрийте Mini App.');
+      return;
+    }
+
     setSubmitting(true);
     haptic('medium');
 
@@ -860,10 +887,24 @@ export default function MiniAppBookPage() {
       } catch { /* ignore */ }
       return null;
     })();
-    if (!initData) { haptic('error'); setSubmitting(false); return; }
+    if (!initData) {
+      haptic('error'); setSubmitting(false);
+      showAlert(lang === 'en'
+        ? 'No Telegram session. Reopen the Mini App.'
+        : lang === 'ru'
+          ? 'Нет сессии Telegram. Откройте Mini App заново.'
+          : 'Немає сесії Telegram. Відкрийте Mini App заново.');
+      return;
+    }
+
+    // TS-narrowing: после missing-check выше эти три значения гарантированно
+    // не-null. Без локальных алиасов TS этого не знает (его narrowing не
+    // работает через массив missing[]).
+    const safeDate = selectedDate as Date;
+    const safeTime = selectedTime as string;
 
     // Build appointments list (stacked sequentially)
-    let currentStart = selectedTime;
+    let currentStart = safeTime;
     const appointments: Array<{
       service_id: string;
       starts_at: string;
@@ -872,9 +913,9 @@ export default function MiniAppBookPage() {
       currency: string;
     }> = [];
     for (const service of selectedServices) {
-      const startsAt = toUtcIsoFromLocal(selectedDate, currentStart);
+      const startsAt = toUtcIsoFromLocal(safeDate, currentStart);
       const endTime = addMinutesToTime(currentStart, service.duration_minutes);
-      const endsAt = toUtcIsoFromLocal(selectedDate, endTime);
+      const endsAt = toUtcIsoFromLocal(safeDate, endTime);
       appointments.push({
         service_id: service.id,
         starts_at: startsAt,
@@ -887,7 +928,7 @@ export default function MiniAppBookPage() {
 
     const serviceNames = selectedServices.map((s) => s.name).join(', ');
     const localeMap: Record<BookLang, string> = { uk: 'uk-UA', ru: 'ru-RU', en: 'en-US' };
-    const dateFormatted = selectedDate.toLocaleDateString(localeMap[lang], { day: 'numeric', month: 'short' });
+    const dateFormatted = safeDate.toLocaleDateString(localeMap[lang], { day: 'numeric', month: 'short' });
 
     // Партнёрский ref: если клиент перешёл с другой публичной страницы через
     // ?from=<master_id>, PartnerRefCapture сохранил его в sessionStorage.
@@ -916,6 +957,15 @@ export default function MiniAppBookPage() {
     if (!res.ok) {
       haptic('error');
       setSubmitting(false);
+      // Покажем причину ошибки явно — слишком долго ловили «кнопка не сработала»
+      // когда сервер возвращал blacklisted/duplicate/whatever и тишина.
+      const errBody = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+      const fallback = lang === 'en'
+        ? 'Could not create booking. Try again or contact the master.'
+        : lang === 'ru'
+          ? 'Не удалось создать запись. Попробуйте ещё раз или свяжитесь с мастером.'
+          : 'Не вдалося створити запис. Спробуйте ще раз або зверніться до майстра.';
+      showAlert(errBody.message || errBody.error || fallback);
       return;
     }
 
@@ -1798,52 +1848,9 @@ export default function MiniAppBookPage() {
                   </div>
                 </motion.div>
 
-                {/* Gift certificate input */}
-                <motion.div
-                  variants={fadeUp}
-                  initial="hidden"
-                  animate="visible"
-                  className="mt-4 overflow-hidden rounded-2xl"
-                  style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}
-                >
-                  {giftCertDiscount == null ? (
-                    <div className="flex items-center gap-2 p-4">
-                      <input
-                        type="text"
-                        value={giftCertCode}
-                        onChange={(e) => { setGiftCertCode(e.target.value.toUpperCase()); setGiftCertError(''); }}
-                        placeholder={t.giftCertPlaceholder}
-                        maxLength={32}
-                        className="min-w-0 flex-1 bg-transparent text-[14px] outline-none"
-                        style={{ color: T.text }}
-                      />
-                      <button
-                        onClick={handleApplyGiftCert}
-                        disabled={!giftCertCode.trim() || giftCertCheckingState}
-                        className="shrink-0 rounded-xl px-3 py-2 text-[13px] font-semibold transition-colors disabled:opacity-40"
-                        style={{ background: T.text, color: T.bg }}
-                      >
-                        {giftCertCheckingState ? t.giftCertChecking : t.giftCertApply}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between p-4">
-                      <p className="text-[14px] font-semibold" style={{ color: T.accent }}>
-                        {t.giftCertApplied(formatMoney(giftCertDiscount, currency))}
-                      </p>
-                      <button
-                        onClick={() => { haptic('light'); setGiftCertDiscount(null); setGiftCertCode(''); }}
-                        className="text-[13px] font-medium"
-                        style={{ color: T.textSecondary }}
-                      >
-                        {t.giftCertRemove}
-                      </button>
-                    </div>
-                  )}
-                  {giftCertError && (
-                    <p className="px-4 pb-3 text-[12px]" style={{ color: T.danger }}>{giftCertError}</p>
-                  )}
-                </motion.div>
+                {/* Gift certificate input: временно скрыт по решению Daniil
+                    2026-05-23. State/handlers оставлены — включить можно
+                    обратно одним flag'ом. */}
 
                 {master?.booking_important_info && master.booking_important_info.trim().length > 0 && (
                   <motion.div

@@ -30,6 +30,10 @@ interface MasterSlot {
   date: string; // YYYY-MM-DD
   time: string; // HH:MM
   iso: string;  // full ISO timestamp
+  // Рейтинг и количество отзывов мастера. Источник — view
+  // public.master_ratings (avg по reviews where is_published=true).
+  rating: number | null;
+  reviewsCount: number;
 }
 
 export async function GET(req: Request) {
@@ -72,7 +76,7 @@ export async function GET(req: Request) {
     return { hh: k.getHours(), mm: k.getMinutes(), weekday: k.getDay() };
   }
 
-  const [apptRes, blockRes] = await Promise.all([
+  const [apptRes, blockRes, ratingsRes] = await Promise.all([
     supabase
       .from('appointments')
       .select('master_id, starts_at, ends_at, status')
@@ -85,7 +89,21 @@ export async function GET(req: Request) {
       .in('master_id', masterIds)
       .gte('ends_at', now.toISOString())
       .lte('starts_at', horizon.toISOString()),
+    // Рейтинги — отдельным запросом из view. Если у мастера нет
+    // активной подписки или 0 отзывов — он не появится в этой выборке,
+    // тогда отрендерим '—' / без звезды.
+    supabase
+      .from('master_ratings')
+      .select('master_id, average_score, reviews_count')
+      .in('master_id', masterIds),
   ]);
+  const ratingByMaster = new Map<string, { rating: number | null; reviewsCount: number }>();
+  for (const r of (ratingsRes.data ?? []) as { master_id: string; average_score: number | null; reviews_count: number | null }[]) {
+    ratingByMaster.set(r.master_id, {
+      rating: r.average_score == null ? null : Number(r.average_score),
+      reviewsCount: Number(r.reviews_count ?? 0),
+    });
+  }
 
   const busyByMaster = new Map<string, { date: string; start: number; end: number }[]>();
   for (const id of masterIds) busyByMaster.set(id, []);
@@ -165,14 +183,19 @@ export async function GET(req: Request) {
           const time = m2t(t);
           const [yy, mo, dd] = dateStr.split('-').map(Number);
           const isoDate = new Date(yy, mo - 1, dd, Math.floor(t / 60), t % 60, 0, 0);
-          found = {
-            masterId: link.master_id,
-            name: m.display_name ?? profile?.full_name ?? null,
-            avatar: m.avatar_url ?? profile?.avatar_url ?? null,
-            date: dateStr,
-            time,
-            iso: isoDate.toISOString(),
-          };
+          {
+            const rt = ratingByMaster.get(link.master_id);
+            found = {
+              masterId: link.master_id,
+              name: m.display_name ?? profile?.full_name ?? null,
+              avatar: m.avatar_url ?? profile?.avatar_url ?? null,
+              date: dateStr,
+              time,
+              iso: isoDate.toISOString(),
+              rating: rt?.rating ?? null,
+              reviewsCount: rt?.reviewsCount ?? 0,
+            };
+          }
           break;
         }
       }

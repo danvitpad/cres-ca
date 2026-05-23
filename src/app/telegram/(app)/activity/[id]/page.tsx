@@ -55,7 +55,7 @@ interface DetailRow {
     latitude: number | null;
     longitude: number | null;
     cancellation_policy: { free_hours?: number; partial_hours?: number; partial_percent?: number } | null;
-    profile: { full_name: string | null; avatar_url: string | null; phone: string | null } | null;
+    profile: { full_name: string | null; avatar_url: string | null; phone: string | null; telegram_username: string | null } | null;
   } | null;
 }
 
@@ -176,6 +176,15 @@ export default function MiniAppAppointmentDetail() {
       setReviewExists(!!json.reviewExists);
       if (searchParams.get('review') === '1' && !json.reviewExists) {
         setRatingOpen(true);
+      }
+      // Auto-open cancel sheet когда пришли с activity-листа через
+      // кнопку «Отменить» — пользователю не нужно ещё раз искать кнопку.
+      if (searchParams.get('confirm') === 'cancel') {
+        const appt = json.appointment as DetailRow;
+        const cancellable =
+          appt && appt.status !== 'cancelled' && appt.status !== 'cancelled_by_client' &&
+          appt.status !== 'completed' && appt.status !== 'no_show';
+        if (cancellable) setCancelOpen(true);
       }
       setBeforeAfterPhotos((json.beforeAfterPhotos ?? []) as typeof beforeAfterPhotos);
       setLoading(false);
@@ -443,10 +452,24 @@ export default function MiniAppAppointmentDetail() {
             <button
               onClick={() => {
                 haptic('light');
-                if (row.master?.profile?.phone) {
-                  navigator.clipboard.writeText(row.master.profile.phone)
-                    .then(() => toast(t.numberCopied(row.master!.profile!.phone!)))
-                    .catch(() => toast(row.master!.profile!.phone!));
+                const phone = row.master?.profile?.phone;
+                if (!phone) {
+                  toast(lang === 'en' ? 'No phone' : lang === 'ru' ? 'Телефон не указан' : 'Телефон не вказано');
+                  return;
+                }
+                // Пробуем нативную звонилку через TG WebApp openLink, fallback —
+                // tel:-ссылка, последний fallback — копируем в буфер.
+                const w = window as { Telegram?: { WebApp?: { openLink?: (u: string) => void } } };
+                try {
+                  if (w.Telegram?.WebApp?.openLink) {
+                    w.Telegram.WebApp.openLink(`tel:${phone}`);
+                    return;
+                  }
+                  window.location.href = `tel:${phone}`;
+                } catch {
+                  navigator.clipboard.writeText(phone)
+                    .then(() => toast(t.numberCopied(phone)))
+                    .catch(() => toast(phone));
                 }
               }}
               style={{ height: 58, borderRadius: 'var(--radius-lg)', background: 'var(--surface2)', border: 'none', fontSize: 12, fontWeight: 600, color: 'var(--fg)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, fontFamily: 'inherit' }}
@@ -455,7 +478,37 @@ export default function MiniAppAppointmentDetail() {
               {lang === 'en' ? 'Call' : lang === 'ru' ? 'Позвонить' : 'Зателефонувати'}
             </button>
             <button
-              onClick={() => { haptic('light'); toast(lang === 'en' ? 'Opening chat...' : lang === 'ru' ? 'Открываем чат...' : 'Відкриваємо чат...'); }}
+              onClick={() => {
+                haptic('light');
+                // Открыть чат с мастером в Telegram через TG deep-link.
+                // Источник #1: profiles.telegram_username (юзернейм).
+                // Если username нет — фоллбек на phone через tg://resolve?phone=
+                // если есть. Если ничего — toast.
+                const tgUser = row.master?.profile?.telegram_username;
+                const phone = row.master?.profile?.phone;
+                const w = window as { Telegram?: { WebApp?: { openTelegramLink?: (u: string) => void; openLink?: (u: string) => void } } };
+                let link: string | null = null;
+                if (tgUser) {
+                  const handle = tgUser.replace(/^@/, '');
+                  link = `https://t.me/${handle}`;
+                } else if (phone) {
+                  // Не у каждого юзера телефон привязан к TG-аккаунту, но это лучший
+                  // фолбэк когда нет username.
+                  const clean = phone.replace(/[^\d+]/g, '');
+                  link = `https://t.me/+${clean.replace(/^\+/, '')}`;
+                }
+                if (!link) {
+                  toast(lang === 'en' ? 'Master not on Telegram' : lang === 'ru' ? 'Мастер не указал Telegram' : 'Майстер не вказав Telegram');
+                  return;
+                }
+                if (w.Telegram?.WebApp?.openTelegramLink) {
+                  w.Telegram.WebApp.openTelegramLink(link);
+                } else if (w.Telegram?.WebApp?.openLink) {
+                  w.Telegram.WebApp.openLink(link);
+                } else {
+                  window.open(link, '_blank');
+                }
+              }}
               style={{ height: 58, borderRadius: 'var(--radius-lg)', background: 'var(--surface2)', border: 'none', fontSize: 12, fontWeight: 600, color: 'var(--fg)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, fontFamily: 'inherit' }}
             >
               <MessageCircle style={{ width: 18, height: 18, color: 'var(--accent)' }} />

@@ -50,7 +50,7 @@ const T_LABELS: Record<Lang, {
   findCta: string;
   chipToday: string; chipUpcoming: string;
   chipDone: string; chipReview: string; chipCancelled: string;
-  details: string; reschedule: string; cancel: string;
+  details: string; reschedule: string; cancel: string; cancelAction: string;
   rate: string; repeat: string; bookAgain: string;
   cancelledOn: string;
   withMaster: string;
@@ -64,7 +64,7 @@ const T_LABELS: Record<Lang, {
     findCta: 'Знайти майстра',
     chipToday: 'Сьогодні', chipUpcoming: 'Майбутній',
     chipDone: 'Виконано', chipReview: 'Залиш відгук', chipCancelled: 'Скасовано',
-    details: 'Деталі', reschedule: 'Перенести', cancel: 'Скасувати',
+    details: 'Деталі', reschedule: 'Перенести', cancel: 'Скасувати', cancelAction: 'Скасувати',
     rate: 'Оцінити', repeat: 'Повторити', bookAgain: 'Записатись знову',
     cancelledOn: 'Скасовано',
     withMaster: 'з',
@@ -78,7 +78,7 @@ const T_LABELS: Record<Lang, {
     findCta: 'Найти мастера',
     chipToday: 'Сегодня', chipUpcoming: 'Будущий',
     chipDone: 'Выполнено', chipReview: 'Оставь отзыв', chipCancelled: 'Отменено',
-    details: 'Детали', reschedule: 'Перенести', cancel: 'Отменить',
+    details: 'Детали', reschedule: 'Перенести', cancel: 'Отменить', cancelAction: 'Отменить',
     rate: 'Оценить', repeat: 'Повторить', bookAgain: 'Записаться снова',
     cancelledOn: 'Отменено',
     withMaster: 'у',
@@ -92,7 +92,7 @@ const T_LABELS: Record<Lang, {
     findCta: 'Find a master',
     chipToday: 'Today', chipUpcoming: 'Upcoming',
     chipDone: 'Done', chipReview: 'Leave review', chipCancelled: 'Cancelled',
-    details: 'Details', reschedule: 'Reschedule', cancel: 'Cancel',
+    details: 'Details', reschedule: 'Reschedule', cancel: 'Cancel', cancelAction: 'Cancel',
     rate: 'Rate', repeat: 'Repeat', bookAgain: 'Book again',
     cancelledOn: 'Cancelled',
     withMaster: 'with',
@@ -283,6 +283,22 @@ export default function MiniAppActivityPage() {
                 if (a.service_id) qs.set('service_id', a.service_id);
                 router.push(`/telegram/book?${qs.toString()}`);
               }}
+              onReschedule={() => {
+                haptic('light');
+                // Перенос — открываем /book с pre-select мастер+услуга
+                // и флагом reschedule, который заменит существующую запись.
+                const qs = new URLSearchParams();
+                if (a.master_id) qs.set('master_id', a.master_id);
+                if (a.service_id) qs.set('service_id', a.service_id);
+                qs.set('reschedule', a.id);
+                router.push(`/telegram/book?${qs.toString()}`);
+              }}
+              onCancel={() => {
+                haptic('warning');
+                // Отмена — на детали с авто-открытием подтверждения.
+                // Confirm-sheet там уже считает штрафные сборы по политике мастера.
+                router.push(`/telegram/activity/${a.id}?confirm=cancel`);
+              }}
             />
           ))}
         </div>
@@ -294,13 +310,15 @@ export default function MiniAppActivityPage() {
 }
 
 function ApptCard({
-  row, t, lang, onClick, onRepeat,
+  row, t, lang, onClick, onRepeat, onReschedule, onCancel,
 }: {
   row: AppointmentRow;
   t: typeof T_LABELS[Lang];
   lang: Lang;
   onClick: () => void;
   onRepeat: () => void;
+  onReschedule: () => void;
+  onCancel: () => void;
 }) {
   const start = new Date(row.starts_at);
   const day = start.getDate().toString().padStart(2, '0');
@@ -370,9 +388,17 @@ function ApptCard({
             </>
           ) : (
             <>
-              <button className="mc-apa" onClick={onClick}>{t.details}</button>
-              <button className="mc-apa" onClick={onClick}>
+              <button
+                className="mc-apa"
+                onClick={(e) => { e.stopPropagation(); onReschedule(); }}
+              >
                 <RotateCcw />{t.reschedule}
+              </button>
+              <button
+                className="mc-apa danger"
+                onClick={(e) => { e.stopPropagation(); onCancel(); }}
+              >
+                <X />{t.cancelAction}
               </button>
             </>
           )}

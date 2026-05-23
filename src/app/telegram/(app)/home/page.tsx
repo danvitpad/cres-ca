@@ -53,6 +53,9 @@ interface SlotItem {
   service?: string | null;
   duration?: number | null;
   price?: number | null;
+  // Средняя оценка и кол-во отзывов — рендерим звёздочкой возле имени.
+  rating?: number | null;
+  reviewsCount?: number;
 }
 interface RegularItem {
   master_id: string;
@@ -523,7 +526,26 @@ function SlotCard({ slot, lang, t, haptic }: {
           : initialsOf(slot.name ?? '?')}
       </div>
       <div className="mc-slot-i">
-        <div className="mc-slot-n">{slot.name ?? '—'}</div>
+        <div className="mc-slot-n" style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+          <span>{slot.name ?? '—'}</span>
+          {slot.rating != null && (
+            <span
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 2,
+                fontSize: 11, fontWeight: 600, color: '#f59e0b',
+              }}
+              aria-label={`Рейтинг ${slot.rating.toFixed(1)}`}
+            >
+              <Star size={11} fill="#f59e0b" strokeWidth={0} />
+              {slot.rating.toFixed(1)}
+              {slot.reviewsCount ? (
+                <span style={{ color: 'var(--m-text-tertiary, #94a3b8)', fontWeight: 500 }}>
+                  · {slot.reviewsCount}
+                </span>
+              ) : null}
+            </span>
+          )}
+        </div>
         <div className="mc-slot-s">
           {slot.service ?? '—'}{slot.duration ? ` · ${slot.duration} ${t.duration}` : ''}
         </div>

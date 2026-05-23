@@ -477,21 +477,8 @@ export default function MiniAppMasterDetailPage() {
         </div>
       )}
 
-      {/* Bottom CTA card */}
-      <div className="mc-mbook">
-        <div className="mc-mbook-row">
-          <Zap size={13} /> {t.freeToday}
-        </div>
-        {master.address && (
-          <div className="mc-mbook-row">
-            <MapPin size={13} /> {master.address}
-          </div>
-        )}
-        <button className="mc-mbook-cta" onClick={bookGeneric}>
-          <CalendarPlus size={16} />
-          {minPrice != null ? t.bookFromCta(minPrice, currency) : (lang === 'uk' ? 'Записатись' : lang === 'ru' ? 'Записаться' : 'Book')}
-        </button>
-      </div>
+      {/* Bottom CTA card убран 2026-05-23 — он дублировал кнопки «Выбрать»
+          у каждой услуги выше. Daniil: «нижняя кнопка записаться не нужна». */}
 
       <div style={{ height: 16 }} />
     </div>

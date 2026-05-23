@@ -1331,6 +1331,9 @@
 .od-client-mini-app .mc-apa.primary {
   background: var(--accent); border-color: var(--accent); color: #fff;
 }
+.od-client-mini-app .mc-apa.danger {
+  background: #fee2e2; border-color: #fecaca; color: #ef4444;
+}
 .od-client-mini-app .mc-apa svg { width: 11px; height: 11px; }
 
 /* ════════ MY MASTERS (Connections) ════════ */
