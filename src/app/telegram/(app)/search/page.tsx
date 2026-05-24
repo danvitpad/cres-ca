@@ -218,7 +218,8 @@ export default function MiniAppSearchPage() {
   // Filter chips
   const [fToday, setFToday] = useState(false);
   const [fRating, setFRating] = useState(false);
-  const [fPrice, setFPrice] = useState(false);
+  const [maxPrice, setMaxPrice] = useState(0); // 0 = unlimited
+  const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [fDistance, setFDistance] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [userCity, setUserCity] = useState<string | null>(null);
@@ -315,14 +316,24 @@ export default function MiniAppSearchPage() {
   const filtered = useMemo(() => {
     let out = masters.slice();
     if (fRating) out = out.filter((m) => m.rating >= 4.5);
-    if (fPrice) out = out.filter((m) => m.priceFrom != null && m.priceFrom <= 500);
+    if (maxPrice > 0) out = out.filter((m) => m.priceFrom == null || m.priceFrom <= maxPrice);
     if (fDistance) out = out.filter((m) => m.distanceKm != null && m.distanceKm <= 3);
+    if (filterCategory && filterCategory !== 'all') {
+      const terms = CATEGORY_TO_TERMS[filterCategory] ?? [];
+      if (terms.length > 0) {
+        out = out.filter((m) => {
+          if (!m.specialization) return false;
+          const spec = m.specialization.toLowerCase();
+          return terms.some((term) => spec.includes(term));
+        });
+      }
+    }
     // fToday — без серверной фильтрации (нет данных о слотах per master в /api/telegram/nearby);
     // при включении показываем всех (UI-only). Реальная серверная фильтрация - отдельная задача.
     // Sort by distance if user has location
     if (userLocation) out.sort((a, b) => (a.distanceKm ?? 9999) - (b.distanceKm ?? 9999));
     return out;
-  }, [masters, fRating, fPrice, fDistance, userLocation]);
+  }, [masters, fRating, maxPrice, filterCategory, fDistance, userLocation]);
 
   function clearQuery() {
     setQuery('');
@@ -399,7 +410,7 @@ export default function MiniAppSearchPage() {
       <div className="mc-fchips">
         <Chip active={fToday} onClick={() => { setFToday(!fToday); haptic('selection'); }} icon={<Check size={12} />}>{t.today}</Chip>
         <Chip active={fRating} onClick={() => { setFRating(!fRating); haptic('selection'); }} icon={<Star size={12} />}>{t.rating}</Chip>
-        <Chip active={fPrice} onClick={() => { setFPrice(!fPrice); haptic('selection'); }} icon={<Coins size={12} />}>{t.budget}</Chip>
+        <Chip active={maxPrice > 0} onClick={() => { setMaxPrice(maxPrice > 0 ? 0 : 500); haptic('selection'); }} icon={<Coins size={12} />}>{maxPrice > 0 ? `до ₴${maxPrice}` : t.budget}</Chip>
         <Chip active={fDistance} onClick={() => { setFDistance(!fDistance); haptic('selection'); }} icon={<MapPin size={12} />}>{t.distance}</Chip>
       </div>
 
@@ -550,19 +561,95 @@ export default function MiniAppSearchPage() {
                 borderRadius: `${R.lg}px ${R.lg}px 0 0`,
                 background: T.bg,
                 padding: `20px 20px calc(20px + env(safe-area-inset-bottom, 0px))`,
-                display: 'flex', flexDirection: 'column', gap: 10,
+                display: 'flex', flexDirection: 'column', gap: 16,
                 boxShadow: SHADOW.elevated,
+                maxHeight: '85dvh', overflowY: 'auto',
               }}
             >
-              <div style={{ ...TYPE.h3, color: T.text, marginBottom: 4 }}>
+              {/* Title */}
+              <div style={{ ...TYPE.h3, color: T.text }}>
                 {lang === 'uk' ? 'Фільтри' : lang === 'ru' ? 'Фильтры' : 'Filters'}
               </div>
-              {[
+
+              {/* Category / Specialist picker */}
+              <div>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, color: T.textTertiary,
+                  textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 10,
+                }}>
+                  {lang === 'uk' ? 'Спеціалізація' : lang === 'ru' ? 'Специализация' : 'Specialty'}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {([
+                    { key: 'all', label: lang === 'uk' ? 'Усі' : lang === 'ru' ? 'Все' : 'All' },
+                    ...Object.keys(CATEGORY_LABELS).map((k) => ({
+                      key: k,
+                      label: CATEGORY_LABELS[k]?.[lang] ?? k,
+                    })),
+                  ] as { key: string; label: string }[]).map(({ key, label }) => {
+                    const isActive = key === 'all'
+                      ? !filterCategory || filterCategory === 'all'
+                      : filterCategory === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => { haptic('light'); setFilterCategory(key === 'all' ? null : key); }}
+                        style={{
+                          padding: '7px 14px', borderRadius: 9999,
+                          border: `1.5px solid ${isActive ? T.accent : T.borderSubtle}`,
+                          background: isActive ? T.accentSoft : T.surface,
+                          color: isActive ? T.accent : T.textSecondary,
+                          fontSize: 13, fontWeight: 600,
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Price range slider */}
+              <div>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, color: T.textTertiary,
+                  textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 10,
+                }}>
+                  {lang === 'uk' ? 'Ціна до' : lang === 'ru' ? 'Цена до' : 'Price up to'}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 12, color: T.textTertiary, flexShrink: 0 }}>₴0</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={2000}
+                    step={50}
+                    value={maxPrice > 0 ? maxPrice : 2000}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setMaxPrice(v >= 2000 ? 0 : v);
+                    }}
+                    style={{ flex: 1, accentColor: T.accent }}
+                  />
+                  <span style={{
+                    fontSize: 13, fontWeight: 700, color: T.accent,
+                    flexShrink: 0, minWidth: 72, textAlign: 'right',
+                  }}>
+                    {maxPrice > 0
+                      ? `до ₴${maxPrice}`
+                      : (lang === 'uk' ? 'Будь-яка' : lang === 'ru' ? 'Любая' : 'Any')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Other toggles: today, rating, distance */}
+              {([
                 { val: fToday, set: setFToday, label: t.today },
                 { val: fRating, set: setFRating, label: t.rating },
-                { val: fPrice, set: setFPrice, label: t.budget },
                 { val: fDistance, set: setFDistance, label: t.distance },
-              ].map((f, i) => (
+              ] as { val: boolean; set: (v: boolean) => void; label: string }[]).map((f, i) => (
                 <button
                   key={i}
                   type="button"
@@ -589,11 +676,13 @@ export default function MiniAppSearchPage() {
                   </span>
                 </button>
               ))}
+
+              {/* Done */}
               <button
                 type="button"
                 onClick={() => { haptic('light'); setFilterSheetOpen(false); }}
                 style={{
-                  marginTop: 8, padding: '15px 16px', borderRadius: R.md,
+                  padding: '15px 16px', borderRadius: R.md,
                   border: 'none', background: T.accent, color: '#fff',
                   ...TYPE.bodyStrong, fontFamily: 'inherit', cursor: 'pointer',
                 }}
