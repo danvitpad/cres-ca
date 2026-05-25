@@ -403,7 +403,7 @@ export function BlockTimeSheet({ open, onClose, date, defaultTime, onSaved }: Pr
               </div>
 
               {/* time + duration */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 14 }}>
                 <div>
                   <span style={labelStyle}>{t.startLabel}</span>
                   <input
