@@ -67,6 +67,9 @@ function MasterMiniAppQuickBookingInner() {
   const [day, setDay] = useState<Date>(() => new Date());
   const [time, setTime] = useState('10:00');
   const [error, setError] = useState<string | null>(null);
+  const [slots, setSlots] = useState<string[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [customMode, setCustomMode] = useState(false);
 
   const preClientId = params.get('client_id');
   const preServiceId = params.get('service_id');
@@ -88,6 +91,29 @@ function MasterMiniAppQuickBookingInner() {
       body.style.backgroundColor = prevBody;
     };
   }, []);
+
+  // Reset custom mode when date changes so slots re-appear for new day.
+  useEffect(() => { setCustomMode(false); }, [day]);
+
+  // Fetch available slots when entering the time step.
+  useEffect(() => {
+    if (step !== 'time' || !masterId || !selectedService) return;
+    let alive = true;
+    setSlotsLoading(true);
+    setSlots([]);
+    const dateStr = `${day.getFullYear()}-${pad2(day.getMonth() + 1)}-${pad2(day.getDate())}`;
+    fetch(`/api/slots?master_id=${masterId}&date=${dateStr}&service_id=${selectedService.id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { slots?: string[] } | null) => {
+        if (!alive) return;
+        const available = j?.slots ?? [];
+        setSlots(available);
+        if (available.length > 0) setTime(available[0]);
+      })
+      .catch(() => { if (alive) setSlots([]); })
+      .finally(() => { if (alive) setSlotsLoading(false); });
+    return () => { alive = false; };
+  }, [step, masterId, selectedService?.id, day]);
 
   useEffect(() => {
     if (!userId) return;
@@ -322,15 +348,14 @@ function MasterMiniAppQuickBookingInner() {
 
       {step === 'time' && selectedService && selectedClient && (
         <>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-3">
-              <UserIcon className="size-3.5 text-neutral-500" />
-              <p className="truncate text-[12px] text-neutral-700">{selectedClient.full_name}</p>
-              <span className="text-neutral-400">·</span>
-              <p className="truncate text-[12px] text-neutral-700">{selectedService.name}</p>
-            </div>
+          <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-3">
+            <UserIcon className="size-3.5 text-neutral-500" />
+            <p className="truncate text-[12px] text-neutral-700">{selectedClient.full_name}</p>
+            <span className="text-neutral-400">·</span>
+            <p className="truncate text-[12px] text-neutral-700">{selectedService.name}</p>
           </div>
 
+          {/* Date */}
           <div className="rounded-2xl border border-neutral-200 bg-white p-4">
             <p className="text-[10px] uppercase tracking-wide text-neutral-400">Дата</p>
             <input
@@ -345,23 +370,83 @@ function MasterMiniAppQuickBookingInner() {
             />
           </div>
 
-          <div className="rounded-2xl border border-neutral-200 bg-white p-4">
-            <p className="text-[10px] uppercase tracking-wide text-neutral-400">Время начала</p>
-            <input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="mt-2 block w-full appearance-none border-0 bg-transparent p-0 text-[18px] font-semibold text-neutral-900 outline-none"
-              style={{ minWidth: 0 }}
-            />
-            <p className="mt-2 text-[11px] text-neutral-500">
-              Закончится в {(() => {
-                const [h, m] = time.split(':').map(Number);
-                const end = new Date(0, 0, 0, h, m + selectedService.duration_minutes);
-                return `${pad2(end.getHours())}:${pad2(end.getMinutes())}`;
-              })()}
-            </p>
-          </div>
+          {/* Time — slots or custom picker */}
+          {slotsLoading ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="size-5 animate-spin text-neutral-400" />
+            </div>
+          ) : !customMode ? (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+              <p className="text-[10px] uppercase tracking-wide text-neutral-400 mb-3">Время начала</p>
+              {slots.length > 0 ? (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {slots.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => { haptic('selection'); setTime(s); }}
+                        className={`rounded-xl px-4 py-2.5 text-[14px] font-semibold border transition-colors ${
+                          time === s
+                            ? 'bg-neutral-900 text-white border-neutral-900'
+                            : 'bg-white text-neutral-900 border-neutral-200 active:bg-neutral-50'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCustomMode(true)}
+                    className="mt-3 text-[12px] text-neutral-400 underline underline-offset-2"
+                  >
+                    Другое время
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-[13px] text-neutral-500 mb-3">Нет свободных слотов на этот день</p>
+                  <button
+                    type="button"
+                    onClick={() => setCustomMode(true)}
+                    className="text-[12px] text-neutral-400 underline underline-offset-2"
+                  >
+                    Ввести время вручную
+                  </button>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-[10px] uppercase tracking-wide text-neutral-400">Время начала</p>
+                {slots.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setCustomMode(false)}
+                    className="text-[12px] font-medium text-[var(--color-accent)]"
+                  >
+                    ← Слоты
+                  </button>
+                )}
+              </div>
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="mt-2 block w-full appearance-none border-0 bg-transparent p-0 text-[18px] font-semibold text-neutral-900 outline-none"
+                style={{ minWidth: 0 }}
+              />
+              <p className="mt-2 text-[11px] text-neutral-500">
+                Закончится в {(() => {
+                  const [h, m] = time.split(':').map(Number);
+                  const end = new Date(0, 0, 0, h, m + selectedService.duration_minutes);
+                  return `${pad2(end.getHours())}:${pad2(end.getMinutes())}`;
+                })()}
+              </p>
+            </div>
+          )}
 
           {error && (
             <div className="relative overflow-hidden rounded-2xl border border-rose-200 bg-rose-50 p-3 pl-5 text-[12px] text-rose-600">
