@@ -47,6 +47,7 @@ interface SlotItem {
   masterId: string;
   name: string | null;
   avatar: string | null;
+  specialization?: string | null;
   date: string;
   time: string;
   iso: string;
@@ -546,9 +547,13 @@ function SlotCard({ slot, lang, t, haptic }: {
             </span>
           )}
         </div>
-        <div className="mc-slot-s">
-          {slot.service ?? '—'}{slot.duration ? ` · ${slot.duration} ${t.duration}` : ''}
-        </div>
+        {(slot.service || slot.specialization) && (
+          <div className="mc-slot-s">
+            {slot.service
+              ? `${slot.service}${slot.duration ? ` · ${slot.duration} ${t.duration}` : ''}`
+              : slot.specialization}
+          </div>
+        )}
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
         <div className={`mc-slot-t ${!isToday ? 'tom' : ''}`}>{timeLabel}</div>

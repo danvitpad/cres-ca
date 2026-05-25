@@ -27,6 +27,7 @@ interface MasterSlot {
   masterId: string;
   name: string | null;
   avatar: string | null;
+  specialization: string | null;
   date: string; // YYYY-MM-DD
   time: string; // HH:MM
   iso: string;  // full ISO timestamp
@@ -51,7 +52,7 @@ export async function GET(req: Request) {
   const { data: links } = await supabase
     .from('client_master_links')
     .select(
-      'master_id, masters:masters!client_master_links_master_id_fkey(id, display_name, avatar_url, working_hours, is_busy, busy_until, profiles:profiles!masters_profile_id_fkey(full_name, avatar_url))',
+      'master_id, masters:masters!client_master_links_master_id_fkey(id, display_name, avatar_url, specialization, working_hours, is_busy, busy_until, profiles:profiles!masters_profile_id_fkey(full_name, avatar_url))',
     )
     .eq('profile_id', profileId)
     .eq('client_follows', true)
@@ -140,6 +141,7 @@ export async function GET(req: Request) {
       id: string;
       display_name: string | null;
       avatar_url: string | null;
+      specialization: string | null;
       working_hours: unknown;
       is_busy: boolean | null;
       busy_until: string | null;
@@ -189,6 +191,7 @@ export async function GET(req: Request) {
               masterId: link.master_id,
               name: m.display_name ?? profile?.full_name ?? null,
               avatar: m.avatar_url ?? profile?.avatar_url ?? null,
+              specialization: m.specialization ?? null,
               date: dateStr,
               time,
               iso: isoDate.toISOString(),
